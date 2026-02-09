@@ -50,17 +50,18 @@ Our application features seven core domains:
 
 ### 2. **Organization Domain**
 
-**Responsibility:** Top-level account management, multi-brand hierarchies, team management
+**Responsibility:** Top-level account management, multi-brand hierarchies, team management, user invitations
 
 **Key Concepts:**
 
 - Organizations (the paying customer—e.g., "BBC", "MrBeast LLC")
 - Organization membership (connecting users to organizations with roles)
+- Invitations (email-based team onboarding with token-secured links)
 - Brands (public-facing brands—e.g., "Goal Hanger", "MrBeast Gaming")
 - Team permissions & brand-level access (26 granular permissions across 5 domains)
 - Organization settings
 
-**Why separate?** Organizations are the actual customers. Some will have one user and one brand (solo podcaster), others will have multiple team members managing multiple brands (BBC). This domain handles all that complexity.
+**Why separate?** Organizations are the actual customers. Some will have one user and one brand (solo podcaster), others will have multiple team members managing multiple brands (BBC). This domain handles all that complexity, including securely adding new team members via invitation flows.
 
 ---
 
@@ -185,6 +186,33 @@ Organization (the paying customer: BBC, MrBeast LLC, Jane Smith Productions)
 - Users: 20+ employees (1 owner, 5 admins, 14 members)
 - Brands: "Goal Hanger", "The Rest is Politics", etc.
 - Different team members have access to different brands
+
+### Invitation System (Organization Domain)
+
+**Key Features:**
+
+- **Token-based security:** Invitations use secure UUID tokens in email links
+- **Multi-org support:** Users can accept invitations to multiple organizations
+- **Expiry handling:** Invitations expire after 7 days (configurable)
+- **Role & brand access:** Invitations specify the role (admin/member) and brand access
+- **Auto-grant new brands:** Optional flag to automatically grant access to future brands
+- **Server-side acceptance:** API route ensures atomic creation of organizationMember records
+- **Lifecycle states:** pending → accepted | declined | expired
+
+**Invitation Flows:**
+
+1. **Flow A (Existing User):** Admin invites user → Email sent → User signs in → Accepts invitation(s) → Joins organization
+2. **Flow B (New User):** Admin invites user → Email sent → User signs up via Google OAuth → Accepts invitation(s) → Joins organization
+
+**Implementation:**
+
+- Collection: `/invitations/{invitationId}`
+- Firestore indexes: `email+status`, `organizationId+status`, `email+organizationId+status`
+- Email template: `organization-invitation` (Postmark)
+- API route: `POST /api/invitations/accept` (server-side atomic transactions)
+- See: `packages/core/src/schemas/invitation.schema.ts` for data model
+
+---
 
 ### Cross-Domain Dependencies
 

@@ -731,40 +731,64 @@ describe('QuestionCard', () => {
 
 ### E2E Test Pattern
 
+Playwright E2E infrastructure is fully implemented. See [E2E_TESTING_PLAYWRIGHT.md](../docs/briefs/E2E_TESTING_PLAYWRIGHT.md) for comprehensive setup, patterns, and conventions.
+
+**Quick Start:**
+
+```bash
+# Start Firebase emulators (required)
+firebase emulators:start --only auth,firestore --project demo-brayford &
+
+# Run E2E tests
+pnpm test:e2e
+
+# Or with UI mode
+pnpm test:e2e:ui
+```
+
+**Test Structure:**
+
+```
+e2e/
+├── fixtures/          # Auth and data fixtures
+├── helpers/           # Firebase emulator helpers
+├── page-objects/      # Page Object Models
+└── tests/
+    ├── auth/          # Sign-in/sign-out flows
+    ├── onboarding/    # Organization creation
+    ├── dashboard/     # Navigation, org switcher
+    └── users/         # Team management, invitations
+```
+
+**Example with Page Objects and Fixtures:**
+
 ```typescript
-// e2e/qna-flow.spec.ts
-import { test, expect } from "@playwright/test";
+// e2e/tests/onboarding/create-org.spec.ts
+import { test, expect } from '../../fixtures/auth.fixture';
+import { OnboardingPage } from '../../page-objects/onboarding.page';
+import { DashboardPage } from '../../page-objects/dashboard.page';
 
-test("audience member can submit question and see it on stage view", async ({
-  page,
-  context,
-}) => {
-  // Open audience app
-  await page.goto("/event/test-event-123");
+test('new user completes onboarding', async ({ newUserPage }) => {
+  const onboarding = new OnboardingPage(newUserPage.page);
+  const dashboard = new DashboardPage(newUserPage.page);
 
-  // Submit a question
-  await page.fill(
-    '[data-testid="question-input"]',
-    "How do you prioritize features?",
-  );
-  await page.click('[data-testid="submit-question"]');
+  await onboarding.goto();
+  await onboarding.completeAsOrganisation({
+    name: 'Test Org',
+    email: 'billing@test.com',
+  });
 
-  // Verify confirmation
-  await expect(page.locator("text=Question submitted")).toBeVisible();
-
-  // Open stage view in new tab
-  const stageView = await context.newPage();
-  await stageView.goto("/stage/test-event-123");
-
-  // Creator pushes question to stage (simulate via API or dashboard action)
-  // ...
-
-  // Verify question appears on stage view
-  await expect(
-    stageView.locator("text=How do you prioritize features?"),
-  ).toBeVisible({ timeout: 3000 });
+  await expect(newUserPage.page).toHaveURL('/dashboard');
+  await dashboard.expectLoaded();
 });
 ```
+
+**Key Conventions:**
+
+- Use `data-testid` attributes for test selectors (e.g., `data-testid="signin-google-btn"`)
+- Tests run against Firebase emulators (not production)
+- All fixtures auto-clean data between tests
+- Page Object Model encapsulates selectors and actions
 
 ---
 

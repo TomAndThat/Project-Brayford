@@ -70,9 +70,93 @@ The system is designed to handle bursts of 5,000+ concurrent participants per ev
   /apps
     /audience       # The mobile participant experience
     /creator        # The production/vision-mixer dashboard
-    /stage-view     # High-res projector/big-screen output
-    /platform-admin # Internal platform management
+    /stage          # High-res projector/big-screen output
+    /admin          # Internal platform management
   /packages
     /core           # Shared schemas, types, and marketing logic
     /firebase-utils # Standardized real-time hooks and jitter logic
+    /email-utils    # Email templates and sending logic
+  /e2e              # Playwright E2E tests
+  /docs             # Technical documentation and briefs
 ```
+
+## 7. Development
+
+### Prerequisites
+
+- Node.js 20.x or later
+- pnpm 9.x
+- Firebase CLI (for emulators)
+
+### Quick Start
+
+```bash
+# Install dependencies
+pnpm install
+
+# Run all apps in development mode
+pnpm dev
+
+# Run specific app
+pnpm --filter creator dev
+```
+
+### Available Scripts
+
+| Command                | Description                                     |
+| ---------------------- | ----------------------------------------------- |
+| `pnpm dev`             | Run all apps in parallel (ports 3000–3003)      |
+| `pnpm build`           | Build all apps and packages                     |
+| `pnpm test`            | Run unit tests with Vitest                      |
+| `pnpm test:e2e`        | Run Playwright E2E tests                        |
+| `pnpm test:e2e:ui`     | Run E2E tests with Playwright UI                |
+| `pnpm lint`            | Lint all packages and apps                      |
+| `pnpm type-check`      | Type-check all packages and apps                |
+
+### App Ports
+
+| App      | Port | URL                       |
+| -------- | ---- | ------------------------- |
+| creator  | 3000 | http://localhost:3000     |
+| audience | 3001 | http://localhost:3001     |
+| stage    | 3002 | http://localhost:3002     |
+| admin    | 3003 | http://localhost:3003     |
+
+### Testing
+
+**Unit Tests:**
+
+```bash
+# Run all unit tests
+pnpm test
+
+# Watch mode
+pnpm test -- --watch
+
+# Coverage report
+pnpm test -- --coverage
+```
+
+**E2E Tests:**
+
+E2E tests require Firebase emulators. Start them before running tests:
+
+```bash
+# Start emulators (in separate terminal)
+firebase emulators:start --only auth,firestore --project demo-brayford
+
+# Run E2E tests
+pnpm test:e2e
+
+# Or with UI mode for debugging
+pnpm test:e2e:ui
+```
+
+### Documentation
+
+- [DEVELOPER_STANDARDS.md](docs/DEVELOPER_STANDARDS.md) - Coding standards and patterns
+- [DOMAIN_MODEL.md](docs/DOMAIN_MODEL.md) - Domain architecture and data models
+- [PERMISSIONS.md](docs/PERMISSIONS.md) - Permission system and role definitions
+- [ROADMAP.md](docs/ROADMAP.md) - Implementation phases and progress
+- [E2E_TESTING_PLAYWRIGHT.md](docs/briefs/E2E_TESTING_PLAYWRIGHT.md) - E2E testing infrastructure
+- [INVITATION_SYSTEM.md](docs/briefs/INVITATION_SYSTEM.md) - Invitation system technical brief
