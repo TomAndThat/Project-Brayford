@@ -14,6 +14,7 @@ import {
   type OrganizationDocument,
   type BrandDocument,
 } from "@brayford/core";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
 
 export default function DashboardPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -84,38 +85,11 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {organization.name}
-            </h1>
-            <p className="text-sm text-gray-500">Project Brayford</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-700">
-                {user.displayName}
-              </p>
-              <p className="text-xs text-gray-500">{user.email}</p>
-            </div>
-            {user.photoURL && (
-              <img
-                src={user.photoURL}
-                alt={user.displayName || "User"}
-                className="w-10 h-10 rounded-full"
-              />
-            )}
-            <button
-              onClick={handleSignOut}
-              className="text-sm text-gray-600 hover:text-gray-900 underline"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader
+        user={user}
+        organizationName={organization.name}
+        onSignOut={handleSignOut}
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

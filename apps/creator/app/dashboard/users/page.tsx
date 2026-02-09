@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -22,6 +22,7 @@ import {
   canModifyMemberRole,
   getRoleDisplayName,
 } from "@brayford/core";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
 
 export default function UsersPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -33,8 +34,6 @@ export default function UsersPage() {
   const [currentMember, setCurrentMember] =
     useState<OrganizationMemberDocument | null>(null);
   const [members, setMembers] = useState<OrganizationMemberWithUser[]>([]);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -46,25 +45,6 @@ export default function UsersPage() {
       loadUserData();
     }
   }, [user, authLoading, router]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setDropdownOpen(false);
-      }
-    };
-
-    if (dropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }
-  }, [dropdownOpen]);
 
   const loadUserData = async () => {
     if (!user) return;
@@ -99,7 +79,6 @@ export default function UsersPage() {
   };
 
   const handleSignOut = async () => {
-    setDropdownOpen(false);
     await signOut();
     router.push("/signin");
   };
@@ -128,89 +107,19 @@ export default function UsersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div>
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="text-sm text-blue-600 hover:text-blue-800 mb-1 flex items-center gap-1"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-              Back to Dashboard
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900">Team Members</h1>
-            <p className="text-sm text-gray-500">{organization.name}</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors"
-              >
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-700">
-                    {user.displayName}
-                  </p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
-                </div>
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName || "User"}
-                    className="w-10 h-10 rounded-full"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-pink-500 flex items-center justify-center text-white font-semibold">
-                    {user.displayName?.charAt(0).toUpperCase() || "U"}
-                  </div>
-                )}
-                <svg
-                  className={`w-4 h-4 text-gray-500 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
-
-              {/* Dropdown Menu */}
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
-                  <button
-                    onClick={handleSignOut}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader
+        user={user}
+        organizationName={organization.name}
+        onSignOut={handleSignOut}
+        pageTitle="Team Members"
+        breadcrumb={{
+          label: "Back to Dashboard",
+          onClick: () => router.push("/dashboard"),
+        }}
+      />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Page Header with Invite Button */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">{/* Page Header with Invite Button */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">Team Members</h2>
