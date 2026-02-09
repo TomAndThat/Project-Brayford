@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Onboarding**: Removed automatic brand creation during organization setup. Users will now create brands through a guided walkthrough (to be implemented).
+
 ### To Do
 - User onboarding Flow B: Invitation system for joining existing organizations
+- First-time user walkthrough for brand creation
 
 ## [0.1.0] - 2026-02-09
 

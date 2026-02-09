@@ -6,12 +6,10 @@ import { useForm } from "react-hook-form";
 import { useAuth } from "@/hooks/use-auth";
 import {
   createOrganization,
-  createBrand,
   getUserOrganizations,
 } from "@brayford/firebase-utils";
 import {
   type CreateOrganizationData,
-  type CreateBrandData,
   type OrganizationType,
   toBranded,
   type UserId,
@@ -100,16 +98,7 @@ export default function OnboardingPage() {
         createdBy: fromBranded(userId),
       };
 
-      const organizationId = await createOrganization(orgData, userId);
-
-      // Create initial brand with same name as organization
-      const brandData: CreateBrandData = {
-        organizationId: fromBranded(organizationId),
-        name: data.organizationName,
-        logo: null,
-      };
-
-      await createBrand(brandData);
+      await createOrganization(orgData, userId);
 
       // Redirect to dashboard
       router.push("/dashboard");
