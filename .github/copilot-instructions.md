@@ -111,6 +111,41 @@ pnpm lint       # Lint all packages
 1. Run `pnpm lint` and `pnpm type-check`
 2. Ensure tests pass with 70%+ coverage for packages, 50%+ for apps
 3. Use Conventional Commits format
+4. **Update CHANGELOG.md** for user-facing changes (see below)
+
+### Maintaining CHANGELOG.md
+
+**Always update CHANGELOG.md** when implementing features, fixes, or changes that affect users or other developers.
+
+**When to update:**
+- ✅ New features (UI components, API endpoints, database schemas)
+- ✅ Bug fixes (especially user-facing issues)
+- ✅ Breaking changes (API changes, schema migrations, removed features)
+- ✅ Security patches
+- ✅ Performance improvements
+- ✅ Dependency updates (major versions only)
+- ❌ Internal refactoring with no external impact
+- ❌ Test additions (unless they document new behavior)
+- ❌ Documentation typo fixes
+
+**How to update:**
+1. Add changes under `## [Unreleased]` section
+2. Use categories: `Added`, `Changed`, `Fixed`, `Removed`, `Security`, `Deprecated`
+3. Write from user/developer perspective: "what can they now do?" not "what code changed"
+4. Reference issue numbers if applicable: `- Fix auth race condition (#123)`
+5. When releasing, move Unreleased items to new versioned section with date
+
+**Example entry:**
+```markdown
+## [Unreleased]
+
+### Added
+- **Event Management**: Create and schedule live events with QR codes for audience entry
+- **Dashboard**: Event list with status filters (draft, live, ended)
+
+### Fixed
+- Auth token refresh now works correctly after 1 hour (#145)
+```
 
 ### Testing
 
@@ -121,6 +156,8 @@ pnpm lint       # Lint all packages
 
 ## Key Files
 
+- [CHANGELOG.md](../CHANGELOG.md) - Version history with user-facing changes (keep updated!)
+- [docs/ROADMAP.md](../docs/ROADMAP.md) - Feature progress and sprint planning
 - [docs/DEVELOPER_STANDARDS.md](../docs/DEVELOPER_STANDARDS.md) - Comprehensive style guide
 - [docs/DOMAIN_MODEL.md](../docs/DOMAIN_MODEL.md) - Data models and domain boundaries
 - `packages/core` - Shared types, schemas, constants
