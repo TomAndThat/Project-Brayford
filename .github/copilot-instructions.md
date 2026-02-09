@@ -118,6 +118,7 @@ pnpm lint       # Lint all packages
 **Always update CHANGELOG.md** when implementing features, fixes, or changes that affect users or other developers.
 
 **When to update:**
+
 - ✅ New features (UI components, API endpoints, database schemas)
 - ✅ Bug fixes (especially user-facing issues)
 - ✅ Breaking changes (API changes, schema migrations, removed features)
@@ -129,6 +130,7 @@ pnpm lint       # Lint all packages
 - ❌ Documentation typo fixes
 
 **How to update:**
+
 1. Add changes under `## [Unreleased]` section
 2. Use categories: `Added`, `Changed`, `Fixed`, `Removed`, `Security`, `Deprecated`
 3. Write from user/developer perspective: "what can they now do?" not "what code changed"
@@ -136,14 +138,17 @@ pnpm lint       # Lint all packages
 5. When releasing, move Unreleased items to new versioned section with date
 
 **Example entry:**
+
 ```markdown
 ## [Unreleased]
 
 ### Added
+
 - **Event Management**: Create and schedule live events with QR codes for audience entry
 - **Dashboard**: Event list with status filters (draft, live, ended)
 
 ### Fixed
+
 - Auth token refresh now works correctly after 1 hour (#145)
 ```
 

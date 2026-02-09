@@ -17,10 +17,12 @@
 - [x] Implement Brand schema
 - [x] Firebase Auth integration (Google provider)
 - [x] User onboarding Flow A: New user + new organization
+- [ ] Email infrastructure package (@brayford/email-utils)
 - [ ] User onboarding Flow B: New user + join existing organization
 - [x] Basic organization dashboard
 
 **Additional completions:**
+
 - [x] Comprehensive testing infrastructure (296 tests, 96.34% coverage)
 - [x] CI/CD pipeline (GitHub Actions with Node 18.x/20.x)
 - [x] Firestore security rules deployed
@@ -83,6 +85,20 @@
 - [ ] Account linking (multiple auth providers for one user)
 
 **Rationale:** Google OAuth provides fastest time-to-market. Email/password adds complexity (password reset flows, email verification) that can be added once core product is validated.
+
+### Email Infrastructure Enhancements
+
+**Priority:** Medium | **Target:** Post-MVP (when bulk sending needed)
+
+- [ ] Cloud Tasks/Pub/Sub integration for bulk email queuing
+- [ ] Firestore-based distributed rate limiting (multi-instance resilience)
+- [ ] Email delivery tracking and webhooks (open rates, bounces)
+- [ ] Email template versioning and A/B testing
+- [ ] Retry logic with exponential backoff for failed sends
+- [ ] Multiple language support (beyond UK English)
+- [ ] Email analytics dashboard
+
+**Rationale:** Phase 1 provides core transactional email sending with simple rate limiting. Bulk email features (event reminders to 1000s, marketing campaigns) require proper queuing infrastructure. See [docs/briefs/EMAIL_INFRASTRUCTURE.md](./briefs/EMAIL_INFRASTRUCTURE.md) for full architecture.
 
 ### Advanced Organization Features
 

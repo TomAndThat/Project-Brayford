@@ -7,16 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Email Infrastructure**: New `@brayford/email-utils` package for email sending via Postmark
+  - Transactional email support with template validation
+  - Development mode (console logging instead of sending)
+  - Simple in-memory rate limiting for transactional emails
+  - UK English templates for invitation, password reset, verification, etc.
+  - i18n-ready architecture for future multi-language support
+  - Comprehensive test suite with 70%+ coverage
+- **Developer Experience**: EMAIL_DEV_MODE environment flag for safe local development
+
 ### Changed
-- **Onboarding**: Removed automatic brand creation during organization setup. Users will now create brands through a guided walkthrough (to be implemented).
+
+- **Onboarding**: Removed automatic brand creation during organisation setup. Users will now create brands through a guided walkthrough (to be implemented).
 
 ### To Do
-- User onboarding Flow B: Invitation system for joining existing organizations
+
+- User onboarding Flow B: Invitation system for joining existing organisations
 - First-time user walkthrough for brand creation
+- Email infrastructure Phase 2: Cloud Tasks for bulk email queuing (deferred)
 
 ## [0.1.0] - 2026-02-09
 
 ### Added
+
 - **Creator App**: Complete two-step onboarding flow (organization type selection → details form)
 - **Creator App**: Sign-out functionality on onboarding and dashboard pages
 - **Auth**: Google OAuth integration with automatic user document creation
@@ -37,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Firebase Utils**: Google OAuth authentication helpers
 
 ### Fixed
+
 - Auth race condition by removing premature `getCurrentUser()` call (now relies solely on `onAuthChange` observer)
 - React hooks violation: separated nested `useEffect` into two independent hooks
 - OrganizationType mismatch: UI "organisation" selection now correctly maps to schema "team" type
@@ -44,10 +60,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CORS popup warnings no longer shown as errors in sign-in flow
 
 ### Changed
+
 - Simplified organization type selection from 3 options to 2 (Individual Creator, Organisation)
 - Organization name pre-filled with user's display name for individual creators
 
 ### Infrastructure
+
 - Vitest 4.0.18 configured with jsdom environment
 - Test coverage thresholds: 70% for packages (achieved 96.34%)
 - Firebase project structure with firestore.rules, firestore.indexes.json, and firebase.json
