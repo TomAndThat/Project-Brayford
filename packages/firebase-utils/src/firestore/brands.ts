@@ -95,8 +95,13 @@ export async function createBrand(data: CreateBrandData): Promise<BrandId> {
   const brandRef = doc(collection(db, 'brands'));
   const brandId = toBranded<BrandId>(brandRef.id);
   
+  // Strip undefined values — Firestore rejects them
+  const cleanData = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined)
+  );
+
   await setDoc(brandRef, {
-    ...data,
+    ...cleanData,
     createdAt: serverTimestamp(),
     isActive: true,
   });
