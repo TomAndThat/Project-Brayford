@@ -36,6 +36,8 @@ export default function DashboardPage() {
   const [memberships, setMemberships] = useState<OrganizationMemberDocument[]>(
     [],
   );
+  const [currentMember, setCurrentMember] =
+    useState<OrganizationMemberDocument | null>(null);
 
   const loadOrgData = useCallback(async (orgId: OrganizationId) => {
     const org = await getOrganization(orgId);
@@ -88,11 +90,10 @@ export default function DashboardPage() {
           )
         : null;
 
-      const targetOrgId = savedMembership
-        ? savedMembership.organizationId
-        : userMemberships[0]!.organizationId;
+      const targetMembership = savedMembership || userMemberships[0]!;
+      setCurrentMember(targetMembership);
 
-      await loadOrgData(targetOrgId);
+      await loadOrgData(targetMembership.organizationId);
     } catch (error) {
       console.error("Error loading user data:", error);
     } finally {
@@ -113,6 +114,10 @@ export default function DashboardPage() {
 
   const handleOrgChange = async (orgId: OrganizationId) => {
     setLoading(true);
+    const membership = memberships.find((m) => m.organizationId === orgId);
+    if (membership) {
+      setCurrentMember(membership);
+    }
     await loadOrgData(orgId);
     setLoading(false);
   };
@@ -140,6 +145,7 @@ export default function DashboardPage() {
         user={user}
         organizationName={organization.name}
         onSignOut={handleSignOut}
+        currentMember={currentMember ?? undefined}
         orgSwitcher={
           allOrgs.length > 1 ? (
             <OrgSwitcher
@@ -195,7 +201,10 @@ export default function DashboardPage() {
             </div>
           </button>
 
-          <div data-testid="events-card" className="bg-gray-100 rounded-lg shadow-md p-6 opacity-50 cursor-not-allowed">
+          <div
+            data-testid="events-card"
+            className="bg-gray-100 rounded-lg shadow-md p-6 opacity-50 cursor-not-allowed"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Events</h3>
@@ -217,7 +226,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div data-testid="analytics-card" className="bg-gray-100 rounded-lg shadow-md p-6 opacity-50 cursor-not-allowed">
+          <div
+            data-testid="analytics-card"
+            className="bg-gray-100 rounded-lg shadow-md p-6 opacity-50 cursor-not-allowed"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -243,7 +255,10 @@ export default function DashboardPage() {
         </div>
 
         {/* Brands Section */}
-        <div data-testid="brands-section" className="bg-white rounded-lg shadow-md p-8 mb-8">
+        <div
+          data-testid="brands-section"
+          className="bg-white rounded-lg shadow-md p-8 mb-8"
+        >
           <h3 className="text-xl font-semibold text-gray-900 mb-4">
             Your Brands
           </h3>

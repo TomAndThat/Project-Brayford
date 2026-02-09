@@ -103,24 +103,24 @@ pnpm --filter creator dev
 
 ### Available Scripts
 
-| Command                | Description                                     |
-| ---------------------- | ----------------------------------------------- |
-| `pnpm dev`             | Run all apps in parallel (ports 3000–3003)      |
-| `pnpm build`           | Build all apps and packages                     |
-| `pnpm test`            | Run unit tests with Vitest                      |
-| `pnpm test:e2e`        | Run Playwright E2E tests                        |
-| `pnpm test:e2e:ui`     | Run E2E tests with Playwright UI                |
-| `pnpm lint`            | Lint all packages and apps                      |
-| `pnpm type-check`      | Type-check all packages and apps                |
+| Command            | Description                                |
+| ------------------ | ------------------------------------------ |
+| `pnpm dev`         | Run all apps in parallel (ports 3000–3003) |
+| `pnpm build`       | Build all apps and packages                |
+| `pnpm test`        | Run unit tests with Vitest                 |
+| `pnpm test:e2e`    | Run Playwright E2E tests                   |
+| `pnpm test:e2e:ui` | Run E2E tests with Playwright UI           |
+| `pnpm lint`        | Lint all packages and apps                 |
+| `pnpm type-check`  | Type-check all packages and apps           |
 
 ### App Ports
 
-| App      | Port | URL                       |
-| -------- | ---- | ------------------------- |
-| creator  | 3000 | http://localhost:3000     |
-| audience | 3001 | http://localhost:3001     |
-| stage    | 3002 | http://localhost:3002     |
-| admin    | 3003 | http://localhost:3003     |
+| App      | Port | URL                   |
+| -------- | ---- | --------------------- |
+| creator  | 3000 | http://localhost:3000 |
+| audience | 3001 | http://localhost:3001 |
+| stage    | 3002 | http://localhost:3002 |
+| admin    | 3003 | http://localhost:3003 |
 
 ### Testing
 

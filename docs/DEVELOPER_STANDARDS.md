@@ -764,21 +764,21 @@ e2e/
 
 ```typescript
 // e2e/tests/onboarding/create-org.spec.ts
-import { test, expect } from '../../fixtures/auth.fixture';
-import { OnboardingPage } from '../../page-objects/onboarding.page';
-import { DashboardPage } from '../../page-objects/dashboard.page';
+import { test, expect } from "../../fixtures/auth.fixture";
+import { OnboardingPage } from "../../page-objects/onboarding.page";
+import { DashboardPage } from "../../page-objects/dashboard.page";
 
-test('new user completes onboarding', async ({ newUserPage }) => {
+test("new user completes onboarding", async ({ newUserPage }) => {
   const onboarding = new OnboardingPage(newUserPage.page);
   const dashboard = new DashboardPage(newUserPage.page);
 
   await onboarding.goto();
   await onboarding.completeAsOrganisation({
-    name: 'Test Org',
-    email: 'billing@test.com',
+    name: "Test Org",
+    email: "billing@test.com",
   });
 
-  await expect(newUserPage.page).toHaveURL('/dashboard');
+  await expect(newUserPage.page).toHaveURL("/dashboard");
   await dashboard.expectLoaded();
 });
 ```

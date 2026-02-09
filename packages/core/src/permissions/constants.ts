@@ -15,6 +15,7 @@ export const ORG_DELETE = createPermission('org', 'delete');
 export const ORG_TRANSFER = createPermission('org', 'transfer');
 export const ORG_VIEW_BILLING = createPermission('org', 'view_billing');
 export const ORG_MANAGE_BILLING = createPermission('org', 'manage_billing');
+export const ORG_VIEW_SETTINGS = createPermission('org', 'view_settings');
 
 export const ORGANIZATION_PERMISSIONS: Permission[] = [
   ORG_UPDATE,
@@ -22,6 +23,7 @@ export const ORGANIZATION_PERMISSIONS: Permission[] = [
   ORG_TRANSFER,
   ORG_VIEW_BILLING,
   ORG_MANAGE_BILLING,
+  ORG_VIEW_SETTINGS,
 ];
 
 // ===== User & Team Management =====

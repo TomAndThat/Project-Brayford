@@ -25,13 +25,14 @@ Permissions are organized by domain and action type:
 
 ### Organization Management
 
-| Permission           | Description                              | Owner | Admin | Member |
-| -------------------- | ---------------------------------------- | ----- | ----- | ------ |
-| `org:update`         | Update organization name, type, settings | ✅    | ✅    | ❌     |
-| `org:delete`         | Delete the entire organization           | ✅    | ❌    | ❌     |
-| `org:transfer`       | Transfer ownership to another user       | ✅    | ❌    | ❌     |
-| `org:view_billing`   | View subscription & billing information  | ✅    | ❌    | ❌     |
-| `org:manage_billing` | Update payment methods, change plans     | ✅    | ❌    | ❌     |
+| Permission           | Description                             | Owner | Admin | Member |
+| -------------------- | --------------------------------------- | ----- | ----- | ------ |
+| `org:update`         | Update organization name, type          | ✅    | ✅    | ❌     |
+| `org:view_settings`  | Access organization settings page       | ✅    | ❌    | ❌     |
+| `org:delete`         | Delete the entire organization          | ✅    | ❌    | ❌     |
+| `org:transfer`       | Transfer ownership to another user      | ✅    | ❌    | ❌     |
+| `org:view_billing`   | View subscription & billing information | ✅    | ❌    | ❌     |
+| `org:manage_billing` | Update payment methods, change plans    | ✅    | ❌    | ❌     |
 
 ### User & Team Management
 

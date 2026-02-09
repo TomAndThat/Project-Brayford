@@ -59,6 +59,22 @@ export function validateEmailConfig(config: EmailConfig): void {
   }
 }
 
-// Export singleton config instance
-export const emailConfig = getEmailConfig();
-validateEmailConfig(emailConfig);
+/**
+ * Lazy-initialized config cache
+ * This ensures environment variables are loaded before accessing config
+ */
+let cachedConfig: EmailConfig | null = null;
+
+/**
+ * Get or create the singleton email config instance
+ * Uses lazy initialization to ensure environment variables are available
+ */
+export const emailConfig: EmailConfig = new Proxy({} as EmailConfig, {
+  get(_target, prop) {
+    if (!cachedConfig) {
+      cachedConfig = getEmailConfig();
+      validateEmailConfig(cachedConfig);
+    }
+    return cachedConfig[prop as keyof EmailConfig];
+  },
+});

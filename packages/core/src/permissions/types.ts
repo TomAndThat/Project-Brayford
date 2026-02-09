@@ -37,6 +37,7 @@ export type PermissionAction =
   | 'publish'
   | 'manage_billing'
   | 'view_billing'
+  | 'view_settings'
   | 'transfer'
   | 'update_role'
   | 'update_access'

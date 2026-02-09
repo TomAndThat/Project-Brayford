@@ -132,6 +132,7 @@ export default function UsersPage() {
         user={user}
         organizationName={organization.name}
         onSignOut={handleSignOut}
+        currentMember={currentMember}
         pageTitle="Team Members"
         breadcrumb={{
           label: "Back to Dashboard",
@@ -367,7 +368,10 @@ export default function UsersPage() {
         </div>
 
         {/* Info Box */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4" data-testid="roles-info-box">
+        <div
+          className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4"
+          data-testid="roles-info-box"
+        >
           <div className="flex">
             <div className="flex-shrink-0">
               <svg

@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Organisation Settings Page**: Owner-only settings page at `/dashboard/organisation/settings`
+  - Permission-gated access with `org:view_settings` permission
+  - "Organisation Settings" link in dashboard header dropdown (cog icon)
+  - Read-only organisation information display (name, type, ID)
+  - Permission denied state for non-owners with clear messaging
+  - Placeholder for future settings implementation
+  - UK English route naming (`/organisation/settings`)
+- **Permission**: New `org:view_settings` permission for owner-only settings page access
+  - Added to permission types and constants in `@brayford/core`
+  - Documented in `PERMISSIONS.md` with owner-only access
+  - Not granted to admin or member roles
+- **DashboardHeader Enhancement**: Optional `currentMember` prop for permission-based UI
+  - Conditionally renders settings link based on `org:view_settings` permission
+  - Updated dashboard and users pages to pass current member data
 - **Invitation System**: Full invitation lifecycle for onboarding Flow B
   - Invite users by email with role selection (Admin/Member) and brand access configuration
   - Pending invitation tracking with resend, cancel, and expiry handling
