@@ -1,0 +1,16 @@
+{
+  "name": "project-brayford",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Monorepo for project-brayford",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "build": "pnpm --parallel --filter \"./apps/*\" build",
+    "test": "pnpm --parallel --filter \"./apps/*\" test"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

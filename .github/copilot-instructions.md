@@ -1,0 +1,148 @@
+# Copilot Instructions - Project Brayford
+
+## Ways of Working
+
+**Collaboration principles for this project:**
+
+### 🚫 Do NOT write code without explicit consent
+
+- **Never start implementing** without confirming the approach first
+- Ask clarifying questions before proposing solutions
+- Present options and wait for direction rather than choosing for me
+- If uncertain about requirements, discuss before coding
+
+### ✅ DO prioritize alignment over speed
+
+- **Accuracy and collaboration > proactivity and helpfulness**
+- Propose a plan and get approval before execution
+- Check assumptions explicitly ("Should I...?", "Would you prefer...?")
+- When multiple approaches exist, outline trade-offs and ask which to pursue
+- If I ask for analysis, provide analysis - don't jump to implementation
+
+### 💬 Communication style
+
+- Ask questions early and often
+- Confirm understanding before taking action
+- Present technical decisions as options, not fait accompli
+- When suggesting changes, explain "why" and wait for go-ahead
+
+### 🇬🇧 Language: UK English for public-facing copy only
+
+**Rule:** If a user can see it without opening developer tools, it must be UK English.
+
+- ✅ **UK English required:**
+  - UI copy (buttons, labels, error messages, notifications)
+  - Marketing pages and landing pages
+  - User-facing documentation (help docs, FAQs, onboarding)
+  - Email templates
+  - Error messages shown to users
+- ✅ **US English acceptable:**
+  - Code (variables, functions, comments)
+  - Internal documentation (READMEs, architecture docs)
+  - Database schemas and collection names
+  - API routes and endpoints
+  - Library/framework conventions (e.g., `color` in CSS must stay as-is)
+
+**Example:** A button label says "Organise Event" (UK), but the code calls `createOrganization()` (US).
+
+## Project Overview
+
+Real-time "second screen" interaction platform for live events (podcasts, creator shows). Handles 5,000+ concurrent participants per event. Four Next.js apps + shared packages in a pnpm workspace. Firebase (Firestore + Realtime DB) for real-time sync. See [docs/DOMAIN_MODEL.md](../docs/DOMAIN_MODEL.md) for full architecture.
+
+## Critical Patterns
+
+### Real-time Firebase Operations
+
+- **Always use jitter for concurrent writes** to prevent Firestore saturation (500 writes/sec limit)
+  ```typescript
+  import { withJitter } from "@brayford/firebase-utils";
+  await withJitter(() => updateDoc(ref, data), { windowMs: 2000 });
+  ```
+- **Always unsubscribe from `onSnapshot` listeners** in `useEffect` cleanup
+- Follow patterns in `packages/firebase-utils` for real-time hooks
+
+### TypeScript Standards
+
+- Strict mode enabled everywhere - explicit return types on exported functions
+- Use branded types for domain IDs: `type EventId = string & { readonly __brand: 'EventId' }`
+- Validate Firestore data with Zod schemas from `packages/core/src/schemas`
+- Import order: external → internal packages (`@brayford/*`) → relative → styles
+
+### Component Architecture
+
+- **Server Components by default** - only add `'use client'` for interactivity, real-time listeners, or browser APIs
+- State management: Zustand for global UI, custom Firebase hooks for real-time data, React Hook Form for forms
+- Optimize with Zustand selectors: `const x = useStore(s => s.x)` not `const store = useStore()`
+
+### Domain Model (see [docs/DOMAIN_MODEL.md](../docs/DOMAIN_MODEL.md))
+
+- 7-domain architecture: Identity, Organization, Event Management, Interaction, Audience, Billing, Analytics
+- Hierarchy: **Organization** (paying customer) → **Brands** (public-facing) → **Events** (live shows) → **Modules** (Q&A, polls) → **Interactions** (votes, questions)
+- Multi-tenancy: Events belong to Brands, Brands belong to Organizations, Users are Organization members
+
+### Styling
+
+- Tailwind CSS with mobile-first approach
+- Use `clsx` for conditional classes
+- CSS Modules only for complex animations not suitable for Tailwind
+
+### Naming Conventions
+
+- Components: `PascalCase.tsx`
+- Hooks: `camelCase` with `use` prefix (files: `kebab-case`)
+- Constants: `SCREAMING_SNAKE_CASE`
+- Firebase collections: lowercase plural (`events`, `questions`)
+- Branches: `feat/`, `fix/`, `refactor/`, `docs/` + short description
+- Commits: Conventional Commits (`feat(scope): description`)
+
+## Development Workflow
+
+### Commands (from root)
+
+```bash
+pnpm dev        # Run all apps in parallel
+pnpm build      # Build all apps
+pnpm test       # Run all tests
+pnpm lint       # Lint all packages
+```
+
+### Before Committing
+
+1. Run `pnpm lint` and `pnpm type-check`
+2. Ensure tests pass with 70%+ coverage for packages, 50%+ for apps
+3. Use Conventional Commits format
+
+### Testing
+
+- Vitest + Testing Library for unit/component tests
+- Playwright for E2E (critical flows: submit question → appears on stage view)
+- Test business logic, shared utilities, and critical user flows
+- Mock Firebase operations in tests
+
+## Key Files
+
+- [docs/DEVELOPER_STANDARDS.md](../docs/DEVELOPER_STANDARDS.md) - Comprehensive style guide
+- [docs/DOMAIN_MODEL.md](../docs/DOMAIN_MODEL.md) - Data models and domain boundaries
+- `packages/core` - Shared types, schemas, constants
+- `packages/firebase-utils` - Real-time hooks and jitter logic
+- Root `package.json` - Monorepo scripts and tooling config
+
+## Performance Considerations
+
+- **Jitter is non-negotiable** for writes during "Vote Now!" moments (5,000 concurrent users)
+- Debounce user input (500ms) before Firebase queries
+- Use optimistic updates for instant UI feedback
+- Memoize expensive computations with `useMemo`
+- Lazy-load heavy client-only components with `dynamic` import
+
+## Common Pitfalls
+
+- ❌ Writing to Firestore without jitter in audience-facing features
+- ❌ Not unsubscribing from Firebase listeners (memory leaks)
+- ❌ Using `const store = useStore()` (causes unnecessary re-renders)
+- ❌ Adding `'use client'` to components that could be Server Components
+- ❌ Type assertions without validation (`as Event` without Zod parse)
+
+## Questions?
+
+See [docs/DEVELOPER_STANDARDS.md](../docs/DEVELOPER_STANDARDS.md) for exhaustive patterns, or ask in team chat.

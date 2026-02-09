@@ -1,0 +1,87 @@
+/**
+ * Firebase Configuration and Initialization
+ * 
+ * This module initializes Firebase app, Auth, and Firestore instances.
+ * Configuration is loaded from environment variables.
+ * 
+ * Environment variables required (set in each app's .env.local):
+ * - NEXT_PUBLIC_FIREBASE_API_KEY
+ * - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+ * - NEXT_PUBLIC_FIREBASE_PROJECT_ID
+ * - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+ * - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+ * - NEXT_PUBLIC_FIREBASE_APP_ID
+ */
+
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
+
+/**
+ * Firebase configuration object
+ * Loaded from environment variables with NEXT_PUBLIC_ prefix
+ */
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+/**
+ * Validate Firebase configuration
+ * Throws error if any required config is missing
+ */
+function validateConfig(): void {
+  const missingKeys = Object.entries(firebaseConfig)
+    .filter(([_, value]) => !value)
+    .map(([key]) => key);
+
+  if (missingKeys.length > 0) {
+    throw new Error(
+      `Missing Firebase configuration. Please set the following environment variables:\n${missingKeys
+        .map((key) => `NEXT_PUBLIC_FIREBASE_${key.toUpperCase()}`)
+        .join('\n')}`
+    );
+  }
+}
+
+// Validate config on import
+validateConfig();
+
+/**
+ * Initialize Firebase app (singleton pattern)
+ * Only initializes once, even if imported multiple times
+ */
+let app: FirebaseApp;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApps()[0]!;
+}
+
+/**
+ * Firebase Auth instance
+ * Used for authentication operations (sign in, sign out, etc.)
+ */
+export const auth: Auth = getAuth(app);
+
+/**
+ * Firestore database instance
+ * Used for all database operations
+ */
+export const db: Firestore = getFirestore(app);
+
+/**
+ * Firebase app instance
+ * Exposed for advanced use cases
+ */
+export const firebaseApp: FirebaseApp = app;
+
+/**
+ * Export Firebase config for debugging/testing
+ * Note: Safe to expose as these are all NEXT_PUBLIC_ variables
+ */
+export { firebaseConfig };
