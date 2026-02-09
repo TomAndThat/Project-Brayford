@@ -6,7 +6,7 @@
 
 ## Active Development
 
-### Phase 1: Foundation (Current Sprint) - 85% Complete
+### Phase 1: Foundation (Current Sprint) - 90% Complete
 
 **Identity & Access Domain + Organization Domain**
 
@@ -17,18 +17,23 @@
 - [x] Implement Brand schema
 - [x] Firebase Auth integration (Google provider)
 - [x] User onboarding Flow A: New user + new organization
-- [ ] Email infrastructure package (@brayford/email-utils)
-- [ ] User onboarding Flow B: New user + join existing organization
+- [x] Email infrastructure package (@brayford/email-utils)
+- [x] Granular permission system (29 tests, 100% coverage)
+- [x] User management page (/dashboard/users)
+- [ ] User onboarding Flow B: New user + join existing organization (invitation system)
 - [x] Basic organization dashboard
 
 **Additional completions:**
 
-- [x] Comprehensive testing infrastructure (296 tests, 96.34% coverage)
+- [x] Comprehensive testing infrastructure (325 tests, 96%+ coverage)
 - [x] CI/CD pipeline (GitHub Actions with Node 18.x/20.x)
 - [x] Firestore security rules deployed
 - [x] Firebase packages: @brayford/core, @brayford/firebase-utils
 - [x] Test factories and mock data generators
 - [x] 5000-user concurrent stress tests for jitter logic
+- [x] Permission system with capability-based access control
+- [x] Batch user fetching for efficient team member display
+- [x] Dashboard navigation with quick actions
 
 ---
 

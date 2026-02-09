@@ -511,6 +511,46 @@ const data = snapshot.data();
 const event = EventSchema.parse(data); // Throws if invalid
 ```
 
+### Access Control & Permissions
+
+**Organization-level permission checking:**
+
+```typescript
+import { hasPermission, USERS_INVITE, canModifyMemberRole } from '@brayford/core';
+
+// Check if current user can perform an action
+function InviteButton({ currentMember }: { currentMember: OrganizationMember }) {
+  const canInvite = hasPermission(currentMember, USERS_INVITE);
+
+  if (!canInvite) return null;
+
+  return <button>Invite User</button>;
+}
+
+// Check if user can modify another member
+function MemberRow({ actor, target }: { actor: OrganizationMember; target: OrganizationMember }) {
+  const canModify = canModifyMemberRole(actor, target);
+
+  return (
+    <tr>
+      <td>{target.user.displayName}</td>
+      <td>
+        {canModify && <button>Edit Role</button>}
+      </td>
+    </tr>
+  );
+}
+```
+
+**Key principles:**
+
+- **Backend derives permissions from roles** by default (no redundant storage)
+- **UI respects permissions** via helper functions (`hasPermission`, `canModifyMemberRole`)
+- **Frontend simplifies** to Owner/Admin/Member roles for UX
+- **Future-proof** with optional custom permissions per member
+
+See [docs/PERMISSIONS.md](./PERMISSIONS.md) for complete permission matrix and usage patterns.
+
 ---
 
 ## Styling Standards

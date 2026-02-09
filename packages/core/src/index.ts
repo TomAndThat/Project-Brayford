@@ -26,3 +26,6 @@ export {
 
 // Re-export all schemas
 export * from './schemas/index';
+
+// Re-export permission system
+export * from './permissions/index';

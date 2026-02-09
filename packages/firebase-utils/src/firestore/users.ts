@@ -140,3 +140,39 @@ export async function userExists(userId: UserId): Promise<boolean> {
   const userSnap = await getDoc(userRef);
   return userSnap.exists();
 }
+
+/**
+ * Batch fetch multiple users by ID
+ * 
+ * Efficiently fetches multiple user documents in parallel.
+ * Returns users in the same order as the input IDs.
+ * Returns null for users that don't exist.
+ * 
+ * @param userIds - Array of user IDs to fetch
+ * @returns Array of user documents (null for non-existent users)
+ * 
+ * @example
+ * ```ts
+ * const userIds = [userId1, userId2, userId3];
+ * const users = await batchGetUsers(userIds);
+ * users.forEach((user, index) => {
+ *   if (user) {
+ *     console.log(`User ${index}: ${user.displayName}`);
+ *   } else {
+ *     console.log(`User ${index}: Not found`);
+ *   }
+ * });
+ * ```
+ */
+export async function batchGetUsers(
+  userIds: UserId[]
+): Promise<(UserDocument | null)[]> {
+  // Handle empty array
+  if (userIds.length === 0) {
+    return [];
+  }
+  
+  // Fetch all users in parallel
+  const userPromises = userIds.map((userId) => getUser(userId));
+  return Promise.all(userPromises);
+}

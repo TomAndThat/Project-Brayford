@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **User Management Page**: Team member management at `/dashboard/users`
+  - View all organization members with user details (name, email, photo)
+  - Display roles with colored badges (Owner, Admin, Member)
+  - Show brand access information for members
+  - Permission-gated UI (invite/edit/remove buttons only shown to authorized users)
+  - Empty state with helpful messaging for solo organizations
+  - Role information panel explaining permission levels
+  - Breadcrumb navigation back to dashboard
+- **Firebase Utils**: Batch user fetching with `batchGetUsers()` function
+- **Firebase Utils**: `getOrganizationMembersWithUsers()` enriches member data with user details
+- **Dashboard**: Quick action cards for navigation (Team Members, Events, Analytics)
+- **Permission System**: Granular capability-based permission system for organization access control
+  - Permission constants for all domains (org, users, brands, events, analytics)
+  - Role-to-permission mappings (owner/admin/member presets)
+  - Helper functions: `hasPermission()`, `requirePermission()`, `hasBrandAccess()`, etc.
+  - Brand-level access control for members
+  - Role modification validation (admins can't modify owners)
+  - 29 comprehensive tests with 100% coverage
+  - Detailed documentation in [docs/PERMISSIONS.md](docs/PERMISSIONS.md)
+- **Schema Update**: Optional `permissions` field on `OrganizationMember` for future custom permissions
 - **Email Infrastructure**: New `@brayford/email-utils` package for email sending via Postmark
   - Transactional email support with template validation
   - Development mode (console logging instead of sending)
@@ -22,9 +42,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Onboarding**: Removed automatic brand creation during organisation setup. Users will now create brands through a guided walkthrough (to be implemented).
 
+### Documentation
+
+- **Invitation System Brief**: Comprehensive implementation plan for user onboarding Flow B
+  - Multi-organization invitation handling
+  - Brand access configuration during invitation
+  - Auto-grant new brands feature
+  - Token-based security with 7-day expiration
+  - Complete user flows and technical specifications
+  - See [docs/briefs/INVITATION_SYSTEM.md](docs/briefs/INVITATION_SYSTEM.md)
+
 ### To Do
 
-- User onboarding Flow B: Invitation system for joining existing organisations
+- User onboarding Flow B: Invitation system implementation (design complete)
 - First-time user walkthrough for brand creation
 - Email infrastructure Phase 2: Cloud Tasks for bulk email queuing (deferred)
 

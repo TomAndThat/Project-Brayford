@@ -40,6 +40,7 @@ Our application features seven core domains:
 
 - Users (individuals who log in—e.g., Sarah, Jimmy Donaldson)
 - Roles & permissions (owner, admin, member)
+- Granular capability-based permissions system (see [PERMISSIONS.md](./PERMISSIONS.md))
 - Authentication sessions
 - User profiles
 
@@ -56,7 +57,7 @@ Our application features seven core domains:
 - Organizations (the paying customer—e.g., "BBC", "MrBeast LLC")
 - Organization membership (connecting users to organizations with roles)
 - Brands (public-facing brands—e.g., "Goal Hanger", "MrBeast Gaming")
-- Team permissions & brand-level access
+- Team permissions & brand-level access (26 granular permissions across 5 domains)
 - Organization settings
 
 **Why separate?** Organizations are the actual customers. Some will have one user and one brand (solo podcaster), others will have multiple team members managing multiple brands (BBC). This domain handles all that complexity.
@@ -249,5 +250,6 @@ Consider structuring your API routes to mirror domains:
 ## Next Steps
 
 - See [ROADMAP.md](./ROADMAP.md) for implementation phases and priorities
+- See [PERMISSIONS.md](./PERMISSIONS.md) for detailed permission system and role definitions
 - See `packages/core/src/schemas/` for detailed data schemas (single source of truth)
 - See [DEVELOPER_STANDARDS.md](./DEVELOPER_STANDARDS.md) for coding patterns and conventions

@@ -17,6 +17,7 @@ export {
   updateUser,
   deleteUser,
   userExists,
+  batchGetUsers,
 } from './users';
 
 // Organization operations
@@ -33,6 +34,8 @@ export {
   removeOrganizationMember,
   getOrganizationMembers,
   getUserOrganizations,
+  getOrganizationMembersWithUsers,
+  type OrganizationMemberWithUser,
 } from './organizations';
 
 // Brand operations

@@ -362,3 +362,53 @@ export async function getUserOrganizations(
     };
   });
 }
+
+/**
+ * Organization member with enriched user details
+ */
+export interface OrganizationMemberWithUser extends OrganizationMemberDocument {
+  user: import('@brayford/core').UserDocument | null;
+}
+
+/**
+ * Get organization members with enriched user details
+ * 
+ * Fetches all organization members and joins with user data.
+ * Efficiently batches user lookups to minimize database reads.
+ * 
+ * @param organizationId - Organization ID
+ * @returns Array of members with user details attached
+ * 
+ * @example
+ * ```ts
+ * const membersWithUsers = await getOrganizationMembersWithUsers(orgId);
+ * membersWithUsers.forEach(member => {
+ *   console.log(`${member.user?.displayName} - ${member.role}`);
+ * });
+ * ```
+ */
+export async function getOrganizationMembersWithUsers(
+  organizationId: OrganizationId
+): Promise<OrganizationMemberWithUser[]> {
+  // Import here to avoid circular dependency
+  const { batchGetUsers } = await import('./users');
+  
+  // 1. Fetch all organization members
+  const members = await getOrganizationMembers(organizationId);
+  
+  if (members.length === 0) {
+    return [];
+  }
+  
+  // 2. Extract unique user IDs
+  const userIds = members.map((member) => member.userId);
+  
+  // 3. Batch fetch user details
+  const users = await batchGetUsers(userIds);
+  
+  // 4. Join member data with user data
+  return members.map((member, index) => ({
+    ...member,
+    user: users[index],
+  }));
+}

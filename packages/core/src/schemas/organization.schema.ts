@@ -87,9 +87,15 @@ export type OrganizationRole = z.infer<typeof OrganizationRoleSchema>;
  * Flow A: New user creates new org → invitedAt = null, joinedAt = createdAt
  * Flow B: New user joins existing org → invitedAt set, joinedAt set on acceptance
  * 
+ * Permission system:
+ * - By default, permissions are derived from the role (owner/admin/member)
+ * - Optional custom permissions array for future flexibility
+ * - See packages/core/src/permissions/ for permission helpers
+ * 
  * @property organizationId - Reference to organization
  * @property userId - Reference to user
  * @property role - User's role within this organization
+ * @property permissions - Optional custom permissions array (if null/undefined, derive from role)
  * @property brandAccess - Array of BrandIds this user can access (empty = all brands for owner/admin)
  * @property invitedAt - When invitation was sent (null if Flow A)
  * @property joinedAt - When user accepted/joined (immediately for Flow A)
@@ -99,6 +105,7 @@ export const OrganizationMemberSchema = z.object({
   organizationId: z.string().describe('Reference to organization'),
   userId: z.string().describe('Reference to user'),
   role: OrganizationRoleSchema.describe('Role within organization'),
+  permissions: z.array(z.string()).optional().describe('Custom permissions (if null, derive from role)'),
   brandAccess: z.array(z.string()).describe('BrandIds accessible to this member (empty = all)'),
   invitedAt: z.date().nullable().describe('When invitation was sent (null if self-created org)'),
   joinedAt: z.date().describe('When user joined the organization'),
