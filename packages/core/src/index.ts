@@ -14,6 +14,7 @@ export {
   type OrganizationId,
   type OrganizationMemberId,
   type BrandId,
+  type InvitationId,
   type EventId,
   type ModuleId,
   type InteractionId,

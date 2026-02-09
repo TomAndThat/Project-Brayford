@@ -58,3 +58,6 @@ export type {
 // Utilities
 export { isDevMode, logEmailToConsole, createMockEmailResult } from './utils/dev-mode';
 export { isValidEmail, normalizeEmail, isTestEmail } from './utils/validation';
+
+// Helpers
+export { sendInvitationEmail, type InvitationEmailData } from './helpers/invitation-email';

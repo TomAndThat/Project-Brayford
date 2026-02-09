@@ -11,8 +11,10 @@ import type {
   OrganizationMember,
   Brand,
   CreateBrandData,
+  Invitation,
+  CreateInvitationData,
 } from '../../schemas';
-import type { UserId, OrganizationId, BrandId } from '../../types/branded';
+import type { UserId, OrganizationId, BrandId, InvitationId } from '../../types/branded';
 import { toBranded } from '../../types/branded';
 
 /**
@@ -89,6 +91,7 @@ export function createMockOrganizationMember(
     userId: 'test-user-123',
     role: 'owner',
     brandAccess: [],
+    autoGrantNewBrands: false,
     invitedAt: null,
     joinedAt: new Date('2024-01-01T00:00:00Z'),
     invitedBy: null,
@@ -143,4 +146,66 @@ export function createMockOrganizationId(id = 'test-org-123'): OrganizationId {
  */
 export function createMockBrandId(id = 'test-brand-123'): BrandId {
   return toBranded<BrandId>(id);
+}
+
+/**
+ * Create a valid Invitation object for testing
+ */
+export function createMockInvitation(overrides?: Partial<Invitation>): Invitation {
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+
+  return {
+    email: 'invitee@example.com',
+    organizationId: 'test-org-123',
+    organizationName: 'Test Organization',
+    role: 'member',
+    brandAccess: [],
+    autoGrantNewBrands: false,
+    invitedBy: 'test-user-123',
+    invitedAt: new Date('2024-01-01T00:00:00Z'),
+    status: 'pending',
+    token: 'test-token-uuid',
+    expiresAt,
+    acceptedAt: null,
+    metadata: {
+      inviterName: 'Test User',
+      inviterEmail: 'test@example.com',
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Create valid CreateInvitationData for testing
+ */
+export function createMockCreateInvitationData(
+  overrides?: Partial<CreateInvitationData>
+): CreateInvitationData {
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+
+  return {
+    email: 'invitee@example.com',
+    organizationId: 'test-org-123',
+    organizationName: 'Test Organization',
+    role: 'member',
+    brandAccess: [],
+    autoGrantNewBrands: false,
+    invitedBy: 'test-user-123',
+    token: 'test-token-uuid',
+    expiresAt,
+    metadata: {
+      inviterName: 'Test User',
+      inviterEmail: 'test@example.com',
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Create a branded InvitationId for testing
+ */
+export function createMockInvitationId(id = 'test-invitation-123'): InvitationId {
+  return toBranded<InvitationId>(id);
 }

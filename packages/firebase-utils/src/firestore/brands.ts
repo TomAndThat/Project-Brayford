@@ -16,6 +16,7 @@ import {
   where,
   getDocs,
   serverTimestamp,
+  arrayUnion,
   type DocumentReference,
 } from 'firebase/firestore';
 import { db } from '../config';
@@ -105,8 +106,50 @@ export async function createBrand(data: CreateBrandData): Promise<BrandId> {
     createdAt: serverTimestamp(),
     isActive: true,
   });
+
+  // Auto-grant: add brand to members who opted in
+  await autoGrantBrandToMembers(
+    toBranded<OrganizationId>(data.organizationId),
+    brandId
+  );
   
   return brandId;
+}
+
+/**
+ * Auto-grant a new brand to organization members who have autoGrantNewBrands enabled.
+ * Called automatically when a brand is created.
+ *
+ * Members with autoGrantNewBrands = true get the new brand added
+ * to their brandAccess array via Firestore arrayUnion (idempotent).
+ *
+ * @internal
+ */
+async function autoGrantBrandToMembers(
+  organizationId: OrganizationId,
+  brandId: BrandId
+): Promise<void> {
+  try {
+    const membersQuery = query(
+      collection(db, 'organizationMembers'),
+      where('organizationId', '==', fromBranded(organizationId)),
+      where('autoGrantNewBrands', '==', true)
+    );
+
+    const querySnap = await getDocs(membersQuery);
+
+    // Update each qualifying member's brandAccess
+    const updates = querySnap.docs.map((memberDoc) =>
+      updateDoc(memberDoc.ref, {
+        brandAccess: arrayUnion(fromBranded(brandId)),
+      })
+    );
+
+    await Promise.all(updates);
+  } catch (error) {
+    // Log but don't fail brand creation if auto-grant fails
+    console.error('Auto-grant brand to members failed:', error);
+  }
 }
 
 /**

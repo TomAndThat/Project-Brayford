@@ -56,6 +56,7 @@ vi.mock('firebase/firestore', () => {
     query: vi.fn((...args) => ({ _isQuery: true, args })),
     where: vi.fn((field, op, value) => ({ _isWhere: true, field, op, value })),
     serverTimestamp: vi.fn(() => ({ _serverTimestamp: true })),
+    arrayUnion: vi.fn((...elements) => ({ _arrayUnion: true, elements })),
     Timestamp: MockTimestamp,
   };
 });
@@ -168,6 +169,8 @@ describe('getBrand', () => {
 describe('createBrand', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Auto-grant queries organizationMembers — default to empty result
+    vi.mocked(getDocs).mockResolvedValue({ docs: [] } as any);
   });
 
   it('creates brand document and returns ID', async () => {

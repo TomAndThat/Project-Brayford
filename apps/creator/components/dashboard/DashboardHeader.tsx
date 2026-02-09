@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { UserDocument } from "@brayford/core";
 
@@ -13,6 +13,8 @@ interface DashboardHeaderProps {
     label: string;
     onClick: () => void;
   };
+  /** Optional org switcher rendered below the title */
+  orgSwitcher?: ReactNode;
 }
 
 /**
@@ -25,6 +27,7 @@ export default function DashboardHeader({
   onSignOut,
   pageTitle,
   breadcrumb,
+  orgSwitcher,
 }: DashboardHeaderProps) {
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -63,6 +66,7 @@ export default function DashboardHeader({
           {breadcrumb && (
             <button
               onClick={breadcrumb.onClick}
+              data-testid="breadcrumb-back"
               className="text-sm text-blue-600 hover:text-blue-800 mb-1 flex items-center gap-1"
             >
               <svg
@@ -81,18 +85,20 @@ export default function DashboardHeader({
               {breadcrumb.label}
             </button>
           )}
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 data-testid="header-org-name" className="text-2xl font-bold text-gray-900">
             {pageTitle || organizationName}
           </h1>
           <p className="text-sm text-gray-500">
             {pageTitle ? organizationName : "Project Brayford"}
           </p>
+          {orgSwitcher}
         </div>
 
         {/* User Profile Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            data-testid="user-profile-btn"
             className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors"
           >
             <div className="text-right">
@@ -133,6 +139,7 @@ export default function DashboardHeader({
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
               <button
                 onClick={handleSignOut}
+                data-testid="header-signout-btn"
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <svg

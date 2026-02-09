@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Invitation System**: Full invitation lifecycle for onboarding Flow B
+  - Invite users by email with role selection (Admin/Member) and brand access configuration
+  - Pending invitation tracking with resend, cancel, and expiry handling
+  - Token-based secure invitation links with 7-day expiration
+  - Batch invitation acceptance — accept multiple org invitations at once
+  - Server-side API route (`POST /api/invitations/accept`) with Firebase Admin SDK for atomic acceptance
+  - Auto-grant new brands toggle — opted-in members automatically get access to future brands
+  - Firestore composite indexes for efficient invitation queries
+  - `InviteUserModal` component with duplicate/existing member detection
+  - `PendingInvitationsList` component integrated into Team Members page
+  - `/join` page handling the full acceptance flow (token validation, auth, multi-invite, error states)
+- **Organisation Switcher**: Users with multiple org memberships can switch between them
+  - `OrgSwitcher` dropdown component in the dashboard header
+  - Selected organisation persisted to localStorage across sessions
+  - Dashboard page loads all user memberships and resolves org names
+- **Invitation Schema** (`@brayford/core`): Zod schema for invitations with status lifecycle, token generation, expiry calculation, and actionability checks
+- **Invitation Firestore Operations** (`@brayford/firebase-utils`): Full CRUD for `/invitations` collection — create, query by token/email/org, accept, decline, resend, cancel
+- **Invitation Email Helper** (`@brayford/email-utils`): `sendInvitationEmail()` with rate limiting, UK English date formatting, and Postmark template integration
+- **Firebase Admin SDK**: Server-side Firebase configuration in creator app for secure API routes
+- **Brand Auto-Grant**: `createBrand()` now automatically grants access to members with `autoGrantNewBrands` enabled
+- **Schema Update**: `autoGrantNewBrands` boolean field added to `OrganizationMember`
+- **Unit Tests**: 47 new tests for invitation schema (38) and invitation email helper (9)
+- **E2E Testing Brief**: Comprehensive Playwright setup plan at `docs/briefs/E2E_TESTING_PLAYWRIGHT.md`
 - **User Management Page**: Team member management at `/dashboard/users`
   - View all organization members with user details (name, email, photo)
   - Display roles with colored badges (Owner, Admin, Member)
@@ -54,9 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### To Do
 
-- User onboarding Flow B: Invitation system implementation (design complete)
+- Firestore security rules comprehensive review (invitation rules, org member rules)
 - First-time user walkthrough for brand creation
 - Email infrastructure Phase 2: Cloud Tasks for bulk email queuing (deferred)
+- E2E testing with Playwright (see `docs/briefs/E2E_TESTING_PLAYWRIGHT.md`)
 
 ## [0.1.0] - 2026-02-09
 

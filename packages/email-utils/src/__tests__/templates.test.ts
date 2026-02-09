@@ -49,6 +49,8 @@ describe('Template Registry', () => {
         'organizationName',
         'inviterName',
         'inviteLink',
+        'role',
+        'expiresAt',
       ]);
     });
     
@@ -66,6 +68,8 @@ describe('Template Registry', () => {
           organizationName: 'Acme Corp',
           inviterName: 'Sarah',
           inviteLink: 'https://example.com/join/abc',
+          role: 'member',
+          expiresAt: '8 June 2024',
         });
       }).not.toThrow();
     });
@@ -76,6 +80,8 @@ describe('Template Registry', () => {
           organizationName: 'Acme Corp',
           inviterName: 'Sarah',
           inviteLink: 'https://example.com/join/abc',
+          role: 'admin',
+          expiresAt: '8 June 2024',
           extraField: 'ignored',
         });
       }).not.toThrow();
@@ -86,6 +92,8 @@ describe('Template Registry', () => {
         validateTemplateData('organization-invitation', {
           organizationName: 'Acme Corp',
           inviterName: 'Sarah',
+          role: 'member',
+          expiresAt: '8 June 2024',
           // Missing inviteLink
         });
       }).toThrow('Missing required template data');
@@ -94,6 +102,8 @@ describe('Template Registry', () => {
         validateTemplateData('organization-invitation', {
           organizationName: 'Acme Corp',
           inviterName: 'Sarah',
+          role: 'member',
+          expiresAt: '8 June 2024',
         });
       }).toThrow('inviteLink');
     });

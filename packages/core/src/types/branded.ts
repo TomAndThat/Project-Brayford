@@ -35,6 +35,7 @@ export type UserId = Brand<string, 'UserId'>;
 export type OrganizationId = Brand<string, 'OrganizationId'>;
 export type OrganizationMemberId = Brand<string, 'OrganizationMemberId'>;
 export type BrandId = Brand<string, 'BrandId'>;
+export type InvitationId = Brand<string, 'InvitationId'>;
 
 /**
  * Event Management Domain

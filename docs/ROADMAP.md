@@ -1,12 +1,12 @@
 # Project Brayford - Roadmap
 
-**Last Updated:** February 9, 2026
+**Last Updated:** February 11, 2026
 
 ---
 
 ## Active Development
 
-### Phase 1: Foundation (Current Sprint) - 90% Complete
+### Phase 1: Foundation (Current Sprint) - 95% Complete
 
 **Identity & Access Domain + Organization Domain**
 
@@ -20,7 +20,14 @@
 - [x] Email infrastructure package (@brayford/email-utils)
 - [x] Granular permission system (29 tests, 100% coverage)
 - [x] User management page (/dashboard/users)
-- [ ] User onboarding Flow B: New user + join existing organization (invitation system)
+- [x] User onboarding Flow B: Invitation system
+  - [x] Invitation schema, Firestore operations, email integration
+  - [x] Server-side API route for atomic invitation acceptance
+  - [x] Invite modal, pending invitations list, `/join` page
+  - [x] Organisation switcher for multi-org users
+  - [x] Brand auto-grant logic for new brands
+  - [ ] Firestore security rules for invitations (deferred to comprehensive review)
+  - [ ] E2E tests with Playwright (brief written, implementation pending)
 - [x] Basic organization dashboard
 
 **Additional completions:**

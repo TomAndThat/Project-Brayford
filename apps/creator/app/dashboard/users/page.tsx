@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import {
   getUserOrganizations,
   getOrganization,
   getOrganizationMembersWithUsers,
+  getOrganizationBrands,
+  getOrganizationPendingInvitations,
   type OrganizationMemberWithUser,
 } from "@brayford/firebase-utils";
 import {
@@ -15,6 +17,8 @@ import {
   type UserId,
   type OrganizationDocument,
   type OrganizationMemberDocument,
+  type BrandDocument,
+  type InvitationDocument,
   hasPermission,
   USERS_INVITE,
   USERS_UPDATE_ROLE,
@@ -23,6 +27,8 @@ import {
   getRoleDisplayName,
 } from "@brayford/core";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import InviteUserModal from "@/components/invitations/InviteUserModal";
+import PendingInvitationsList from "@/components/invitations/PendingInvitationsList";
 
 export default function UsersPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -34,6 +40,11 @@ export default function UsersPage() {
   const [currentMember, setCurrentMember] =
     useState<OrganizationMemberDocument | null>(null);
   const [members, setMembers] = useState<OrganizationMemberWithUser[]>([]);
+  const [brands, setBrands] = useState<BrandDocument[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<
+    InvitationDocument[]
+  >([]);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -46,7 +57,7 @@ export default function UsersPage() {
     }
   }, [user, authLoading, router]);
 
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -67,16 +78,22 @@ export default function UsersPage() {
 
       if (org) {
         setOrganization(org);
-        // Load all members with user details
-        const orgMembers = await getOrganizationMembersWithUsers(orgId);
+        // Load members, brands, and invitations in parallel
+        const [orgMembers, orgBrands, orgInvitations] = await Promise.all([
+          getOrganizationMembersWithUsers(orgId),
+          getOrganizationBrands(orgId),
+          getOrganizationPendingInvitations(orgId),
+        ]);
         setMembers(orgMembers);
+        setBrands(orgBrands);
+        setPendingInvitations(orgInvitations);
       }
     } catch (error) {
       console.error("Error loading user data:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, router]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -84,8 +101,12 @@ export default function UsersPage() {
   };
 
   const handleInviteUser = () => {
-    // TODO: Open invite modal
-    alert("Invite user functionality coming soon!");
+    setIsInviteModalOpen(true);
+  };
+
+  const handleInviteSuccess = () => {
+    // Reload data to show updated pending invitations
+    loadUserData();
   };
 
   if (authLoading || loading) {
@@ -119,7 +140,8 @@ export default function UsersPage() {
       />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">{/* Page Header with Invite Button */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Page Header with Invite Button */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">Team Members</h2>
@@ -130,6 +152,7 @@ export default function UsersPage() {
           {canInvite && (
             <button
               onClick={handleInviteUser}
+              data-testid="invite-user-btn"
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <svg
@@ -330,13 +353,21 @@ export default function UsersPage() {
                     </tr>
                   );
                 })}
+
+                {/* Pending Invitations */}
+                <PendingInvitationsList
+                  invitations={pendingInvitations}
+                  organizationId={organization.id}
+                  canManageInvitations={canInvite}
+                  onRefresh={loadUserData}
+                />
               </tbody>
             </table>
           )}
         </div>
 
         {/* Info Box */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4" data-testid="roles-info-box">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
@@ -372,6 +403,19 @@ export default function UsersPage() {
           </div>
         </div>
       </main>
+
+      {/* Invite User Modal */}
+      {currentMember && organization && (
+        <InviteUserModal
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          organizationId={organization.id}
+          organizationName={organization.name}
+          currentMember={currentMember}
+          brands={brands}
+          onSuccess={handleInviteSuccess}
+        />
+      )}
     </div>
   );
 }

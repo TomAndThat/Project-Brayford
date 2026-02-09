@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -11,10 +11,18 @@ import {
 import {
   toBranded,
   type UserId,
+  type OrganizationId,
   type OrganizationDocument,
+  type OrganizationMemberDocument,
   type BrandDocument,
 } from "@brayford/core";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import OrgSwitcher, {
+  type OrgSwitcherItem,
+} from "@/components/dashboard/OrgSwitcher";
+
+// Local storage key for persisting the selected org
+const SELECTED_ORG_KEY = "brayford:selected-org-id";
 
 export default function DashboardPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -24,6 +32,73 @@ export default function DashboardPage() {
     null,
   );
   const [brands, setBrands] = useState<BrandDocument[]>([]);
+  const [allOrgs, setAllOrgs] = useState<OrgSwitcherItem[]>([]);
+  const [memberships, setMemberships] = useState<OrganizationMemberDocument[]>(
+    [],
+  );
+
+  const loadOrgData = useCallback(async (orgId: OrganizationId) => {
+    const org = await getOrganization(orgId);
+    if (org) {
+      setOrganization(org);
+      const orgBrands = await getOrganizationBrands(orgId);
+      setBrands(orgBrands);
+      // Persist the selected org
+      if (typeof window !== "undefined") {
+        localStorage.setItem(SELECTED_ORG_KEY, orgId as string);
+      }
+    }
+  }, []);
+
+  const loadUserData = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const userId = toBranded<UserId>(user.uid);
+      const userMemberships = await getUserOrganizations(userId);
+
+      if (userMemberships.length === 0) {
+        router.push("/onboarding");
+        return;
+      }
+
+      setMemberships(userMemberships);
+
+      // Load org names for the switcher
+      const orgItems: OrgSwitcherItem[] = await Promise.all(
+        userMemberships.map(async (m) => {
+          const org = await getOrganization(m.organizationId);
+          return {
+            id: m.organizationId,
+            name: org?.name ?? "Unknown",
+            role: m.role,
+          };
+        }),
+      );
+      setAllOrgs(orgItems);
+
+      // Determine which org to show
+      const savedOrgId =
+        typeof window !== "undefined"
+          ? localStorage.getItem(SELECTED_ORG_KEY)
+          : null;
+      const savedMembership = savedOrgId
+        ? userMemberships.find(
+            (m) => (m.organizationId as string) === savedOrgId,
+          )
+        : null;
+
+      const targetOrgId = savedMembership
+        ? savedMembership.organizationId
+        : userMemberships[0]!.organizationId;
+
+      await loadOrgData(targetOrgId);
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, router, loadOrgData]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -34,36 +109,12 @@ export default function DashboardPage() {
     if (user) {
       loadUserData();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, loadUserData]);
 
-  const loadUserData = async () => {
-    if (!user) return;
-
-    try {
-      const userId = toBranded<UserId>(user.uid);
-      const memberships = await getUserOrganizations(userId);
-
-      if (memberships.length === 0) {
-        // No organization yet, redirect to onboarding
-        router.push("/onboarding");
-        return;
-      }
-
-      // Get first organization (for now, assuming single org per user)
-      const orgId = memberships[0]!.organizationId;
-      const org = await getOrganization(orgId);
-
-      if (org) {
-        setOrganization(org);
-        // Load brands for this organization
-        const orgBrands = await getOrganizationBrands(orgId);
-        setBrands(orgBrands);
-      }
-    } catch (error) {
-      console.error("Error loading user data:", error);
-    } finally {
-      setLoading(false);
-    }
+  const handleOrgChange = async (orgId: OrganizationId) => {
+    setLoading(true);
+    await loadOrgData(orgId);
+    setLoading(false);
   };
 
   const handleSignOut = async () => {
@@ -89,6 +140,15 @@ export default function DashboardPage() {
         user={user}
         organizationName={organization.name}
         onSignOut={handleSignOut}
+        orgSwitcher={
+          allOrgs.length > 1 ? (
+            <OrgSwitcher
+              organizations={allOrgs}
+              currentOrgId={organization.id}
+              onOrgChange={handleOrgChange}
+            />
+          ) : undefined
+        }
       />
 
       {/* Main Content */}
@@ -107,6 +167,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <button
             onClick={() => router.push("/dashboard/users")}
+            data-testid="team-members-card"
             className="bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition-shadow"
           >
             <div className="flex items-center justify-between">
@@ -134,7 +195,7 @@ export default function DashboardPage() {
             </div>
           </button>
 
-          <div className="bg-gray-100 rounded-lg shadow-md p-6 opacity-50 cursor-not-allowed">
+          <div data-testid="events-card" className="bg-gray-100 rounded-lg shadow-md p-6 opacity-50 cursor-not-allowed">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Events</h3>
@@ -156,7 +217,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-gray-100 rounded-lg shadow-md p-6 opacity-50 cursor-not-allowed">
+          <div data-testid="analytics-card" className="bg-gray-100 rounded-lg shadow-md p-6 opacity-50 cursor-not-allowed">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -182,7 +243,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Brands Section */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+        <div data-testid="brands-section" className="bg-white rounded-lg shadow-md p-8 mb-8">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">
             Your Brands
           </h3>

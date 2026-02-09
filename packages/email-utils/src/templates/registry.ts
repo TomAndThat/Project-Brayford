@@ -22,7 +22,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     alias: 'organization-invitation',
     displayName: 'Organisation Invitation',
     description: 'Invite user to join an organisation',
-    requiredData: ['organizationName', 'inviterName', 'inviteLink'],
+    requiredData: ['organizationName', 'inviterName', 'inviteLink', 'role', 'expiresAt'],
     locale: 'en-GB',
   },
   

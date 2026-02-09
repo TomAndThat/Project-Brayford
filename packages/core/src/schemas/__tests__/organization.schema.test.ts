@@ -470,6 +470,7 @@ describe('validateCreateOrganizationMemberSelfData', () => {
       userId: 'user-123',
       role: 'owner' as const,
       brandAccess: [],
+      autoGrantNewBrands: false,
     };
 
     const result = validateCreateOrganizationMemberSelfData(memberData);
@@ -495,6 +496,7 @@ describe('validateInviteOrganizationMemberData', () => {
       userId: 'user-123',
       role: 'member' as const,
       brandAccess: [],
+      autoGrantNewBrands: false,
       invitedBy: 'inviter-123',
     };
 

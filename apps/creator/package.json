@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -12,6 +12,7 @@
     "@brayford/core": "workspace:*",
     "@brayford/firebase-utils": "workspace:*",
     "clsx": "^2.1.1",
+    "firebase-admin": "^13.6.1",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",

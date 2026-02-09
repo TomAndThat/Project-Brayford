@@ -107,6 +107,7 @@ export const OrganizationMemberSchema = z.object({
   role: OrganizationRoleSchema.describe('Role within organization'),
   permissions: z.array(z.string()).optional().describe('Custom permissions (if null, derive from role)'),
   brandAccess: z.array(z.string()).describe('BrandIds accessible to this member (empty = all)'),
+  autoGrantNewBrands: z.boolean().default(false).describe('Auto-grant access to future brands'),
   invitedAt: z.date().nullable().describe('When invitation was sent (null if self-created org)'),
   joinedAt: z.date().describe('When user joined the organization'),
   invitedBy: z.string().nullable().describe('UserId who invited this member (null if self-created)'),
@@ -123,6 +124,7 @@ export interface OrganizationMemberDocument extends OrganizationMember {
   userId: UserId;
   brandAccess: BrandId[];
   invitedBy: UserId | null;
+  autoGrantNewBrands: boolean;
 }
 
 /**
@@ -153,6 +155,7 @@ export type InviteOrganizationMemberData = z.infer<typeof InviteOrganizationMemb
 export const UpdateOrganizationMemberSchema = z.object({
   role: OrganizationRoleSchema.optional(),
   brandAccess: z.array(z.string()).optional(),
+  autoGrantNewBrands: z.boolean().optional(),
 });
 export type UpdateOrganizationMemberData = z.infer<typeof UpdateOrganizationMemberSchema>;
 
