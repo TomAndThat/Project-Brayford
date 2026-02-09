@@ -146,6 +146,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={() => setSelectedType("individual")}
+                data-testid="onboarding-type-individual"
                 className="w-full p-6 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
               >
                 <div className="font-semibold text-lg text-gray-900">
@@ -160,6 +161,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={() => setSelectedType("organization")}
+                data-testid="onboarding-type-organisation"
                 className="w-full p-6 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
               >
                 <div className="font-semibold text-lg text-gray-900">
@@ -178,6 +180,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={() => setSelectedType(null)}
+                data-testid="onboarding-back-btn"
                 className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
               >
                 ← Back
@@ -206,6 +209,7 @@ export default function OnboardingPage() {
                   })}
                   type="text"
                   id="organizationName"
+                  data-testid="onboarding-org-name"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder={
                     selectedType === "individual"
@@ -239,6 +243,7 @@ export default function OnboardingPage() {
                   })}
                   type="email"
                   id="billingEmail"
+                  data-testid="onboarding-billing-email"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="billing@example.com"
                   disabled={isSubmitting}
@@ -254,6 +259,7 @@ export default function OnboardingPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
+                data-testid="onboarding-submit-btn"
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isSubmitting
@@ -269,6 +275,7 @@ export default function OnboardingPage() {
           Signed in as {user.email} •{" "}
           <button
             onClick={handleSignOut}
+            data-testid="onboarding-signout"
             className="text-blue-600 hover:text-blue-700 underline"
           >
             Sign out

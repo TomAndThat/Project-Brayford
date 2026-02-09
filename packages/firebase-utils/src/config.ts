@@ -8,14 +8,22 @@
  * - NEXT_PUBLIC_FIREBASE_API_KEY
  * - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
  * - NEXT_PUBLIC_FIREBASE_PROJECT_ID
- * - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
- * - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
- * - NEXT_PUBLIC_FIREBASE_APP_ID
+ * - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET (not required in emulator mode)
+ * - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID (not required in emulator mode)
+ * - NEXT_PUBLIC_FIREBASE_APP_ID (not required in emulator mode)
+ * 
+ * Emulator support:
+ * - Set NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true to connect to local emulators
+ * - Auth emulator: localhost:9099
+ * - Firestore emulator: localhost:8080
  */
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator, signInWithCustomToken, type Auth } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
+
+/** Whether running against Firebase emulators */
+const isEmulatorMode = process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === 'true';
 
 /**
  * Firebase configuration object
@@ -31,13 +39,27 @@ const firebaseConfig = {
 };
 
 /**
+ * Config keys required in each mode.
+ * In emulator mode, only core keys are required — storageBucket,
+ * messagingSenderId, and appId are unnecessary.
+ */
+const EMULATOR_REQUIRED_KEYS: (keyof typeof firebaseConfig)[] = [
+  'apiKey',
+  'authDomain',
+  'projectId',
+];
+
+/**
  * Validate Firebase configuration
- * Throws error if any required config is missing
+ * In emulator mode, only core keys are required.
+ * In production mode, all keys are required.
  */
 function validateConfig(): void {
-  const missingKeys = Object.entries(firebaseConfig)
-    .filter(([_, value]) => !value)
-    .map(([key]) => key);
+  const requiredKeys = isEmulatorMode
+    ? EMULATOR_REQUIRED_KEYS
+    : (Object.keys(firebaseConfig) as (keyof typeof firebaseConfig)[]);
+
+  const missingKeys = requiredKeys.filter((key) => !firebaseConfig[key]);
 
   if (missingKeys.length > 0) {
     throw new Error(
@@ -85,3 +107,23 @@ export const firebaseApp: FirebaseApp = app;
  * Note: Safe to expose as these are all NEXT_PUBLIC_ variables
  */
 export { firebaseConfig };
+
+/**
+ * Emulator connection for local development and E2E testing.
+ * 
+ * When NEXT_PUBLIC_FIREBASE_USE_EMULATORS is 'true':
+ * - Auth connects to localhost:9099
+ * - Firestore connects to localhost:8080
+ * - A __FIREBASE_TEST__ global is exposed on window for Playwright
+ *   to programmatically sign in via signInWithCustomToken
+ */
+if (isEmulatorMode) {
+  connectAuthEmulator(auth, 'http://localhost:9099');
+  connectFirestoreEmulator(db, 'localhost', 8080);
+
+  if (typeof window !== 'undefined') {
+    (window as Record<string, unknown>).__FIREBASE_TEST__ = {
+      signIn: (token: string) => signInWithCustomToken(auth, token),
+    };
+  }
+}

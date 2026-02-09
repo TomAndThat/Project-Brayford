@@ -90,3 +90,54 @@ jobs:
         env:
           # Add any required build-time environment variables here
           NODE_ENV: production
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Start Firebase emulators
+        run: firebase emulators:start --only auth,firestore --project demo-brayford &
+
+      - name: Wait for Firebase emulators
+        run: |
+          echo "Waiting for Auth emulator on port 9099..."
+          timeout 30 bash -c 'until curl -s http://localhost:9099 > /dev/null 2>&1; do sleep 1; done'
+          echo "Waiting for Firestore emulator on port 8080..."
+          timeout 30 bash -c 'until curl -s http://localhost:8080 > /dev/null 2>&1; do sleep 1; done'
+          echo "Emulators ready."
+
+      - name: Run E2E tests
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7
