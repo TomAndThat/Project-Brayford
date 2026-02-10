@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Billing Tier Infrastructure**: Foundation for subscription sharing prevention
+  - Two-tier billing system: `per_brand` (free email domains) and `flat_rate` (corporate domains)
+  - Organizations automatically assigned billing tier based on founder's email domain during creation
+  - Comprehensive free email provider detection (~70 common providers including Gmail, Hotmail, Yahoo, etc.)
+  - Email domain validation utilities for future invitation enforcement
+  - Organization schema extended with billing and domain fields: `billingTier`, `primaryEmailDomain`, `allowedDomains`, `requireDomainMatch`, `domainVerified`
+  - Feature flag system ready for future domain enforcement activation
+  - Supports multiple allowed domains per organization (for subsidiaries, acquisitions)
+  - New utility functions: `isFreeDomainEmail()`, `extractDomain()`, `normaliseDomain()`, `validateEmailForOrg()`, `domainMatchesAllowed()`
+  - Full TypeScript types and Zod schemas for billing tier system
+  - Infrastructure ready but enforcement disabled by default
+  - See [PERMISSIONS.md](docs/PERMISSIONS.md) for complete documentation
 - **Edit Team Member**: Owners and admins can now edit member roles and brand access from the dashboard
   - Edit modal with role selector and brand access checkboxes
   - Brand access selector shown but disabled for Owner/Admin roles (they have all-brand access)

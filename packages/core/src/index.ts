@@ -25,8 +25,18 @@ export {
   type InvoiceId,
 } from './types/branded';
 
+// Billing types
+export type {
+  BillingTier,
+  BillingTierInfo,
+  DomainVerificationStatus,
+} from './types/billing';
+
 // Re-export all schemas
 export * from './schemas/index';
 
 // Re-export permission system
 export * from './permissions/index';
+
+// Re-export utilities
+export * from './utils/index';

@@ -23,6 +23,96 @@ Project Brayford uses a **capability-based permission system** at the backend le
 
 ---
 
+## Billing Tiers & Email Domain Enforcement
+
+**Project Brayford** uses billing tiers to prevent subscription sharing while maintaining flexible pricing:
+
+### Billing Tier System
+
+Organizations are automatically assigned a billing tier during creation based on the **founder's email domain**:
+
+#### Per-Brand Tier
+
+- **Assigned to:** Organizations created with free email providers (Gmail, Hotmail, Yahoo, etc.)
+- **Pricing:** Pay per brand created
+- **Domain Enforcement:** None - can invite users from any email domain
+- **Purpose:** Individual creators or small teams using personal email addresses
+
+#### Flat-Rate Tier
+
+- **Assigned to:** Organizations created with corporate/work email domains
+- **Pricing:** Monthly flat fee with generous brand allowance (~10 brands included)
+- **Domain Enforcement:** Can be enabled (admin-only) to require matching email domains for invitations
+- **Purpose:** Companies and organizations with verified corporate domains
+
+### Email Domain Detection
+
+The system automatically:
+
+1. **Extracts domain** from founder's email during org creation
+2. **Checks against free provider list** (~70 common providers)
+3. **Assigns billing tier** based on domain type:
+   - `gmail.com`, `hotmail.com`, etc. → `per_brand` tier
+   - `bbc.co.uk`, `acme.com`, etc. → `flat_rate` tier
+4. **Stores domain data** for future enforcement
+
+### Domain Enforcement (Admin-Only Feature)
+
+**Current Status:** Infrastructure in place, enforcement **disabled by default**
+
+When enabled by Project Brayford staff through the admin app:
+
+- **Flat-rate orgs** can only invite users with matching email domains
+- **Per-brand orgs** have no domain restrictions
+- Validation occurs at invitation time (prevents sending invalid invites)
+- Supports multiple allowed domains per org (for subsidiaries, acquisitions)
+
+**Organization Schema Fields:**
+
+```typescript
+{
+  billingTier: 'per_brand' | 'flat_rate',     // Auto-assigned on creation
+  primaryEmailDomain: string,                   // e.g., 'bbc.co.uk' or 'gmail.com'
+  allowedDomains: string[],                     // For multi-domain support
+  requireDomainMatch: boolean,                  // Feature flag (default: false)
+  domainVerified: boolean                       // For future verification
+}
+```
+
+**Utility Functions:**
+
+```typescript
+import {
+  isFreeDomainEmail,
+  extractDomain,
+  validateEmailForOrg,
+  domainMatchesAllowed,
+} from "@brayford/core";
+
+// Check if email uses free provider
+const isFree = isFreeDomainEmail("user@gmail.com"); // true
+
+// Extract domain from email
+const domain = extractDomain("user@bbc.co.uk"); // 'bbc.co.uk'
+
+// Validate email against org requirements
+const result = validateEmailForOrg(
+  "new.user@bbc.co.uk",
+  org.requireDomainMatch,
+  org.allowedDomains,
+  org.billingTier,
+);
+```
+
+### Future Enhancements
+
+- **Domain Verification:** DNS TXT record verification for corporate domains
+- **Upgrade Path:** Allow per-brand orgs to upgrade to flat-rate after domain verification
+- **Admin UI:** Interface for viewing/modifying domain enforcement settings
+- **Audit Logging:** Track domain enforcement changes
+
+---
+
 ## Permission Categories
 
 Permissions are organized by domain and action type:

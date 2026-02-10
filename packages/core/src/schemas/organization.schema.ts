@@ -12,6 +12,7 @@
 
 import { z } from 'zod';
 import type { OrganizationId, OrganizationMemberId, UserId, BrandId } from '../types/branded';
+import type { BillingTier } from '../types/billing';
 
 /**
  * Organization type determines feature access and billing structure
@@ -24,11 +25,25 @@ export const OrganizationTypeSchema = z.enum(['individual', 'team', 'enterprise'
 export type OrganizationType = z.infer<typeof OrganizationTypeSchema>;
 
 /**
+ * Billing tier determines pricing model and domain requirements
+ * 
+ * - per_brand: Pay per brand created (auto-assigned for free email domains)
+ * - flat_rate: Monthly flat fee with brand allowance (auto-assigned for corporate domains)
+ */
+export const BillingTierSchema = z.enum(['per_brand', 'flat_rate']);
+export type BillingTierSchemaType = z.infer<typeof BillingTierSchema>;
+
+/**
  * Organization document schema
  * 
  * @property name - Organization name (e.g., "BBC", "MrBeast LLC")
  * @property type - Organization tier/type
  * @property billingEmail - Primary email for billing and invoices
+ * @property billingTier - Pricing model (auto-assigned based on creator's email domain)
+ * @property primaryEmailDomain - Domain from creator's email (e.g., 'bbc.co.uk' or 'gmail.com')
+ * @property allowedDomains - Email domains allowed for invitations (for flat_rate tier only)
+ * @property requireDomainMatch - Whether to enforce domain matching on invitations (admin-only setting)
+ * @property domainVerified - Whether domain ownership has been verified (future feature)
  * @property createdAt - When the organization was created
  * @property createdBy - UserId of the user who created the org (becomes owner)
  * @property settings - Flexible object for org-wide preferences
@@ -39,6 +54,11 @@ export const OrganizationSchema = z.object({
   name: z.string().min(1).max(100).describe('Organization name'),
   type: OrganizationTypeSchema.describe('Organization type/tier'),
   billingEmail: z.string().email().describe('Billing and invoice email'),
+  billingTier: BillingTierSchema.describe('Pricing model (per_brand or flat_rate)'),
+  primaryEmailDomain: z.string().describe('Domain from creator email'),
+  allowedDomains: z.array(z.string()).default([]).describe('Allowed email domains for invitations'),
+  requireDomainMatch: z.boolean().default(false).describe('Enforce domain matching (admin-only setting)'),
+  domainVerified: z.boolean().default(false).describe('Whether domain ownership verified'),
   createdAt: z.date().describe('Organization creation timestamp'),
   createdBy: z.string().describe('UserId of creator (becomes owner)'),
   settings: z.record(z.unknown()).optional().describe('Organization-wide settings'),
@@ -69,6 +89,8 @@ export type CreateOrganizationData = z.infer<typeof CreateOrganizationSchema>;
 export const UpdateOrganizationSchema = OrganizationSchema.partial().omit({
   createdAt: true,
   createdBy: true,
+  billingTier: true,        // Cannot change billing tier after creation
+  primaryEmailDomain: true,  // Cannot change primary domain after creation
 });
 export type UpdateOrganizationData = z.infer<typeof UpdateOrganizationSchema>;
 
