@@ -13,6 +13,8 @@ import type {
   CreateBrandData,
   Invitation,
   CreateInvitationData,
+  OrganizationDeletionRequest,
+  CreateDeletionRequestData,
 } from '../../schemas';
 import type { UserId, OrganizationId, BrandId, InvitationId } from '../../types/branded';
 import { toBranded } from '../../types/branded';
@@ -208,4 +210,57 @@ export function createMockCreateInvitationData(
  */
 export function createMockInvitationId(id = 'test-invitation-123'): InvitationId {
   return toBranded<InvitationId>(id);
+}
+
+/**
+ * Create a valid OrganizationDeletionRequest object for testing
+ */
+export function createMockDeletionRequest(
+  overrides?: Partial<OrganizationDeletionRequest>
+): OrganizationDeletionRequest {
+  const tokenExpiresAt = new Date();
+  tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 24);
+
+  return {
+    organizationId: 'test-org-123',
+    organizationName: 'Test Organization',
+    requestedBy: 'test-user-123',
+    requestedAt: new Date('2026-02-01T10:00:00Z'),
+    confirmationToken: 'test-confirmation-token-uuid',
+    tokenExpiresAt,
+    confirmationEmailSentAt: new Date('2026-02-01T10:00:01Z'),
+    confirmedAt: null,
+    confirmedVia: null,
+    status: 'pending-email',
+    scheduledDeletionAt: null,
+    undoToken: null,
+    undoExpiresAt: null,
+    auditLog: [
+      {
+        timestamp: new Date('2026-02-01T10:00:00Z'),
+        action: 'Deletion requested',
+        userId: 'test-user-123',
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Create valid CreateDeletionRequestData for testing
+ */
+export function createMockCreateDeletionRequestData(
+  overrides?: Partial<CreateDeletionRequestData>
+): CreateDeletionRequestData {
+  const tokenExpiresAt = new Date();
+  tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 24);
+
+  return {
+    organizationId: 'test-org-123',
+    organizationName: 'Test Organization',
+    requestedBy: 'test-user-123',
+    confirmationToken: 'test-confirmation-token-uuid',
+    tokenExpiresAt,
+    ...overrides,
+  };
 }

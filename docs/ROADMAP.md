@@ -53,6 +53,7 @@
 - [ ] QR code generation for audience entry
 - [ ] Event scheduling & timezone handling
 - [ ] Event templates (reusable configs)
+- [ ] Block organisation deletion while events are live (depends on org deletion from Phase 1)
 
 ### Phase 3: Core Product - Interaction Domain
 
@@ -75,6 +76,7 @@
 - [ ] Subscription plans (Free, Pro, Enterprise)
 - [ ] Usage metering & limits
 - [ ] Overage handling
+- [ ] Require billing settlement before organisation deletion (depends on org deletion from Phase 1)
 
 ### Phase 6: Analytics & Reporting
 
@@ -117,8 +119,8 @@
 **Priority:** Low | **Target:** TBD
 
 - [ ] Organization transfer (change owner)
-- [ ] Multi-organization membership for single user
-- [ ] Organization deletion & data export
+- [x] Multi-organization membership for single user (Phase 1)
+- [x] Organization deletion (Phase 1 — soft delete with 28-day grace period, data export deferred to Phase 6)
 - [ ] Custom roles beyond owner/admin/member
 
 ### Advanced Event Features

@@ -41,6 +41,26 @@ service cloud.firestore {
       // TODO: Check if user is org member
     }
 
+    // Invitations collection - invitation system rules
+    match /invitations/{invitationId} {
+      // Anyone authenticated can read invitations for their email
+      allow read: if isSignedIn() && 
+                     request.auth.token.email == resource.data.email;
+      
+      // Authenticated users can create invitations
+      // TODO: Add validation that creator is org owner/admin
+      // TODO: Add validation that only owners can invite with role='owner'
+      allow create: if isSignedIn();
+      
+      // Only the invited user can update status to accepted/declined
+      allow update: if isSignedIn() && 
+                       request.auth.token.email == resource.data.email &&
+                       request.resource.data.status in ['accepted', 'declined'];
+      
+      // Invitations should not be deleted (keep for audit trail)
+      allow delete: if false;
+    }
+
     // Default: deny all other access
     match /{document=**} {
       allow read, write: if false;

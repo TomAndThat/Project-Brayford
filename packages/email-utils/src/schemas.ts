@@ -17,6 +17,7 @@ export const EmailTypeSchema = z.enum([
   'weekly-digest',
   'marketing',
   'billing-invoice',
+  'organization-deletion',
 ]);
 
 /**

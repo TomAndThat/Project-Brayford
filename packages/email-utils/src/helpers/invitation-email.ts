@@ -76,10 +76,6 @@ export async function sendInvitationEmail(
 
   // Apply rate limiting (10 invitations per minute per organization)
   return withRateLimit(
-    {
-      type: 'invitation',
-      scopeId: data.organizationId as string,
-    },
     () =>
       sendEmail({
         type: 'invitation',
@@ -93,6 +89,10 @@ export async function sendInvitationEmail(
           expiresAt: formattedExpiry,
         },
         metadata,
-      })
+      }),
+    {
+      type: 'invitation',
+      scopeId: data.organizationId as string,
+    }
   );
 }

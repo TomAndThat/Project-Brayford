@@ -61,3 +61,11 @@ export { isValidEmail, normalizeEmail, isTestEmail } from './utils/validation';
 
 // Helpers
 export { sendInvitationEmail, type InvitationEmailData } from './helpers/invitation-email';
+export {
+  sendDeletionConfirmEmail,
+  sendDeletionAlertEmail,
+  sendDeletionCompleteEmail,
+  type DeletionConfirmEmailData,
+  type DeletionAlertEmailData,
+  type DeletionCompleteEmailData,
+} from './helpers/deletion-email';

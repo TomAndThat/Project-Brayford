@@ -44,4 +44,25 @@ test.describe('Team members management', () => {
     await expect(usersPage.rolesInfoBox).toContainText('Admin');
     await expect(usersPage.rolesInfoBox).toContainText('Member');
   });
+
+  test.skip('last owner cannot demote themselves', async ({
+    authenticatedPage: { page },
+  }) => {
+    // TODO: Navigate to /dashboard/users as sole owner
+    // TODO: Attempt to change own role to admin or member
+    // TODO: Assert error message appears: "You are the only owner..."
+    // TODO: Verify role change is blocked
+  });
+
+  test.skip('owner can demote self when multiple owners exist', async ({
+    authenticatedPage: { page },
+  }) => {
+    // TODO: Create second owner via invitation
+    // TODO: Navigate to /dashboard/users as first owner
+    // TODO: Change own role to admin
+    // TODO: Assert warning dialog appears about losing owner permissions
+    // TODO: Confirm change
+    // TODO: Assert role successfully changed to admin
+    // TODO: Verify second owner still exists with owner role
+  });
 });

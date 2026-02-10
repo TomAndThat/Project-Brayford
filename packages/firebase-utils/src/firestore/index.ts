@@ -33,6 +33,7 @@ export {
   updateOrganizationMember,
   removeOrganizationMember,
   getOrganizationMembers,
+  getOwnerCount,
   getUserOrganizations,
   getOrganizationMembersWithUsers,
   type OrganizationMemberWithUser,

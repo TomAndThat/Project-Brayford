@@ -39,9 +39,13 @@ export type InvitationStatus = z.infer<typeof InvitationStatusSchema>;
 // ===== Invitation Role =====
 
 /**
- * Roles assignable via invitation (owner cannot be invited — only the creator gets owner)
+ * Roles assignable via invitation
+ * 
+ * - owner: Can be invited by existing owners (requires confirmation due to elevated permissions)
+ * - admin: Can manage team members and all brands
+ * - member: Can access assigned brands only
  */
-export const InvitationRoleSchema = z.enum(['admin', 'member']);
+export const InvitationRoleSchema = z.enum(['owner', 'admin', 'member']);
 export type InvitationRole = z.infer<typeof InvitationRoleSchema>;
 
 // ===== Invitation Schema =====

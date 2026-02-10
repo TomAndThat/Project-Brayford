@@ -48,7 +48,7 @@ import {
 
 // ===== Converters =====
 
-const organizationConverter = createConverter(validateOrganizationData, ['createdAt']);
+const organizationConverter = createConverter(validateOrganizationData, ['createdAt', 'softDeletedAt']);
 const organizationMemberConverter = createConverter(validateOrganizationMemberData, [
   'invitedAt',
   'joinedAt',
@@ -318,6 +318,35 @@ export async function getOrganizationMembers(
       invitedBy: data.invitedBy ? toBranded<UserId>(data.invitedBy) : null,
     };
   });
+}
+
+/**
+ * Get count of owners in an organization
+ * 
+ * Used for validation when demoting owners (prevent last owner from removing themselves)
+ * 
+ * @param organizationId - Organization ID
+ * @returns Number of owners in the organization
+ * 
+ * @example
+ * ```ts
+ * const ownerCount = await getOwnerCount(orgId);
+ * if (ownerCount === 1) {
+ *   throw new Error('Cannot remove last owner');
+ * }
+ * ```
+ */
+export async function getOwnerCount(
+  organizationId: OrganizationId
+): Promise<number> {
+  const ownersQuery = query(
+    collection(db, 'organizationMembers'),
+    where('organizationId', '==', fromBranded(organizationId)),
+    where('role', '==', 'owner')
+  );
+  
+  const querySnap = await getDocs(ownersQuery);
+  return querySnap.size;
 }
 
 /**

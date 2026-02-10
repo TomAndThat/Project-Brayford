@@ -33,7 +33,7 @@ interface Invitation {
   email: string; // Target user's email (normalized lowercase)
   organizationId: OrganizationId; // Organization extending invitation
   organizationName: string; // Denormalized for email templates
-  role: OrganizationRole; // 'admin' | 'member' (never 'owner')
+  role: OrganizationRole; // 'owner' | 'admin' | 'member' (owner requires confirmation)
   brandAccess: BrandId[]; // Brands user will have access to
   autoGrantNewBrands: boolean; // Auto-grant access to future brands
   invitedBy: UserId; // Who sent the invitation
@@ -108,20 +108,33 @@ interface OrganizationMember {
 
 2. **User fills invitation form:**
    - **Email address** (required, validated)
-   - **Role selection** (Admin or Member)
+   - **Role selection** (Owner, Admin, or Member)
+     - Owner option only visible to existing owners (admins cannot invite owners)
+     - When owner selected, inline warning banner appears explaining owner permissions
    - **Brand access** (if Member role):
      - Checkbox list of all organization brands
      - "Select all" / "Deselect all" helpers
      - **Toggle:** "Automatically grant access to new brands"
    - Submit button: "Send Invitation"
 
-3. **Validation:**
+3. **Owner Invitation Confirmation (if role = owner):**
+   - Confirmation dialog appears before creating invitation
+   - Dialog shows:
+     - Email being invited as owner
+     - Full list of owner permissions (billing, delete org, remove members, etc.)
+     - Warning about granting complete control
+     - Two buttons: "Cancel" and "Yes, Invite as Owner"
+   - If cancelled, return to invite form
+   - If confirmed, proceed to step 4
+
+4. **Validation:**
    - Check email format
    - Check if user already a member of this organization (show error)
    - Check if pending invitation already exists (show option to resend)
    - Verify actor has `users:invite` permission
+   - If inviting owner, verify actor has owner role (using `canInviteRole()` helper)
 
-4. **Create invitation document:**
+5. **Create invitation document:**
 
    ```typescript
    const invitation = await createInvitation({
@@ -129,8 +142,9 @@ interface OrganizationMember {
      organizationId,
      organizationName,
      role,
-     brandAccess: role === "admin" ? [] : selectedBrands,
-     autoGrantNewBrands: role === "admin" ? true : autoGrantToggle,
+     brandAccess: role === "admin" || role === "owner" ? [] : selectedBrands,
+     autoGrantNewBrands:
+       role === "admin" || role === "owner" ? true : autoGrantToggle,
      invitedBy: currentUserId,
      token: generateSecureToken(),
      expiresAt: addDays(new Date(), 7),
@@ -138,7 +152,7 @@ interface OrganizationMember {
    });
    ```
 
-5. **Send invitation email:**
+6. **Send invitation email:**
 
    ```typescript
    await sendInvitationEmail({
@@ -151,7 +165,7 @@ interface OrganizationMember {
    });
    ```
 
-6. **Show success message:**
+7. **Show success message:**
    - "Invitation sent to {email}"
    - Modal closes
    - User list refreshes (pending invitation appears with "Pending" badge)
@@ -162,6 +176,8 @@ interface OrganizationMember {
 - Pending invitation exists → Show: "Resend invitation?" button
 - No brands in organization → Disable member role, show info message
 - Actor loses `users:invite` permission mid-flow → API rejects with 403
+- Admin attempts to invite owner → Owner role option disabled with tooltip
+- Owner cancels confirmation dialog → Returns to invite form without creating invitation
 
 ---
 

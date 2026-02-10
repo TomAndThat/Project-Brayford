@@ -26,6 +26,11 @@
 - Present technical decisions as options, not fait accompli
 - When suggesting changes, explain "why" and wait for go-ahead
 
+### ℹ️ Application name: Project Brayford
+
+- The application is called "Project Brayford"
+- It is never acceptable, under any circumstances to shorten this to "Brayford". Always use the full name.
+
 ### 🇬🇧 Language: UK English for public-facing copy only
 
 **Rule:** If a user can see it without opening developer tools, it must be UK English.

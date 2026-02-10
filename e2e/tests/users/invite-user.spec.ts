@@ -36,4 +36,33 @@ test.describe('Invite user', () => {
     // TODO: Try to invite same email
     // TODO: Assert resend prompt appears
   });
+
+  test('owner can invite another owner with confirmation', async ({ page }) => {
+    // TODO: Navigate to /dashboard/users as owner
+    // TODO: Click "Invite User" button
+    // TODO: Fill email with new owner email
+    // TODO: Select "Owner" role
+    // TODO: Assert warning banner appears about owner permissions
+    // TODO: Click "Send Invitation"
+    // TODO: Assert confirmation dialog appears
+    // TODO: Confirm invitation
+    // TODO: Assert success message
+    // TODO: Verify invitation created with role='owner'
+  });
+
+  test('admin cannot see owner role option', async ({ page }) => {
+    // TODO: Navigate to /dashboard/users as admin
+    // TODO: Click "Invite User" button
+    // TODO: Assert "Owner" role button is disabled or hidden
+    // TODO: Verify tooltip/title says only owners can invite owners
+  });
+
+  test('owner can cancel owner invitation in confirmation dialog', async ({ page }) => {
+    // TODO: Navigate to /dashboard/users as owner
+    // TODO: Open invite modal and select owner role
+    // TODO: Enter email and submit
+    // TODO: Assert confirmation dialog appears
+    // TODO: Click "Cancel"
+    // TODO: Assert dialog closes and no invitation created
+  });
 });

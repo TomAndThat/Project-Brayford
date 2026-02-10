@@ -65,6 +65,30 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     requiredData: ['invoiceNumber', 'invoiceDate', 'amount', 'currency', 'invoiceLink'],
     locale: 'en-GB',
   },
+  
+  'organization-deletion-confirm': {
+    alias: 'organization-deletion-confirm',
+    displayName: 'Organisation Deletion Confirmation',
+    description: 'Confirmation email for organisation deletion request',
+    requiredData: ['organizationName', 'requestedBy', 'confirmationLink', 'expiresAt'],
+    locale: 'en-GB',
+  },
+  
+  'organization-deletion-alert': {
+    alias: 'organization-deletion-alert',
+    displayName: 'Organisation Deletion Alert',
+    description: 'Alert email sent to admins when deletion is confirmed',
+    requiredData: ['organizationName', 'confirmedBy', 'undoLink', 'undoExpiresAt'],
+    locale: 'en-GB',
+  },
+  
+  'organization-deletion-complete': {
+    alias: 'organization-deletion-complete',
+    displayName: 'Organisation Deletion Complete',
+    description: 'Final confirmation after permanent deletion',
+    requiredData: ['organizationName', 'deletionDate'],
+    locale: 'en-GB',
+  },
 };
 
 /**

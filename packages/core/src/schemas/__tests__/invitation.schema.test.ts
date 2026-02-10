@@ -41,12 +41,9 @@ describe('InvitationStatusSchema', () => {
 
 describe('InvitationRoleSchema', () => {
   it('accepts valid invitation roles', () => {
+    expect(InvitationRoleSchema.parse('owner')).toBe('owner');
     expect(InvitationRoleSchema.parse('admin')).toBe('admin');
     expect(InvitationRoleSchema.parse('member')).toBe('member');
-  });
-
-  it('rejects owner role (cannot be invited as owner)', () => {
-    expect(() => InvitationRoleSchema.parse('owner')).toThrow(ZodError);
   });
 
   it('rejects invalid roles', () => {

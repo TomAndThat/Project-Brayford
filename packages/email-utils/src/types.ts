@@ -15,13 +15,14 @@ export type EmailId = string & { readonly __brand: 'EmailId' };
  * Email type enum - determines rate limiting and queuing behaviour
  */
 export type EmailType =
-  | 'invitation'           // Organisation member invitations
-  | 'password-reset'       // Password reset requests
-  | 'verification'         // Email verification
-  | 'event-reminder'       // Event reminders (bulk)
-  | 'weekly-digest'        // Weekly summaries (bulk)
-  | 'marketing'            // Marketing campaigns (bulk)
-  | 'billing-invoice';     // Payment receipts
+  | 'invitation'               // Organisation member invitations
+  | 'password-reset'           // Password reset requests
+  | 'verification'             // Email verification
+  | 'event-reminder'           // Event reminders (bulk)
+  | 'weekly-digest'            // Weekly summaries (bulk)
+  | 'marketing'                // Marketing campaigns (bulk)
+  | 'billing-invoice'          // Payment receipts
+  | 'organization-deletion';   // Organisation deletion flow
 
 /**
  * Sender information

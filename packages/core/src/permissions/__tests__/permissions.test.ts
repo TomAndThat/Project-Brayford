@@ -14,6 +14,10 @@ import {
   requireBrandAccess,
   canModifyMemberRole,
   requireCanModifyMemberRole,
+  canInviteRole,
+  requireCanInviteRole,
+  canChangeSelfRole,
+  requireCanChangeSelfRole,
   getEffectivePermissions,
   getRoleDisplayName,
   getRoleDescription,
@@ -267,6 +271,70 @@ describe('Permission System - canModifyMemberRole', () => {
     expect(() =>
       requireCanModifyMemberRole(memberWithAccess, adminMember)
     ).toThrow(/Permission denied.*cannot modify.*role/);
+  });
+});
+
+describe('Permission System - canInviteRole', () => {
+  it('should allow owners to invite any role', () => {
+    expect(canInviteRole(ownerMember, 'owner')).toBe(true);
+    expect(canInviteRole(ownerMember, 'admin')).toBe(true);
+    expect(canInviteRole(ownerMember, 'member')).toBe(true);
+  });
+
+  it('should allow admins to invite admin and member, but not owner', () => {
+    expect(canInviteRole(adminMember, 'owner')).toBe(false);
+    expect(canInviteRole(adminMember, 'admin')).toBe(true);
+    expect(canInviteRole(adminMember, 'member')).toBe(true);
+  });
+
+  it('should not allow members to invite anyone', () => {
+    expect(canInviteRole(memberWithAccess, 'owner')).toBe(false);
+    expect(canInviteRole(memberWithAccess, 'admin')).toBe(false);
+    expect(canInviteRole(memberWithAccess, 'member')).toBe(false);
+  });
+
+  it('should throw when requiring invite rights user does not have', () => {
+    expect(() =>
+      requireCanInviteRole(ownerMember, 'owner')
+    ).not.toThrow();
+    expect(() =>
+      requireCanInviteRole(adminMember, 'owner')
+    ).toThrow(/Permission denied.*cannot invite.*owner/);
+    expect(() =>
+      requireCanInviteRole(memberWithAccess, 'admin')
+    ).toThrow(/Permission denied.*cannot invite.*admin/);
+  });
+});
+
+describe('Permission System - canChangeSelfRole', () => {
+  it('should allow owner to change own role if multiple owners exist', () => {
+    expect(canChangeSelfRole(ownerMember, 2)).toBe(true);
+    expect(canChangeSelfRole(ownerMember, 3)).toBe(true);
+    expect(canChangeSelfRole(ownerMember, 10)).toBe(true);
+  });
+
+  it('should not allow owner to change own role if they are the last owner', () => {
+    expect(canChangeSelfRole(ownerMember, 1)).toBe(false);
+  });
+
+  it('should not allow non-owners to use this check', () => {
+    expect(canChangeSelfRole(adminMember, 2)).toBe(false);
+    expect(canChangeSelfRole(memberWithAccess, 2)).toBe(false);
+  });
+
+  it('should throw when last owner tries to change their role', () => {
+    expect(() =>
+      requireCanChangeSelfRole(ownerMember, 2)
+    ).not.toThrow();
+    expect(() =>
+      requireCanChangeSelfRole(ownerMember, 1)
+    ).toThrow(/Cannot change role.*only owner/);
+  });
+
+  it('should throw when non-owner tries to use this check', () => {
+    expect(() =>
+      requireCanChangeSelfRole(adminMember, 2)
+    ).toThrow(/Cannot change role.*only owner/);
   });
 });
 

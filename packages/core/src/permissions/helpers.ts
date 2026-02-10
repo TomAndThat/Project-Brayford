@@ -228,6 +228,101 @@ export function requireCanModifyMemberRole(
 }
 
 /**
+ * Check if a member can invite someone with a specific role
+ * 
+ * Validation rules:
+ * - Owners can invite any role (owner, admin, member)
+ * - Admins can invite admin or member (not owner)
+ * - Members cannot invite anyone
+ * 
+ * @param actor - Member attempting to invite
+ * @param targetRole - Role to be assigned to invitee
+ * @returns true if actor can invite at this role level
+ */
+export function canInviteRole(
+  actor: OrganizationMember | OrganizationMemberDocument,
+  targetRole: OrganizationRole
+): boolean {
+  // Members cannot invite anyone
+  if (actor.role === 'member') {
+    return false;
+  }
+  
+  // Admins can invite admin or member, but not owner
+  if (actor.role === 'admin') {
+    return targetRole !== 'owner';
+  }
+  
+  // Owners can invite any role
+  if (actor.role === 'owner') {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Require ability to invite at role level or throw error
+ * 
+ * @param actor - Member attempting to invite
+ * @param targetRole - Role to be assigned to invitee
+ * @throws Error if actor cannot invite at this role level
+ */
+export function requireCanInviteRole(
+  actor: OrganizationMember | OrganizationMemberDocument,
+  targetRole: OrganizationRole
+): void {
+  if (!canInviteRole(actor, targetRole)) {
+    throw new Error(
+      `Permission denied: ${actor.role} cannot invite ${targetRole} role`
+    );
+  }
+}
+
+/**
+ * Check if an owner can change their own role (demote themselves)
+ * 
+ * Validation rules:
+ * - Owners can demote themselves only if at least one other owner remains
+ * - Last owner cannot demote themselves (prevents org lockout)
+ * - Non-owners cannot use this check (returns false)
+ * 
+ * @param actor - Member attempting the role change
+ * @param currentOwnerCount - Total number of owners in the organization
+ * @returns true if actor can change their own role
+ */
+export function canChangeSelfRole(
+  actor: OrganizationMember | OrganizationMemberDocument,
+  currentOwnerCount: number
+): boolean {
+  // Only owners can use this check
+  if (actor.role !== 'owner') {
+    return false;
+  }
+  
+  // Owner can demote self if at least one other owner remains
+  return currentOwnerCount >= 2;
+}
+
+/**
+ * Require ability to change own role or throw error
+ * 
+ * @param actor - Member attempting the role change
+ * @param currentOwnerCount - Total number of owners in the organization
+ * @throws Error if actor cannot change their own role
+ */
+export function requireCanChangeSelfRole(
+  actor: OrganizationMember | OrganizationMemberDocument,
+  currentOwnerCount: number
+): void {
+  if (!canChangeSelfRole(actor, currentOwnerCount)) {
+    throw new Error(
+      `Permission denied: Cannot change role. You are the only owner of this organisation. Invite or promote another owner first.`
+    );
+  }
+}
+
+/**
  * Get a user-friendly role display name
  */
 export function getRoleDisplayName(role: OrganizationRole): string {

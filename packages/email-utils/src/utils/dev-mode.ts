@@ -50,7 +50,44 @@ export function logEmailToConsole(options: SendEmailOptions): void {
     });
   }
   
-  console.log('└─────────────────────────────────────────────────────────────┘\n');
+  console.log('└─────────────────────────────────────────────────────────────┘');
+  
+  // Extract and log URLs from template data
+  const urls = extractUrls(templateData);
+  if (urls.length > 0) {
+    console.log('\n🔗 Clickable Links:');
+    urls.forEach(({ key, url }) => {
+      console.log(`   ${key}: ${url}`);
+    });
+    console.log('');
+  } else {
+    console.log('');
+  }
+}
+
+/**
+ * Extract URLs from template data
+ * Looks for properties ending with 'Url', 'url', 'Link', or 'link'
+ */
+function extractUrls(data: Record<string, unknown>): Array<{ key: string; url: string }> {
+  const urls: Array<{ key: string; url: string }> = [];
+  
+  for (const [key, value] of Object.entries(data)) {
+    // Check if the key suggests it's a URL
+    if (
+      typeof value === 'string' &&
+      (key.endsWith('Url') || key.endsWith('url') || 
+       key.endsWith('Link') || key.endsWith('link') ||
+       key.toLowerCase().includes('url') || key.toLowerCase().includes('link'))
+    ) {
+      // Verify it's actually a URL
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        urls.push({ key, url: value });
+      }
+    }
+  }
+  
+  return urls;
 }
 
 /**

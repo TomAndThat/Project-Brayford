@@ -10,6 +10,7 @@ import {
   generateInvitationToken,
   calculateInvitationExpiry,
   type InvitationRole,
+  canInviteRole,
 } from "@brayford/core";
 import {
   createInvitation,
@@ -18,6 +19,7 @@ import {
   getOrganizationMembers,
 } from "@brayford/firebase-utils";
 import { isValidEmail, normalizeEmail } from "@brayford/email-utils";
+import OwnerInvitationConfirmDialog from "./OwnerInvitationConfirmDialog";
 
 interface InviteUserModalProps {
   isOpen: boolean;
@@ -56,13 +58,17 @@ export default function InviteUserModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showOwnerConfirm, setShowOwnerConfirm] = useState(false);
+
+  // Check if current member can invite owners
+  const canInviteOwner = canInviteRole(currentMember, "owner");
 
   if (!isOpen) return null;
 
   const handleRoleChange = (newRole: InvitationRole) => {
     setRole(newRole);
-    if (newRole === "admin") {
-      // Admins get access to all brands
+    if (newRole === "admin" || newRole === "owner") {
+      // Admins and owners get access to all brands
       setSelectedBrands([]);
       setAutoGrantNewBrands(true);
     } else {
@@ -90,6 +96,13 @@ export default function InviteUserModal({
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
+
+    // If inviting owner, show confirmation dialog first
+    if (role === "owner" && !showOwnerConfirm) {
+      setShowOwnerConfirm(true);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -139,7 +152,9 @@ export default function InviteUserModal({
 
       // Determine brand access
       const brandAccess =
-        role === "admin" ? [] : selectedBrands.map((b) => fromBranded(b));
+        role === "admin" || role === "owner"
+          ? []
+          : selectedBrands.map((b) => fromBranded(b));
 
       // Create invitation
       await createInvitation({
@@ -148,7 +163,8 @@ export default function InviteUserModal({
         organizationName,
         role,
         brandAccess,
-        autoGrantNewBrands: role === "admin" ? true : autoGrantNewBrands,
+        autoGrantNewBrands:
+          role === "admin" || role === "owner" ? true : autoGrantNewBrands,
         invitedBy: fromBranded(currentMember.userId),
         token: generateInvitationToken(),
         expiresAt: calculateInvitationExpiry(),
@@ -187,11 +203,22 @@ export default function InviteUserModal({
     setAutoGrantNewBrands(false);
     setError(null);
     setSuccessMessage(null);
+    setShowOwnerConfirm(false);
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
+  };
+
+  const handleOwnerConfirm = () => {
+    setShowOwnerConfirm(false);
+    // The form will now actually submit
+    handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+  };
+
+  const handleOwnerCancel = () => {
+    setShowOwnerConfirm(false);
   };
 
   return (
@@ -274,7 +301,25 @@ export default function InviteUserModal({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Role
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleRoleChange("owner")}
+                  disabled={isSubmitting || !canInviteOwner}
+                  className={`rounded-md border px-4 py-3 text-left transition-colors ${
+                    role === "owner"
+                      ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
+                      : "border-gray-300 hover:bg-gray-50"
+                  } ${!canInviteOwner ? "opacity-50 cursor-not-allowed" : ""}`}
+                  title={
+                    !canInviteOwner ? "Only owners can invite other owners" : ""
+                  }
+                >
+                  <div className="text-sm font-medium text-gray-900">Owner</div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    Full control
+                  </div>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleRoleChange("admin")}
@@ -309,6 +354,36 @@ export default function InviteUserModal({
                 </button>
               </div>
             </div>
+
+            {/* Owner Warning Banner */}
+            {role === "owner" && (
+              <div className="rounded-md bg-amber-50 p-3 border border-amber-200">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-amber-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-amber-800">
+                      Warning: Owners have full control
+                    </h3>
+                    <div className="mt-1 text-sm text-amber-700">
+                      Owners can manage billing, remove other owners, delete the
+                      account, and access all organisation resources.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Brand Access (Member role only) */}
             {role === "member" && (
@@ -433,6 +508,14 @@ export default function InviteUserModal({
           </form>
         </div>
       </div>
+
+      {/* Owner Confirmation Dialog */}
+      <OwnerInvitationConfirmDialog
+        isOpen={showOwnerConfirm}
+        email={email}
+        onConfirm={handleOwnerConfirm}
+        onCancel={handleOwnerCancel}
+      />
     </div>
   );
 }

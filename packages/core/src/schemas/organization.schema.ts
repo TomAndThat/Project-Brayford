@@ -32,6 +32,8 @@ export type OrganizationType = z.infer<typeof OrganizationTypeSchema>;
  * @property createdAt - When the organization was created
  * @property createdBy - UserId of the user who created the org (becomes owner)
  * @property settings - Flexible object for org-wide preferences
+ * @property deletionRequestId - Reference to active deletion request (null if none)
+ * @property softDeletedAt - When org was confirmed for deletion (null if active)
  */
 export const OrganizationSchema = z.object({
   name: z.string().min(1).max(100).describe('Organization name'),
@@ -40,6 +42,8 @@ export const OrganizationSchema = z.object({
   createdAt: z.date().describe('Organization creation timestamp'),
   createdBy: z.string().describe('UserId of creator (becomes owner)'),
   settings: z.record(z.unknown()).optional().describe('Organization-wide settings'),
+  deletionRequestId: z.string().nullable().optional().describe('Active deletion request ID'),
+  softDeletedAt: z.date().nullable().optional().describe('When confirmed for deletion'),
 });
 
 export type Organization = z.infer<typeof OrganizationSchema>;

@@ -16,7 +16,7 @@ vi.mock('../client', () => ({
 }));
 
 vi.mock('../rate-limiter', () => ({
-  withRateLimit: vi.fn((_config, fn) => fn()),
+  withRateLimit: vi.fn((fn, _options) => fn()),
 }));
 
 vi.mock('../utils/validation', () => ({
@@ -109,11 +109,11 @@ describe('sendInvitationEmail', () => {
     await sendInvitationEmail(data);
 
     expect(withRateLimit).toHaveBeenCalledWith(
+      expect.any(Function),
       {
         type: 'invitation',
         scopeId: 'test-org-123',
-      },
-      expect.any(Function)
+      }
     );
   });
 

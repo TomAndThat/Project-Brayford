@@ -36,6 +36,7 @@ export function getEmailConfig(): EmailConfig {
       'weekly-digest': 100,
       'marketing': 100,
       'billing-invoice': 20,
+      'organization-deletion': 1,
     },
   };
 }

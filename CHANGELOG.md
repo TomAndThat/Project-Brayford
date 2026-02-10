@@ -9,6 +9,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Organisation Deletion**: Multi-step deletion flow with safety measures and 28-day grace period
+  - Type-to-confirm deletion initiation in organisation settings (users must type org name exactly)
+  - Email confirmation required within 24 hours (sent to requester with secure token)
+  - Soft delete on confirmation — organisation marked as deleted, access immediately revoked
+  - 24-hour undo window — alert emails sent to all users with `org:delete` permission containing undo link
+  - Scheduled permanent deletion after 28 days via Firebase Functions (`cleanupDeletedOrganizations`)
+  - Final notification emails sent to all former members when deletion completes
+  - Permission-gated UI — only users with `org:delete` permission can initiate deletion
+  - Three API routes: `/api/organizations/[id]/delete/initiate`, `/api/organizations/deletion/confirm`, `/api/organizations/deletion/undo`
+  - Two user-facing pages: `/delete-organization/confirm` (token validation, confirmation), `/delete-organization/undo` (auth-required restoration)
+  - Rate-limited deletion emails (1 per organization per minute) to prevent abuse
+  - Audit trail: `OrganizationDeletion` documents track all deletion requests in Firestore
+  - UK English copy throughout: "organisation" not "organization" in user-facing text
+- **Organisation Deletion Schema** (`@brayford/core`): Complete schema for deletion lifecycle
+  - `OrganizationDeletion` document schema with status states (pending → confirmed → cancelled/completed)
+  - Status helpers: `isAwaitingConfirmation()`, `isConfirmed()`, `canBeUndone()`, `isExpired()`
+  - Token generation with 24-hour expiry for both confirmation and undo links
+  - Test factory `createMockOrganizationDeletion()` for consistent test data
+  - 48 comprehensive unit tests covering all scenarios
+- **Deletion Email Templates** (`@brayford/email-utils`): Three email types for deletion flow
+  - Confirmation email: sent to requester, must click within 24 hours
+  - Alert email: sent to all users with `org:delete` permission when deletion confirmed (includes undo link valid for 24 hours)
+  - Completion email: sent to all former members when permanent deletion executes
+  - Dev mode link extraction: URLs automatically logged as clickable links in console
+  - UK English date/time formatting throughout
+- **Firebase Scheduled Function**: Daily cleanup job at 2am UTC
+  - `cleanupDeletedOrganizations` runs daily, finds orgs past 28-day grace period
+  - Permanently deletes organization documents, member records, and deletion requests
+  - Sends final notification emails to all former members
+  - Deployed via `firebase deploy --only functions`
+- **Schema Updates**: `Organization` schema extended for deletion support
+  - `deletionRequestId` field: nullable reference to active `OrganizationDeletion` document
+  - `softDeletedAt` field: nullable timestamp marking when user confirmed deletion
+  - Firestore converter updated to handle `softDeletedAt` timestamp conversion
+- **Permission**: New `org:delete` permission for organisation deletion capability
+  - Owner-only by default (admin/member cannot delete organisations)
+  - Documented in `PERMISSIONS.md`
+
+### Fixed
+
+- **Email Utils**: Rate limiter argument order corrected in `sendDeletionConfirmEmail()` and `sendInvitationEmail()`
+  - `withRateLimit` signature is `(fn, options)` but was being called with `(options, fn)`
+  - Caused `TypeError: Cannot read properties of undefined (reading 'maxPerMinute')` at runtime
+  - Updated test mocks and assertions to match corrected signature
+- **Firebase Converter**: Organization `softDeletedAt` timestamp not being converted from Firestore Timestamp to Date
+  - Added `'softDeletedAt'` to timestamp fields list in organization converter
+  - Resolves Zod validation error: "Expected date, received object"
+- **Deletion Confirmation Page**: Incorrectly showed 28-day internal deletion date to users
+  - Changed to show 24-hour undo window instead: "You have 24 hours to change your mind"
+  - Removed "Return to Dashboard" button from confirmed state (access already revoked)
+- **Deletion Alert Email**: Removed internal 28-day `scheduledDate` from template data
+  - Template now only communicates 24-hour undo window to users
+  - Updated template registry to remove `scheduledDate` from required fields
+
+### Changed
+
+- **Email Dev Mode Logging**: URLs now extracted and displayed as clickable links after email content
+  - Searches template data for any field ending with "Url", "url", "Link", or "link"
+  - Displays links in clean format: `🔗 Clickable Links: confirmationUrl: https://...`
+  - Improves developer experience during local testing
+
+### Documentation
+
+- **ROADMAP.md**: Organisation deletion marked as complete in Phase 1
+  - Notes dependencies in Phase 2 (block deletion while events live) and Phase 5 (require billing settlement)
+- **PERMISSIONS.md**: Documented `org:delete` and `org:view_settings` permissions
+
+### To Do
+
+- Phase 2: Block organisation deletion if events are currently live
+- Phase 5: Require billing settlement before allowing organisation deletion
+- Phase 6: Implement data export before deletion (currently deferred)
+
+- **Firestore Rules Audit**: Comprehensive security audit of all Firestore operations
+  - Created exhaustive documentation of all 7 collections requiring security rules
+  - Identified 6 critical security gaps including missing permission validation and cross-organization data leakage
+  - Documented missing rules for `organizationDeletionRequests` and `deletedOrganizationsAudit` collections
+  - Provided detailed recommendations for implementing custom claims-based authorization
+  - Specified required Firestore indexes for all query operations
+  - See `docs/FIRESTORE_RULES_AUDIT.md` for complete findings and action plan
+- **User Management**: Owners can now invite additional owners to organisations
+  - Owner role option added to invitation flow with confirmation warnings
+  - Detailed confirmation dialog explaining owner-level permissions (billing, account deletion, member management)
+  - Inline warning banner when owner role is selected in invite modal
+  - Permission validation: only existing owners can invite new owners (admins cannot)
+  - Protection against last owner demotion: owners cannot change their own role if they are the sole owner
+  - New permission helper functions: `canInviteRole()` and `canChangeSelfRole()`
+  - `getOwnerCount()` utility function for validation during role changes
+  - Updated `InvitationRoleSchema` to include 'owner' as valid role
+  - Unit tests for new permission helpers and schema changes
+  - E2E test scenarios for owner invitation flow and self-demotion protection
+  - Documentation updates in INVITATION_SYSTEM.md and PERMISSIONS.md
 - **Organisation Settings Page**: Owner-only settings page at `/dashboard/organisation/settings`
   - Permission-gated access with `org:view_settings` permission
   - "Organisation Settings" link in dashboard header dropdown (cog icon)

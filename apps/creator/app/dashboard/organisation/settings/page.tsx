@@ -16,6 +16,7 @@ import {
   ORG_VIEW_SETTINGS,
 } from "@brayford/core";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import DeleteOrganizationSection from "@/components/dashboard/DeleteOrganizationSection";
 
 export default function OrganisationSettingsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -192,7 +193,7 @@ export default function OrganisationSettingsPage() {
         </div>
 
         {/* Organisation Info (Read-only preview) */}
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white rounded-lg shadow-md p-8 mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Organisation Information
           </h3>
@@ -219,6 +220,13 @@ export default function OrganisationSettingsPage() {
             </div>
           </dl>
         </div>
+
+        {/* Danger Zone - Delete Organisation */}
+        <DeleteOrganizationSection
+          organization={organization}
+          currentMember={currentMember}
+          getIdToken={() => user!.getIdToken()}
+        />
       </main>
     </div>
   );

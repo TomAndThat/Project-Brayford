@@ -89,21 +89,35 @@ _\*\* Members only for brands/events they have access to_
 
 ### Owner
 
-**Description:** The organization's primary account holder with full control.
+**Description:** The organisation's primary account holder(s) with full control.
 
 **Key Responsibilities:**
 
 - Billing and subscription management
-- Organization deletion and transfer
+- Organisation deletion and transfer
 - Ultimate authority over all resources
+- Inviting additional owners (with appropriate warnings)
 
 **Default Permissions:** All permissions (`*` wildcard)
 
+**Multiple Owners:**
+
+- Organisations can have multiple owners for large teams or ownership transitions
+- Only existing owners can invite new owners (admins cannot)
+- Owner invitations require explicit confirmation due to elevated permissions
+
 **Restrictions:**
 
-- Only one owner per organization
-- Cannot be removed by other members
-- Can only transfer ownership, not demote self
+- Cannot modify other owners' roles or permissions
+- Cannot remove other owners from the organisation
+- Last owner cannot demote themselves (prevents org lockout)
+- Owners with 2+ other owners can demote themselves to admin/member
+
+**Invitation Rules:**
+
+- Owners can invite: Owner, Admin, Member
+- Admins can invite: Admin, Member (not Owner)
+- Members cannot invite anyone
 
 ---
 
@@ -237,6 +251,42 @@ The client apps show simplified role labels:
 // But backend validates granular permissions
 const canInvite = hasPermission(member, 'users:invite');
 ```
+
+### Role Management Helpers
+
+For invitation and role modification workflows, use these specialized helpers:
+
+```typescript
+import {
+  canInviteRole,
+  canChangeSelfRole,
+  canModifyMemberRole,
+} from "@brayford/core/permissions";
+
+// Check if current member can invite someone with a specific role
+if (canInviteRole(currentMember, "owner")) {
+  // Show owner option in invite modal
+}
+
+// Check if owner can demote themselves (requires 2+ owners)
+const ownerCount = await getOwnerCount(organizationId);
+if (canChangeSelfRole(currentMember, ownerCount)) {
+  // Allow role change
+} else {
+  // Show error: "You are the only owner..."
+}
+
+// Check if current member can modify another member's role
+if (canModifyMemberRole(actor, target)) {
+  // Allow role change
+}
+```
+
+**Helper Function Rules:**
+
+- `canInviteRole(actor, targetRole)`: Owners can invite any role; admins can invite admin/member; members cannot invite anyone
+- `canChangeSelfRole(actor, ownerCount)`: Owners can demote themselves only if ownerCount >= 2
+- `canModifyMemberRole(actor, target)`: Owners can modify anyone except other owners; admins can modify members only
 
 ### Firestore Security Rules
 

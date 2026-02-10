@@ -42,6 +42,10 @@ const RATE_LIMIT_CONFIGS: Record<EmailType, RateLimitConfig> = {
     maxPerMinute: 20, // Higher limit for transactional billing
     scope: 'organization',
   },
+  'organization-deletion': {
+    maxPerMinute: 1, // 1 per org per minute — prevents spam
+    scope: 'organization',
+  },
 };
 
 /**

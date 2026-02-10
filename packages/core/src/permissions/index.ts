@@ -80,6 +80,10 @@ export {
   requireBrandAccess,
   canModifyMemberRole,
   requireCanModifyMemberRole,
+  canInviteRole,
+  requireCanInviteRole,
+  canChangeSelfRole,
+  requireCanChangeSelfRole,
   getRoleDisplayName,
   getRoleDescription,
 } from './helpers';
