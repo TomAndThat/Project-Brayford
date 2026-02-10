@@ -9,13 +9,20 @@
 
 import {setGlobalOptions} from "firebase-functions";
 import {onSchedule} from "firebase-functions/v2/scheduler";
-import {onDocumentWritten} from "firebase-functions/v2/firestore";
+import {onRequest} from "firebase-functions/v2/https";
+import {onDocumentWritten, onDocumentCreated} from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
-import {getFirestore, Timestamp} from "firebase-admin/firestore";
+import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import {initializeApp} from "firebase-admin/app";
-import {sendDeletionCompleteEmail} from "@brayford/email-utils";
-import type {OrganizationId} from "@brayford/core";
+import type {OrganizationId, EmailQueueDocument, EmailQueueId} from "@brayford/core";
 import {updateUserClaims} from "./claims.js";
+import {
+  sendEmail,
+  checkAndIncrementRateLimit,
+  isDevMode,
+  logEmailConfig,
+  logBatchSummary,
+} from "./email/index.js";
 
 // Initialize Firebase Admin
 initializeApp();
@@ -282,14 +289,28 @@ export const cleanupDeletedOrganizations = onSchedule(
         // Send completion emails to former members
         for (const email of memberEmails) {
           try {
-            await sendDeletionCompleteEmail({
-              recipientEmail: email,
-              organizationName: orgData.name,
-              deletionDate: now,
-              organizationId: orgId as OrganizationId,
+            await db.collection("emailQueue").add({
+              type: "organization-deletion",
+              deliveryMode: "batch",
+              status: "pending",
+              to: email,
+              templateAlias: "organization-deletion-complete",
+              templateData: {
+                organizationName: orgData.name,
+                deletionDate: now.toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                }),
+              },
+              metadata: {
+                organizationId: orgId,
+              },
+              createdAt: FieldValue.serverTimestamp(),
+              attempts: 0,
             });
           } catch (emailError) {
-            logger.warn(`Failed to send completion email to ${email}:`, emailError);
+            logger.warn(`Failed to queue completion email to ${email}:`, emailError);
           }
         }
 
@@ -300,5 +321,409 @@ export const cleanupDeletedOrganizations = onSchedule(
     }
 
     logger.info("Cleanup of soft-deleted organisations complete");
+  }
+);
+
+// ===== Email Queue Processing =====
+
+/**
+ * Process transactional (immediate) emails
+ *
+ * Triggered when a new document is created in the emailQueue collection.
+ * Only processes emails with deliveryMode = 'immediate'.
+ * Batch emails are handled by processBulkEmailBatch.
+ *
+ * Flow:
+ * 1. Check deliveryMode - exit if 'batch'
+ * 2. Check rate limit for the email's scope
+ * 3. If allowed: send via Postmark, update status to 'sent'
+ * 4. If rate-limited: update status to 'rate-limited'
+ * 5. If error: update status to 'failed' with error details
+ */
+export const processTransactionalEmail = onDocumentCreated(
+  {
+    document: "emailQueue/{emailId}",
+    region: "europe-west2",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    retry: true, // Automatic retries on failure
+  },
+  async (event) => {
+    const emailId = event.params.emailId as EmailQueueId;
+    const emailData = event.data?.data() as EmailQueueDocument | undefined;
+
+    if (!emailData) {
+      logger.error("No email data in created document", { emailId });
+      return;
+    }
+
+    // Skip batch emails - they're processed by the scheduled function
+    if (emailData.deliveryMode === "batch") {
+      logger.debug("Skipping batch email (processed by scheduled function)", {
+        emailId,
+        type: emailData.type,
+      });
+      return;
+    }
+
+    logger.info("Processing transactional email", {
+      emailId,
+      type: emailData.type,
+      to: emailData.to,
+      template: emailData.templateAlias,
+      devMode: isDevMode(),
+    });
+
+    const emailRef = db.collection("emailQueue").doc(emailId);
+
+    // Update status to processing
+    await emailRef.update({
+      status: "processing",
+      processedAt: Timestamp.now(),
+      attempts: FieldValue.increment(1),
+      lastAttemptAt: Timestamp.now(),
+    });
+
+    // Check rate limit
+    const rateLimitScope = emailData.rateLimitScope ||
+      `${emailData.metadata.organizationId ? "organization:" + emailData.metadata.organizationId : "global"}`;
+
+    const rateLimitResult = await checkAndIncrementRateLimit(
+      rateLimitScope,
+      emailData.type
+    );
+
+    if (!rateLimitResult.allowed) {
+      logger.warn("Email rate-limited", {
+        emailId,
+        scope: rateLimitScope,
+        type: emailData.type,
+        currentCount: rateLimitResult.currentCount,
+        maxAllowed: rateLimitResult.maxAllowed,
+        resetAt: rateLimitResult.resetAt,
+      });
+
+      await emailRef.update({
+        status: "rate-limited",
+        error: {
+          code: "RATE_LIMIT_EXCEEDED",
+          message: `Rate limit exceeded for ${rateLimitScope} (${rateLimitResult.currentCount}/${rateLimitResult.maxAllowed} per minute)`,
+          timestamp: Timestamp.now(),
+        },
+      });
+
+      return;
+    }
+
+    // Send email
+    const sendResult = await sendEmail(emailId, emailData);
+
+    if (sendResult.success) {
+      await emailRef.update({
+        status: "sent",
+        sentAt: Timestamp.fromDate(sendResult.sentAt!),
+        postmarkMessageId: sendResult.messageId,
+      });
+
+      logger.info("Email sent successfully", {
+        emailId,
+        messageId: sendResult.messageId,
+        to: emailData.to,
+      });
+    } else {
+      await emailRef.update({
+        status: "failed",
+        error: {
+          code: sendResult.error?.code || "UNKNOWN",
+          message: sendResult.error?.message || "Unknown error",
+          timestamp: Timestamp.now(),
+        },
+      });
+
+      logger.error("Email send failed", {
+        emailId,
+        error: sendResult.error,
+        to: emailData.to,
+      });
+
+      // Throw to trigger Cloud Functions retry
+      throw new Error(`Email send failed: ${sendResult.error?.message}`);
+    }
+  }
+);
+
+/**
+ * Process bulk (batch) emails on a schedule
+ *
+ * Runs every minute and processes up to 50 pending batch emails.
+ * Uses jitter to spread load and avoid Postmark rate limits.
+ *
+ * Flow:
+ * 1. Query pending batch emails (oldest first, limit 50)
+ * 2. For each email:
+ *    - Check rate limit
+ *    - Add jitter delay (500-2000ms)
+ *    - Send via Postmark
+ *    - Update status
+ * 3. Log summary
+ */
+/**
+ * Helper function containing batch email processing logic.
+ * Used by both the scheduled function and the HTTP trigger.
+ */
+async function runBatchEmailProcessing(): Promise<{
+  processed: number;
+  sent: number;
+  failed: number;
+  rateLimited: number;
+}> {
+  logEmailConfig();
+
+  // Query pending batch emails
+  const pendingQuery = await db
+    .collection("emailQueue")
+    .where("deliveryMode", "==", "batch")
+    .where("status", "==", "pending")
+    .orderBy("createdAt", "asc")
+    .limit(50)
+    .get();
+
+  if (pendingQuery.empty) {
+    logger.debug("No pending batch emails to process");
+    return { processed: 0, sent: 0, failed: 0, rateLimited: 0 };
+  }
+
+  logger.info(`Processing ${pendingQuery.size} batch emails`);
+
+  let sent = 0;
+  let failed = 0;
+  let rateLimited = 0;
+
+  for (const doc of pendingQuery.docs) {
+    const emailId = doc.id as EmailQueueId;
+    const emailData = doc.data() as EmailQueueDocument;
+    const emailRef = doc.ref;
+
+    try {
+      // Add jitter to spread load (500-2000ms)
+      const jitterMs = 500 + Math.random() * 1500;
+      await new Promise((resolve) => setTimeout(resolve, jitterMs));
+
+      // Update status to processing
+      await emailRef.update({
+        status: "processing",
+        processedAt: Timestamp.now(),
+        attempts: FieldValue.increment(1),
+        lastAttemptAt: Timestamp.now(),
+      });
+
+      // Check rate limit
+      const rateLimitScope = emailData.rateLimitScope || "global";
+      const rateLimitResult = await checkAndIncrementRateLimit(
+        rateLimitScope,
+        emailData.type
+      );
+
+      if (!rateLimitResult.allowed) {
+        await emailRef.update({
+          status: "rate-limited",
+          error: {
+            code: "RATE_LIMIT_EXCEEDED",
+            message: `Rate limit exceeded (${rateLimitResult.currentCount}/${rateLimitResult.maxAllowed})`,
+            timestamp: Timestamp.now(),
+          },
+        });
+
+        rateLimited++;
+        continue;
+      }
+
+      // Send email
+      const sendResult = await sendEmail(emailId, emailData);
+
+      if (sendResult.success) {
+        await emailRef.update({
+          status: "sent",
+          sentAt: Timestamp.fromDate(sendResult.sentAt!),
+          postmarkMessageId: sendResult.messageId,
+        });
+
+        sent++;
+      } else {
+        await emailRef.update({
+          status: "failed",
+          error: {
+            code: sendResult.error?.code || "UNKNOWN",
+            message: sendResult.error?.message || "Unknown error",
+            timestamp: Timestamp.now(),
+          },
+        });
+
+        failed++;
+      }
+    } catch (error) {
+      logger.error("Error processing batch email", { emailId, error });
+
+      await emailRef.update({
+        status: "failed",
+        error: {
+          code: "PROCESSING_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+          timestamp: Timestamp.now(),
+        },
+      });
+
+      failed++;
+    }
+  }
+
+  // Log summary
+  if (isDevMode()) {
+    logBatchSummary(pendingQuery.size, sent, failed, rateLimited);
+  }
+
+  logger.info("Batch email processing complete", {
+    processed: pendingQuery.size,
+    sent,
+    failed,
+    rateLimited,
+  });
+
+  return { processed: pendingQuery.size, sent, failed, rateLimited };
+}
+
+/**
+ * HTTP trigger for manually running batch email processing.
+ * Useful for testing in emulator (scheduled functions don't auto-run).
+ * 
+ * Usage: curl http://localhost:5001/PROJECT_ID/europe-west2/triggerBatchEmailProcessing
+ */
+export const triggerBatchEmailProcessing = onRequest(
+  {
+    region: "europe-west2",
+    memory: "512MiB",
+    timeoutSeconds: 540,
+  },
+  async (req, res) => {
+    logger.info("Manual batch email processing triggered");
+
+    try {
+      const result = await runBatchEmailProcessing();
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      logger.error("Batch processing failed", { error });
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+);
+
+export const processBulkEmailBatch = onSchedule(
+  {
+    schedule: "every 1 minutes",
+    timeZone: "Europe/London",
+    region: "europe-west2",
+    memory: "512MiB",
+    timeoutSeconds: 540, // 9 minutes max
+  },
+  async () => {
+    await runBatchEmailProcessing();
+  }
+);
+
+// ===== Invitation Email Trigger =====
+
+/**
+ * Send invitation email when invitation is created
+ *
+ * Triggered when a new invitation document is created.
+ * Queues an immediate email to the invitee.
+ */
+export const onInvitationCreated = onDocumentCreated(
+  {
+    document: "invitations/{invitationId}",
+    memory: "256MiB",
+  },
+  async (event) => {
+    const invitationId = event.params.invitationId;
+    const invData = event.data?.data();
+
+    if (!invData) {
+      logger.error("No invitation data", { invitationId });
+      return;
+    }
+
+    if (invData.status !== 'pending') {
+      logger.debug("Skipping non-pending invitation", {
+        invitationId,
+        status: invData.status,
+      });
+      return;
+    }
+
+    logger.info("Processing invitation email", {
+      invitationId,
+      email: invData.email,
+      organizationId: invData.organizationId,
+    });
+
+    try {
+      // Get inviter details for email
+      const inviterDoc = await db.collection("users").doc(invData.invitedBy).get();
+      const inviterData = inviterDoc.data();
+      const inviterName = inviterData?.displayName || inviterData?.email || "A team member";
+
+      // Format expiry date
+      const expiresAt = invData.expiresAt.toDate();
+      const formattedExpiry = expiresAt.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+
+      // Construct invitation URL
+      const baseUrl = process.env.CREATOR_APP_URL || "http://localhost:3000";
+      const inviteLink = `${baseUrl}/join?token=${invData.token}`;
+
+      // Queue email
+      await db.collection("emailQueue").add({
+        type: "invitation",
+        deliveryMode: "immediate",
+        status: "pending",
+        to: invData.email,
+        templateAlias: "organization-invitation",
+        templateData: {
+          organizationName: invData.organizationName,
+          inviterName,
+          inviteLink,
+          role: invData.role,
+          expiresAt: formattedExpiry,
+        },
+        metadata: {
+          userId: invData.invitedBy,
+          organizationId: invData.organizationId,
+          invitationId,
+        },
+        rateLimitScope: `organization:${invData.organizationId}`,
+        createdAt: FieldValue.serverTimestamp(),
+        attempts: 0,
+      });
+
+      logger.info("Invitation email queued", {
+        invitationId,
+        to: invData.email,
+      });
+    } catch (error) {
+      logger.error("Failed to queue invitation email", {
+        invitationId,
+        error,
+      });
+      // Don't throw - we don't want the invitation creation to fail
+    }
   }
 );

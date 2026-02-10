@@ -25,8 +25,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
-import { sendDeletionAlertEmail } from "@brayford/email-utils";
+import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { getPermissionsForRole } from "@brayford/core";
 import type { OrganizationId, OrganizationRole } from "@brayford/core";
 
@@ -133,6 +132,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       scheduledDeletionAt: Timestamp.fromDate(scheduledDeletionAt),
       undoToken,
       undoExpiresAt: Timestamp.fromDate(undoExpiresAt),
+      confirmationToken: null, // Invalidate the confirmation token after use
       auditLog: [
         ...deletionRequest.auditLog,
         {
@@ -156,20 +156,61 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     await batch.commit();
 
-    // 7. Send alert emails to all members with org:delete permission
+    // 7. Send undo email to the requester (person who confirmed)
+    const undoLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/delete-organization/undo?token=${undoToken}&requestId=${requestId}`;
+
+    const requesterDoc = await adminDb
+      .collection("users")
+      .doc(deletionRequest.requestedBy)
+      .get();
+    
+    if (requesterDoc.exists) {
+      const requesterData = requesterDoc.data()!;
+      const confirmedByName = requesterData.displayName || "You";
+      
+      try {
+        await adminDb.collection("emailQueue").add({
+          type: "organization-deletion",
+          deliveryMode: "batch",
+          status: "pending",
+          to: requesterData.email,
+          templateAlias: "organization-deletion-alert",
+          templateData: {
+            organizationName: deletionRequest.organizationName,
+            confirmedBy: confirmedByName,
+            undoLink,
+            undoExpiresAt: undoExpiresAt.toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+          },
+          metadata: {
+            organizationId: deletionRequest.organizationId,
+            deletionRequestId: requestId,
+          },
+          rateLimitScope: `organization:${deletionRequest.organizationId}`,
+          createdAt: FieldValue.serverTimestamp(),
+          attempts: 0,
+        });
+      } catch (emailError) {
+        console.error(
+          `[Deletion] Failed to queue undo email to requester ${requesterData.email}:`,
+          emailError,
+        );
+      }
+    }
+
+    // 8. Send alert emails to OTHER members with org:delete permission
     // Find all members, then check for org:delete or wildcard permissions
     const membersQuery = await adminDb
       .collection("organizationMembers")
       .where("organizationId", "==", deletionRequest.organizationId)
       .get();
 
-    const undoLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/delete-organization/undo?token=${undoToken}&requestId=${requestId}`;
-
     // Look up requester's display name for the alert
-    const requesterDoc = await adminDb
-      .collection("users")
-      .doc(deletionRequest.requestedBy)
-      .get();
     const confirmedByName = requesterDoc.exists
       ? requesterDoc.data()!.displayName
       : "A team member";
@@ -177,7 +218,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     for (const memberDoc of membersQuery.docs) {
       const member = memberDoc.data();
 
-      // Check if member has org:delete permission
+      // Skip the requester (they already got the undo email above)
+      if (member.userId === deletionRequest.requestedBy) {
+        continue;
+      }
+      
       // Derive permissions from role if no custom permissions set
       const customPermissions: string[] = member.permissions || [];
       const permissions: string[] = customPermissions.length > 0
@@ -187,7 +232,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         permissions.includes("org:delete") ||
         permissions.includes("*");
 
-      if (hasDeletePerm && member.userId !== deletionRequest.requestedBy) {
+      if (hasDeletePerm) {
         // Look up member's email from users collection
         const userDoc = await adminDb
           .collection("users")
@@ -197,18 +242,35 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         if (userDoc.exists) {
           const userData = userDoc.data()!;
           try {
-            await sendDeletionAlertEmail({
-              recipientEmail: userData.email,
-              organizationName: deletionRequest.organizationName,
-              confirmedBy: confirmedByName,
-              scheduledDate: scheduledDeletionAt,
-              undoUrl: undoLink,
-              undoExpiresAt,
-              organizationId: deletionRequest.organizationId as OrganizationId,
+            await adminDb.collection("emailQueue").add({
+              type: "organization-deletion",
+              deliveryMode: "batch",
+              status: "pending",
+              to: userData.email,
+              templateAlias: "organization-deletion-alert",
+              templateData: {
+                organizationName: deletionRequest.organizationName,
+                confirmedBy: confirmedByName,
+                undoLink,
+                undoExpiresAt: undoExpiresAt.toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }),
+              },
+              metadata: {
+                organizationId: deletionRequest.organizationId,
+                deletionRequestId: requestId,
+              },
+              rateLimitScope: `organization:${deletionRequest.organizationId}`,
+              createdAt: FieldValue.serverTimestamp(),
+              attempts: 0,
             });
           } catch (emailError) {
             console.error(
-              `[Deletion] Failed to send alert email to ${userData.email}:`,
+              `[Deletion] Failed to queue alert email to ${userData.email}:`,
               emailError,
             );
           }

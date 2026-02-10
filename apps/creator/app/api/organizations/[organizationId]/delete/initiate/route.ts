@@ -28,8 +28,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
-import { sendDeletionConfirmEmail } from "@brayford/email-utils";
+import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { getPermissionsForRole } from "@brayford/core";
 import type { OrganizationId, OrganizationRole, UserId } from "@brayford/core";
 
@@ -215,17 +214,35 @@ export async function POST(
       : userEmail;
 
     try {
-      await sendDeletionConfirmEmail({
-        recipientEmail: userEmail,
-        organizationName: orgData.name,
-        requestedBy: displayName,
-        confirmationUrl: confirmationLink,
-        expiresAt: tokenExpiresAt,
-        organizationId: organizationId as OrganizationId,
-        requestedByUserId: userId as UserId,
+      await adminDb.collection("emailQueue").add({
+        type: "organization-deletion",
+        deliveryMode: "immediate",
+        status: "pending",
+        to: userEmail,
+        templateAlias: "organization-deletion-confirm",
+        templateData: {
+          organizationName: orgData.name,
+          requestedBy: displayName,
+          confirmationLink,
+          expiresAt: tokenExpiresAt.toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        },
+        metadata: {
+          organizationId,
+          userId,
+          deletionRequestId: deletionRequestRef.id,
+        },
+        rateLimitScope: `organization:${organizationId}`,
+        createdAt: FieldValue.serverTimestamp(),
+        attempts: 0,
       });
     } catch (emailError) {
-      console.error("[Deletion] Failed to send confirmation email:", emailError);
+      console.error("[Deletion] Failed to queue confirmation email:", emailError);
       // Don't fail the request — the link is in the deletion request doc
       // and can be resent
     }
