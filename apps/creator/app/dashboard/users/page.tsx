@@ -20,6 +20,7 @@ import {
   type BrandDocument,
   type InvitationDocument,
   hasPermission,
+  USERS_VIEW,
   USERS_INVITE,
   USERS_UPDATE_ROLE,
   USERS_REMOVE,
@@ -29,6 +30,8 @@ import {
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import InviteUserModal from "@/components/invitations/InviteUserModal";
 import PendingInvitationsList from "@/components/invitations/PendingInvitationsList";
+import RemoveUserConfirmDialog from "@/components/users/RemoveUserConfirmDialog";
+import EditMemberModal from "@/components/users/EditMemberModal";
 
 export default function UsersPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -45,17 +48,14 @@ export default function UsersPage() {
     InvitationDocument[]
   >([]);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/signin");
-      return;
-    }
-
-    if (user) {
-      loadUserData();
-    }
-  }, [user, authLoading, router]);
+  const [userToRemove, setUserToRemove] =
+    useState<OrganizationMemberWithUser | null>(null);
+  const [userToEdit, setUserToEdit] =
+    useState<OrganizationMemberWithUser | null>(null);
+  const [notification, setNotification] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const loadUserData = useCallback(async () => {
     if (!user) return;
@@ -95,6 +95,27 @@ export default function UsersPage() {
     }
   }, [user, router]);
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/signin");
+      return;
+    }
+
+    if (user) {
+      loadUserData();
+    }
+  }, [user, authLoading, router, loadUserData]);
+
+  // Check permissions after data loads
+  useEffect(() => {
+    if (!loading && currentMember && organization) {
+      if (!hasPermission(currentMember, USERS_VIEW)) {
+        alert("You don't have permission to view team members.");
+        router.push("/dashboard");
+      }
+    }
+  }, [loading, currentMember, organization, router]);
+
   const handleSignOut = async () => {
     await signOut();
     router.push("/signin");
@@ -107,6 +128,82 @@ export default function UsersPage() {
   const handleInviteSuccess = () => {
     // Reload data to show updated pending invitations
     loadUserData();
+  };
+
+  const handleEditUser = (member: OrganizationMemberWithUser) => {
+    setUserToEdit(member);
+  };
+
+  const handleEditSuccess = async () => {
+    // Reload data to show updated member info
+    await loadUserData();
+
+    // Show success notification
+    setNotification({
+      type: "success",
+      message: "Member updated successfully",
+    });
+
+    // Auto-hide notification after 5 seconds
+    setTimeout(() => setNotification(null), 5000);
+  };
+
+  const handleRemoveUser = (member: OrganizationMemberWithUser) => {
+    setUserToRemove(member);
+  };
+
+  const confirmRemoveUser = async () => {
+    if (!userToRemove || !organization || !user) return;
+
+    const userName =
+      userToRemove.user?.displayName || userToRemove.user?.email || "this user";
+
+    try {
+      // Get ID token for API authentication
+      const idToken = await user.getIdToken();
+
+      // Call secure API route (uses Firebase Admin SDK)
+      const response = await fetch(
+        `/api/organizations/${fromBranded(organization.id)}/members/${fromBranded(userToRemove.id)}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to remove user");
+      }
+
+      // Update local state to remove member from table
+      setMembers((prev) => prev.filter((m) => m.id !== userToRemove.id));
+
+      // Show success notification
+      setNotification({
+        type: "success",
+        message: `${userName} has been removed from the organisation`,
+      });
+
+      // Auto-hide notification after 5 seconds
+      setTimeout(() => setNotification(null), 5000);
+    } catch (error) {
+      console.error("Error removing user:", error);
+      setNotification({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to remove user. Please try again.",
+      });
+      // Auto-hide error after 7 seconds
+      setTimeout(() => setNotification(null), 7000);
+    } finally {
+      setUserToRemove(null);
+    }
   };
 
   if (authLoading || loading) {
@@ -139,6 +236,75 @@ export default function UsersPage() {
           onClick: () => router.push("/dashboard"),
         }}
       />
+
+      {/* Notification Banner */}
+      {notification && (
+        <div
+          className={`fixed top-20 right-4 z-50 max-w-md rounded-lg shadow-lg p-4 ${
+            notification.type === "success"
+              ? "bg-green-50 border border-green-200"
+              : "bg-red-50 border border-red-200"
+          }`}
+        >
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              {notification.type === "success" ? (
+                <svg
+                  className="h-5 w-5 text-green-400"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="h-5 w-5 text-red-400"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
+            </div>
+            <div className="ml-3 flex-1">
+              <p
+                className={`text-sm font-medium ${
+                  notification.type === "success"
+                    ? "text-green-800"
+                    : "text-red-800"
+                }`}
+              >
+                {notification.message}
+              </p>
+            </div>
+            <button
+              onClick={() => setNotification(null)}
+              className={`ml-3 inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                notification.type === "success"
+                  ? "text-green-500 hover:bg-green-100 focus:ring-green-600"
+                  : "text-red-500 hover:bg-red-100 focus:ring-red-600"
+              }`}
+            >
+              <span className="sr-only">Dismiss</span>
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -323,24 +489,18 @@ export default function UsersPage() {
                             <div className="flex justify-end gap-2">
                               {canUpdateRoles && (
                                 <button
-                                  onClick={() =>
-                                    alert(
-                                      "Change role functionality coming soon!",
-                                    )
-                                  }
+                                  onClick={() => handleEditUser(member)}
                                   className="text-blue-600 hover:text-blue-900"
+                                  data-testid="edit-user-btn"
                                 >
                                   Edit
                                 </button>
                               )}
                               {canRemove && (
                                 <button
-                                  onClick={() =>
-                                    alert(
-                                      "Remove user functionality coming soon!",
-                                    )
-                                  }
+                                  onClick={() => handleRemoveUser(member)}
                                   className="text-red-600 hover:text-red-900"
+                                  data-testid="remove-user-btn"
                                 >
                                   Remove
                                 </button>
@@ -418,6 +578,30 @@ export default function UsersPage() {
           currentMember={currentMember}
           brands={brands}
           onSuccess={handleInviteSuccess}
+        />
+      )}
+
+      {/* Edit Member Modal */}
+      {userToEdit && currentMember && organization && (
+        <EditMemberModal
+          isOpen={true}
+          member={userToEdit}
+          currentMember={currentMember}
+          brands={brands}
+          onClose={() => setUserToEdit(null)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {/* Remove User Confirmation Dialog */}
+      {userToRemove && organization && (
+        <RemoveUserConfirmDialog
+          isOpen={true}
+          userName={userToRemove.user?.displayName || "User"}
+          userEmail={userToRemove.user?.email || ""}
+          organizationName={organization.name}
+          onConfirm={confirmRemoveUser}
+          onCancel={() => setUserToRemove(null)}
         />
       )}
     </div>

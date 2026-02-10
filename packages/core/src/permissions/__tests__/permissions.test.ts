@@ -242,9 +242,9 @@ describe('Permission System - canModifyMemberRole', () => {
     expect(canModifyMemberRole(ownerMember, memberWithAccess)).toBe(true);
   });
 
-  it('should not allow modification of owners (protected role)', () => {
+  it('should allow owners to modify other owners', () => {
     const anotherOwner: OrganizationMember = { ...ownerMember, userId: 'user999' };
-    expect(canModifyMemberRole(ownerMember, anotherOwner)).toBe(false);
+    expect(canModifyMemberRole(ownerMember, anotherOwner)).toBe(true);
   });
 
   it('should allow admins to modify members but not peers with USERS_UPDATE_ROLE', () => {
@@ -378,10 +378,12 @@ describe('Permission System - Permission-based behaviour validation', () => {
     expect(canChangeSelfRole(adminMember, 2)).toBe(false);
   });
 
-  it('should protect owners from modification regardless of actor permissions', () => {
-    // Even owners can't modify other owners
+  it('should allow owners to modify other owners but protect owners from non-owner modification', () => {
     const anotherOwner: OrganizationMember = { ...ownerMember, userId: 'user999' };
-    expect(canModifyMemberRole(ownerMember, anotherOwner)).toBe(false);
+    // Owners CAN modify other owners
+    expect(canModifyMemberRole(ownerMember, anotherOwner)).toBe(true);
+    // Admins still cannot modify owners
+    expect(canModifyMemberRole(adminMember, anotherOwner)).toBe(false);
   });
 
   it('should prevent peer modification for non-wildcard holders', () => {

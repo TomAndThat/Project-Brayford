@@ -15,6 +15,8 @@ import {
   type OrganizationDocument,
   type OrganizationMemberDocument,
   type BrandDocument,
+  hasPermission,
+  USERS_VIEW,
 } from "@brayford/core";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import OrgSwitcher, {
@@ -214,35 +216,37 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <button
-            onClick={() => router.push("/dashboard/users")}
-            data-testid="team-members-card"
-            className="bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Team Members
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Manage your organisation's users
-                </p>
+          {currentMember && hasPermission(currentMember, USERS_VIEW) && (
+            <button
+              onClick={() => router.push("/dashboard/users")}
+              data-testid="team-members-card"
+              className="bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition-shadow"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Team Members
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Manage your organisation's users
+                  </p>
+                </div>
+                <svg
+                  className="w-8 h-8 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                </svg>
               </div>
-              <svg
-                className="w-8 h-8 text-blue-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-            </div>
-          </button>
+            </button>
+          )}
 
           <div
             data-testid="events-card"

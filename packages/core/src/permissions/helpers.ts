@@ -199,7 +199,8 @@ export function requireBrandAccess(
  * Uses the permission system to validate capability, then applies
  * structural constraints:
  * - Must have users:update_role permission
- * - Cannot modify owners (protected role)
+ * - Owners can modify anyone (including other owners)
+ * - Admins can only modify members (not other admins or owners)
  * - Cannot modify yourself (use canChangeSelfRole for self-demotion)
  * 
  * @param actor - Member attempting the action
@@ -215,19 +216,26 @@ export function canModifyMemberRole(
     return false;
   }
   
-  // Cannot modify owners (only owners can self-demote via canChangeSelfRole)
-  if (target.role === 'owner') {
-    return false;
-  }
-  
   // Cannot modify yourself
   if (actor.userId === target.userId) {
     return false;
   }
   
-  // Non-wildcard holders (admins) cannot modify peers who also have update_role
   const actorPermissions = getEffectivePermissions(actor);
-  if (!actorPermissions.some(isWildcardPermission) && hasPermission(target, USERS_UPDATE_ROLE)) {
+  const isActorOwner = actorPermissions.some(isWildcardPermission);
+  
+  // Owners can modify anyone (including other owners)
+  if (isActorOwner) {
+    return true;
+  }
+  
+  // Non-owners (admins) cannot modify owners
+  if (target.role === 'owner') {
+    return false;
+  }
+  
+  // Non-owners (admins) cannot modify peers who also have update_role permission
+  if (hasPermission(target, USERS_UPDATE_ROLE)) {
     return false;
   }
   

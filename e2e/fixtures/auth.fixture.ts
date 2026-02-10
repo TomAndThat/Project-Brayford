@@ -33,6 +33,9 @@ interface AuthFixtures {
 
   /** A page pre-authenticated as a new user with no organization */
   newUserPage: AuthenticatedPage;
+
+  /** A page pre-authenticated as a member user (no users:view permission) */
+  memberPage: AuthenticatedPage;
 }
 
 export const test = base.extend<AuthFixtures>({
@@ -71,6 +74,48 @@ export const test = base.extend<AuthFixtures>({
     const uid = await createTestUser(email, displayName);
 
     // Navigate to the app and sign in
+    await page.goto('/');
+    await signInAsTestUser(page, uid);
+
+    await use({ page, uid, email, displayName });
+  },
+
+  memberPage: async ({ page }, use) => {
+    // Clear previous test data
+    await clearAllEmulatorData();
+
+    // Create member user in Auth Emulator
+    const { email, displayName } = TEST_USERS.member;
+    const uid = await createTestUser(email, displayName);
+
+    // Create a separate owner user for this test org
+    const ownerUid = await createTestUser('owner-for-member-test@test.com', 'Member Test Owner');
+
+    // Seed org with owner + member (member role has no users:view permission)
+    await seedCompleteOrganization({
+      orgId: TEST_ORGS.bbcOrg.id,
+      orgName: TEST_ORGS.bbcOrg.name,
+      orgType: TEST_ORGS.bbcOrg.type,
+      billingEmail: TEST_ORGS.bbcOrg.billingEmail,
+      ownerUid,
+      ownerEmail: 'owner-for-member-test@test.com',
+      ownerDisplayName: 'Member Test Owner',
+    });
+
+    // Add member to the organization
+    const { seedUser, seedOrganizationMember } = await import('../helpers/firestore-seed');
+    const memberId = `${TEST_ORGS.bbcOrg.id}_${uid}`;
+    
+    await seedUser(uid, { email, displayName });
+    await seedOrganizationMember(memberId, {
+      organizationId: TEST_ORGS.bbcOrg.id,
+      userId: uid,
+      role: 'member',
+      brandAccess: [],
+      autoGrantNewBrands: false,
+    });
+
+    // Navigate to the app and sign in as member
     await page.goto('/');
     await signInAsTestUser(page, uid);
 

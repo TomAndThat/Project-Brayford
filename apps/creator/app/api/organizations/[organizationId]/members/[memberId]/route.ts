@@ -106,6 +106,7 @@ export async function DELETE(
       organizationId: targetData.organizationId,
       userId: targetData.userId,
       role: targetData.role,
+      permissions: targetData.permissions || [],
       brandAccess: targetData.brandAccess || [],
     } as OrganizationMember;
 

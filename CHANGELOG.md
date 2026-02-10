@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Edit Team Member**: Owners and admins can now edit member roles and brand access from the dashboard
+  - Edit modal with role selector and brand access checkboxes
+  - Brand access selector shown but disabled for Owner/Admin roles (they have all-brand access)
+  - Warning banner when upgrading a user to Owner role (full control including removing you)
+  - Uses existing secure API route with Firebase Admin SDK
+  - Backend validates permissions and role hierarchy before allowing changes
+  - Automatically updates custom claims to reflect new role/access
+  - Success notification with auto-dismiss toast banner
+- **Remove User from Organisation**: Team members can now be removed from the organisation via the dashboard
+  - Professional modal confirmation dialog with detailed warnings about access loss
+  - Uses secure API route with Firebase Admin SDK (not direct client-side Firestore access)
+  - Backend validates permissions and role hierarchy before allowing removal
+  - Automatically updates custom claims to revoke organisation access immediately
+  - Success/error notifications with auto-dismiss toast banners
+  - Respects permission system: owners and admins can remove members, but admins cannot remove owners
+  - Removed members immediately lose access to all brands and events
+  - Local state updates for instant UI feedback without page reload
+  - Cannot be undone - requires new invitation to re-add removed users
+
+### Changed
+
+- **Owner Role Hierarchy**: Owners can now modify other owners' roles (downgrade/remove), not just admins and members
+  - Enables ownership transitions without requiring self-demotion workarounds
+  - Admins still cannot modify owners or other admins
+  - Updated `canModifyMemberRole` helper and corresponding tests
+
 - **Invitation Email Automation**: Cloud Functions trigger automatically sends invitation emails when invitation documents are created
   - `onInvitationCreated` function: Monitors `invitations` collection and queues emails for pending invitations
   - Completes missing functionality in invitation flow - invites now properly sent

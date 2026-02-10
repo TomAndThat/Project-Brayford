@@ -1,7 +1,7 @@
 # Permissions & Access Control
 
 **Project Brayford** | Organization-Level Permission System  
-_Last Updated: February 9, 2026_
+_Last Updated: February 10, 2026_
 
 ---
 
@@ -112,10 +112,14 @@ _\*\* Members only for brands/events they have access to_
 
 **Restrictions:**
 
-- Cannot modify other owners' roles or permissions
-- Cannot remove other owners from the organisation
 - Last owner cannot demote themselves (prevents org lockout)
 - Owners with 2+ other owners can demote themselves to admin/member
+
+**Owner-to-Owner Actions:**
+
+- Owners can modify other owners' roles (demote to admin/member)
+- Owners can remove other owners from the organisation
+- These actions should be performed with care — consider adding confirmation prompts
 
 **Invitation Rules:**
 
@@ -289,7 +293,7 @@ if (canModifyMemberRole(actor, target)) {
 
 - `canInviteRole(actor, targetRole)`: Owners can invite any role; admins can invite admin/member; members cannot invite anyone
 - `canChangeSelfRole(actor, ownerCount)`: Owners can demote themselves only if ownerCount >= 2
-- `canModifyMemberRole(actor, target)`: Owners can modify anyone except other owners; admins can modify members only
+- `canModifyMemberRole(actor, target)`: Owners can modify anyone (including other owners); admins can modify members only
 
 ### Firestore Security Rules
 
