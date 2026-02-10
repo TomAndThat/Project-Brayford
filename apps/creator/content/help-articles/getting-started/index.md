@@ -20,15 +20,27 @@ Project Brayford is a real-time engagement platform that connects you with your 
 
 ### Organisations
 
-Your organisation is the top-level container for all your content. It handles billing and team member access.
+Everyone who uses Project Brayford joins an organisation. It's the umbrella under which everything else sits.
+
+If you run a production company called Acme Productions, your "Acme Productions" organisation would contain your team members, brands and events.
 
 ### Brands
 
-Brands are your public-facing identities. You can create multiple brands under one organisation—for example, you might have different brands for different show formats or audiences.
+Brands are your public-facing identities.
+
+Let's imagine you have a podcast called "The Acme Podcast".
+
+The Acme Podcast _brand_ would contain all the information Project Brayford needs to know about it: How it appears to audience members, and who from your team is allowed to access it.
+
+Having multiple brands means you can swap your branding in and out easily for different events, without having to re-upload images, text and settings every time.
 
 ### Events
 
-Events are where the magic happens. Each event is a live session where your audience can interact. Events belong to a brand and can include multiple interaction modules like Q&A and polls.
+This is where the magic happens.
+
+Each event is a live session where your audience can interact.
+
+Audiences will scan in to a particular event, and you can manage their experience from the events dashboard.
 
 ## Quick Start
 
