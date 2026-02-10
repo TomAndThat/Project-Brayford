@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { updateUserClaims } from '@/lib/claims';
+import { getPermissionsForRole } from '@brayford/core';
 
 interface AcceptResult {
   accepted: string[];
@@ -181,7 +182,7 @@ async function processInvitation(
       organizationId: invitation.organizationId,
       userId: userId,
       role: invitation.role,
-      permissions: [], // Permissions derived from role via custom claims
+      permissions: getPermissionsForRole(invitation.role),
       brandAccess: invitation.brandAccess || [],
       autoGrantNewBrands: invitation.autoGrantNewBrands ?? false,
       invitedAt: invitation.invitedAt,

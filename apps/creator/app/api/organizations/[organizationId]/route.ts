@@ -69,6 +69,7 @@ export async function PATCH(
       organizationId: memberData.organizationId,
       userId: memberData.userId,
       role: memberData.role,
+      permissions: memberData.permissions || [],
       brandAccess: memberData.brandAccess || [],
     } as OrganizationMember;
 

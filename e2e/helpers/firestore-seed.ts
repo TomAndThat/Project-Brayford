@@ -7,6 +7,7 @@
  */
 
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { getPermissionsForRole } from '@brayford/core';
 
 const db = getFirestore();
 
@@ -50,6 +51,7 @@ export async function seedOrganizationMember(
     .doc(memberId)
     .set({
       ...data,
+      permissions: getPermissionsForRole(data.role),
       joinedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });

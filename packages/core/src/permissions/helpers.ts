@@ -18,15 +18,20 @@ import type { BrandId } from '../types/branded';
 /**
  * Get effective permissions for an organization member
  * 
- * If member has custom permissions array, use that.
- * Otherwise, derive from role.
+ * Reads from the member's permissions array - the source of truth.
+ * The permissions field must always be populated when creating/updating members.
  */
 export function getEffectivePermissions(
   member: OrganizationMember | OrganizationMemberDocument
 ): Permission[] {
-  // Future: Check for custom permissions field
-  // For now, always derive from role
-  return getPermissionsForRole(member.role);
+  if (!member.permissions || member.permissions.length === 0) {
+    throw new Error(
+      `Member ${(member as OrganizationMemberDocument).id || 'unknown'} has no permissions array. ` +
+      'This indicates a data integrity issue - permissions must be populated on member creation.'
+    );
+  }
+  
+  return member.permissions as Permission[];
 }
 
 /**

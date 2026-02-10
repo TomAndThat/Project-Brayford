@@ -73,6 +73,7 @@ export async function POST(
       organizationId: memberData.organizationId,
       userId: memberData.userId,
       role: memberData.role,
+      permissions: memberData.permissions || [],
       brandAccess: memberData.brandAccess || [],
     } as OrganizationMember;
 

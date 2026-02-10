@@ -79,6 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       organizationId: memberData.organizationId,
       userId: memberData.userId,
       role: memberData.role,
+      permissions: memberData.permissions || [],
       brandAccess: memberData.brandAccess || [],
     } as OrganizationMember;
 

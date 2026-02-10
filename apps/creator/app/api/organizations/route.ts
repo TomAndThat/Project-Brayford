@@ -33,6 +33,7 @@ import { authenticateRequest } from "@/lib/api-auth";
 import { updateUserClaims } from "@/lib/claims";
 import {
   validateCreateOrganizationData,
+  getPermissionsForRole,
   type OrganizationType,
 } from "@brayford/core";
 
@@ -104,7 +105,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       organizationId: orgRef.id,
       userId: uid,
       role: "owner",
+      permissions: getPermissionsForRole("owner"),
       brandAccess: [], // Empty = access to all brands
+      autoGrantNewBrands: false,
       invitedAt: null,
       invitedBy: null,
       joinedAt: FieldValue.serverTimestamp(),

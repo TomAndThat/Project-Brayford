@@ -80,6 +80,7 @@ async function verifyBrandPermission(
     organizationId: memberData.organizationId,
     userId: memberData.userId,
     role: memberData.role,
+    permissions: memberData.permissions || [],
     brandAccess: memberData.brandAccess || [],
   } as OrganizationMember;
 

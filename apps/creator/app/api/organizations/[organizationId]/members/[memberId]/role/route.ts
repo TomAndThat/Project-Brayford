@@ -23,6 +23,7 @@ import { updateUserClaims } from "@/lib/claims";
 import {
   hasPermission,
   canModifyMemberRole,
+  getPermissionsForRole,
   USERS_UPDATE_ROLE,
   USERS_UPDATE_ACCESS,
   validateUpdateOrganizationMemberData,
@@ -83,6 +84,7 @@ export async function PATCH(
       organizationId: actorData.organizationId,
       userId: actorData.userId,
       role: actorData.role,
+      permissions: actorData.permissions || [],
       brandAccess: actorData.brandAccess || [],
     } as OrganizationMember;
 
@@ -155,7 +157,12 @@ export async function PATCH(
     }
 
     // 6. Update the member
-    await targetRef.update(validatedData);
+    // If role is being changed, update permissions to match
+    const updateData: Record<string, unknown> = { ...validatedData };
+    if (validatedData.role !== undefined) {
+      updateData.permissions = getPermissionsForRole(validatedData.role);
+    }
+    await targetRef.update(updateData);
 
     // 7. Sync claims for the target user (reflects new role/access)
     await updateUserClaims(targetData.userId);

@@ -115,6 +115,7 @@ interface UserClaims {
 interface MembershipData {
   organizationId: string;
   role: OrganizationRole;
+  permissions: string[];
   brandAccess: string[];
 }
 
@@ -132,9 +133,9 @@ export function buildUserClaims(
   const orgs: Record<string, OrgClaim> = {};
 
   for (const membership of memberships) {
-    const permissions = getPermissionsForRole(membership.role);
-    const abbreviated = permissions.map(
-      (p) => abbreviatePermission(p.toString()),
+    // Read permissions from the membership - the source of truth
+    const abbreviated = membership.permissions.map(
+      (p) => abbreviatePermission(p),
     );
 
     orgs[membership.organizationId] = {
@@ -169,6 +170,7 @@ export async function getUserMemberships(
     return {
       organizationId: data.organizationId as string,
       role: data.role as OrganizationRole,
+      permissions: (data.permissions as string[]) ?? [],
       brandAccess: (data.brandAccess as string[]) ?? [],
     };
   });

@@ -18,6 +18,7 @@ import type {
 } from '../../schemas';
 import type { UserId, OrganizationId, BrandId, InvitationId } from '../../types/branded';
 import { toBranded } from '../../types/branded';
+import { getPermissionsForRole } from '../../permissions';
 
 /**
  * Create a valid User object for testing
@@ -90,10 +91,14 @@ export function createMockCreateOrganizationData(
 export function createMockOrganizationMember(
   overrides?: Partial<OrganizationMember>
 ): OrganizationMember {
+  const role = overrides?.role ?? 'owner';
+  const permissions = overrides?.permissions ?? getPermissionsForRole(role);
+  
   return {
     organizationId: 'test-org-123',
     userId: 'test-user-123',
-    role: 'owner',
+    role,
+    permissions,
     brandAccess: [],
     autoGrantNewBrands: false,
     invitedAt: null,

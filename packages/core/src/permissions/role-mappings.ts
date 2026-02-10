@@ -83,8 +83,6 @@ const ADMIN_PERMISSIONS: Permission[] = [
  * Can create and manage events, but cannot invite users or manage brands
  */
 const MEMBER_PERMISSIONS: Permission[] = [
-  // User viewing
-  USERS_VIEW,
   // Brand access (limited to brandAccess array)
   BRANDS_VIEW,
   BRANDS_UPDATE,

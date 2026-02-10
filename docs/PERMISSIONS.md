@@ -17,6 +17,10 @@ Project Brayford uses a **capability-based permission system** at the backend le
 - **Permissions are granular** - easy to add new capabilities as features grow
 - **Future-proof** - supports custom permissions per member without schema changes
 
+### Absolutely Vital Guiding Principle
+
+- **Capabilities determine permissions, not roles** - while we may use roles to simplify capabilities for users, we _never_ check permissions against a role
+
 ---
 
 ## Permission Categories
@@ -39,7 +43,7 @@ Permissions are organized by domain and action type:
 | Permission            | Description                        | Owner | Admin | Member |
 | --------------------- | ---------------------------------- | ----- | ----- | ------ |
 | `users:invite`        | Send invitations to new users      | ✅    | ✅    | ❌     |
-| `users:view`          | View list of organization members  | ✅    | ✅    | ✅     |
+| `users:view`          | View list of organization members  | ✅    | ✅    | ❌     |
 | `users:update_role`   | Change member roles (except owner) | ✅    | ✅\*  | ❌     |
 | `users:update_access` | Modify brand access for members    | ✅    | ✅    | ❌     |
 | `users:remove`        | Remove members from organization   | ✅    | ✅\*  | ❌     |
@@ -179,7 +183,6 @@ analytics:export
 **Permissions:**
 
 ```
-users:view
 brands:view (restricted)
 brands:update (restricted)
 events:create (restricted)
