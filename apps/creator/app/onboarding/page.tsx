@@ -101,6 +101,10 @@ export default function OnboardingPage() {
         throw new Error(errorData.error || "Failed to create organisation");
       }
 
+      // Force token refresh to pick up the custom claims set by the API route.
+      // Without this, Firestore rules that check isOrgMember() would reject reads.
+      await user.getIdToken(true);
+
       // Redirect to dashboard
       router.push("/dashboard");
     } catch (error) {
@@ -193,7 +197,9 @@ export default function OnboardingPage() {
                   htmlFor="organizationName"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Organisation Name
+                  {selectedType === "individual"
+                    ? "What shall we call your project? This can be your name, the name of your team or organisation, or something else"
+                    : "Organisation Name"}
                 </label>
                 <input
                   {...register("organizationName", {

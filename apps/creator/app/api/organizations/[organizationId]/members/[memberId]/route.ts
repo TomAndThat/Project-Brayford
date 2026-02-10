@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { authenticateRequest } from "@/lib/api-auth";
+import { updateUserClaims } from "@/lib/claims";
 import {
   hasPermission,
   canModifyMemberRole,
@@ -116,6 +117,9 @@ export async function DELETE(
 
     // 5. Delete the member document
     await targetRef.delete();
+
+    // 6. Sync claims for the removed user (revokes org access)
+    await updateUserClaims(targetData.userId);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

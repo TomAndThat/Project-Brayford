@@ -55,12 +55,19 @@ service cloud.firestore {
     }
 
     // ===== Organization Members Collection =====
-    // Only fellow org members can read membership records.
-    // Client queries MUST include .where('organizationId', '==', orgId)
-    // so Firestore can verify the constraint against claims.
+    // Readable by:
+    //   (a) the member themselves (needed for bootstrap: getUserOrganizations
+    //       queries by userId to discover which orgs the user belongs to,
+    //       before any org-specific claims are available), OR
+    //   (b) fellow org members (for team listings; client queries MUST include
+    //       .where('organizationId', '==', orgId) so Firestore can verify
+    //       the constraint against claims).
     // All writes go through server-side API routes (Firebase Admin SDK).
     match /organizationMembers/{memberId} {
-      allow read: if isOrgMember(resource.data.organizationId);
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.userId
+        || isOrgMember(resource.data.organizationId)
+      );
       allow write: if false;
     }
 

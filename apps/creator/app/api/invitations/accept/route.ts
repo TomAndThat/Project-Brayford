@@ -24,6 +24,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { updateUserClaims } from '@/lib/claims';
 
 interface AcceptResult {
   accepted: string[];
@@ -92,6 +93,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // 4. Ensure user document exists (create if new user via Flow B)
     await ensureUserDocument(userId, decodedToken);
+
+    // 5. Sync custom claims if any invitations were actually accepted
+    if (result.accepted.length > 0) {
+      await updateUserClaims(userId);
+    }
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {

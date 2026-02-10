@@ -30,6 +30,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { authenticateRequest } from "@/lib/api-auth";
+import { updateUserClaims } from "@/lib/claims";
 import {
   validateCreateOrganizationData,
   type OrganizationType,
@@ -110,6 +111,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     await batch.commit();
+
+    // Sync custom claims synchronously so the client can read
+    // claims-gated collections immediately after redirect
+    await updateUserClaims(uid);
 
     return NextResponse.json(
       { organizationId: orgRef.id },
