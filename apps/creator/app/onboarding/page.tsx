@@ -57,8 +57,19 @@ export default function OnboardingPage() {
       const userId = toBranded<UserId>(user.uid);
       const memberships = await getUserOrganizations(userId);
 
-      if (memberships.length > 0) {
-        // User already has organization, skip onboarding
+      // Filter out soft-deleted organizations
+      const activeMemberships = await Promise.all(
+        memberships.map(async (m) => {
+          const { getOrganization } = await import("@brayford/firebase-utils");
+          const org = await getOrganization(m.organizationId);
+          return org?.softDeletedAt ? null : m;
+        }),
+      );
+
+      const activeOrgCount = activeMemberships.filter((m) => m !== null).length;
+
+      if (activeOrgCount > 0) {
+        // User already has active organization, skip onboarding
         router.push("/dashboard");
       }
     } catch (error) {

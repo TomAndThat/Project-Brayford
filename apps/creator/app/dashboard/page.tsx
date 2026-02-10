@@ -39,18 +39,32 @@ export default function DashboardPage() {
   const [currentMember, setCurrentMember] =
     useState<OrganizationMemberDocument | null>(null);
 
-  const loadOrgData = useCallback(async (orgId: OrganizationId) => {
-    const org = await getOrganization(orgId);
-    if (org) {
-      setOrganization(org);
-      const orgBrands = await getOrganizationBrands(orgId);
-      setBrands(orgBrands);
-      // Persist the selected org
-      if (typeof window !== "undefined") {
-        localStorage.setItem(SELECTED_ORG_KEY, orgId as string);
+  const loadOrgData = useCallback(
+    async (orgId: OrganizationId) => {
+      const org = await getOrganization(orgId);
+
+      // Check if organization is soft-deleted
+      if (org?.softDeletedAt) {
+        // Organization has been deleted, redirect to onboarding
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(SELECTED_ORG_KEY);
+        }
+        router.push("/onboarding");
+        return;
       }
-    }
-  }, []);
+
+      if (org) {
+        setOrganization(org);
+        const orgBrands = await getOrganizationBrands(orgId);
+        setBrands(orgBrands);
+        // Persist the selected org
+        if (typeof window !== "undefined") {
+          localStorage.setItem(SELECTED_ORG_KEY, orgId as string);
+        }
+      }
+    },
+    [router],
+  );
 
   const loadUserData = useCallback(async () => {
     if (!user) return;
@@ -66,17 +80,30 @@ export default function DashboardPage() {
 
       setMemberships(userMemberships);
 
-      // Load org names for the switcher
-      const orgItems: OrgSwitcherItem[] = await Promise.all(
-        userMemberships.map(async (m) => {
-          const org = await getOrganization(m.organizationId);
-          return {
-            id: m.organizationId,
-            name: org?.name ?? "Unknown",
-            role: m.role,
-          };
-        }),
-      );
+      // Load org names for the switcher - filter out soft-deleted organizations
+      const orgItems: OrgSwitcherItem[] = (
+        await Promise.all(
+          userMemberships.map(async (m) => {
+            const org = await getOrganization(m.organizationId);
+            // Skip soft-deleted organizations
+            if (org?.softDeletedAt) {
+              return null;
+            }
+            return {
+              id: m.organizationId,
+              name: org?.name ?? "Unknown",
+              role: m.role,
+            };
+          }),
+        )
+      ).filter((item): item is OrgSwitcherItem => item !== null);
+
+      // If no active organizations remain, redirect to onboarding
+      if (orgItems.length === 0) {
+        router.push("/onboarding");
+        return;
+      }
+
       setAllOrgs(orgItems);
 
       // Determine which org to show
@@ -90,7 +117,23 @@ export default function DashboardPage() {
           )
         : null;
 
-      const targetMembership = savedMembership || userMemberships[0]!;
+      // Ensure the saved org is not soft-deleted
+      let targetMembership = savedMembership;
+      if (targetMembership) {
+        const savedOrg = await getOrganization(targetMembership.organizationId);
+        if (savedOrg?.softDeletedAt) {
+          targetMembership = null; // Fall back to first active org
+        }
+      }
+
+      // Fall back to first active organization
+      if (!targetMembership) {
+        const firstActiveOrgId = orgItems[0]?.id;
+        targetMembership =
+          userMemberships.find((m) => m.organizationId === firstActiveOrgId) ||
+          userMemberships[0]!;
+      }
+
       setCurrentMember(targetMembership);
 
       await loadOrgData(targetMembership.organizationId);
