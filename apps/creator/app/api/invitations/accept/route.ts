@@ -181,7 +181,7 @@ async function processInvitation(
       organizationId: invitation.organizationId,
       userId: userId,
       role: invitation.role,
-      permissions: null, // Derive from role
+      permissions: [], // Permissions derived from role via custom claims
       brandAccess: invitation.brandAccess || [],
       autoGrantNewBrands: invitation.autoGrantNewBrands ?? false,
       invitedAt: invitation.invitedAt,

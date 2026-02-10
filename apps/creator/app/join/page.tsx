@@ -5,16 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { auth } from "@brayford/firebase-utils";
 import {
-  getInvitationByToken,
-  getPendingInvitationsByEmail,
-} from "@brayford/firebase-utils";
-import {
   fromBranded,
   type InvitationDocument,
   type InvitationId,
   isInvitationExpired,
   isInvitationActionable,
   getRoleDisplayName,
+  toBranded,
 } from "@brayford/core";
 
 /**
@@ -64,12 +61,30 @@ function JoinPageContent() {
     }
 
     try {
-      const invitation = await getInvitationByToken(token);
+      // Fetch invitation via public API (works for unauthenticated users)
+      const response = await fetch(`/api/invitations/token/${token}`);
 
-      if (!invitation) {
-        setState("invalid-token");
+      if (!response.ok) {
+        if (response.status === 404) {
+          setState("invalid-token");
+        } else {
+          throw new Error("Failed to fetch invitation");
+        }
         return;
       }
+
+      const { invitation: rawInvitation } = await response.json();
+
+      // Convert ISO date strings back to Date objects and apply branded types
+      const invitation: InvitationDocument = {
+        ...rawInvitation,
+        id: toBranded<InvitationId>(rawInvitation.id),
+        invitedAt: new Date(rawInvitation.invitedAt),
+        expiresAt: new Date(rawInvitation.expiresAt),
+        acceptedAt: rawInvitation.acceptedAt
+          ? new Date(rawInvitation.acceptedAt)
+          : undefined,
+      };
 
       if (invitation.status === "accepted") {
         setState("already-used");
@@ -99,9 +114,35 @@ function JoinPageContent() {
           return;
         }
 
-        // Load all pending invitations for this email
-        const pending = await getPendingInvitationsByEmail(invitation.email);
-        // Filter to only actionable invitations
+        // Load all pending invitations for this email via authenticated API
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          setState("needs-auth");
+          return;
+        }
+
+        const idToken = await currentUser.getIdToken();
+        const pendingResponse = await fetch("/api/invitations/pending", {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
+
+        if (!pendingResponse.ok) {
+          throw new Error("Failed to fetch pending invitations");
+        }
+
+        const { invitations: rawPending } = await pendingResponse.json();
+
+        // Convert and filter to only actionable invitations
+        const pending: InvitationDocument[] = rawPending.map((inv: any) => ({
+          ...inv,
+          id: toBranded<InvitationId>(inv.id),
+          invitedAt: new Date(inv.invitedAt),
+          expiresAt: new Date(inv.expiresAt),
+          acceptedAt: inv.acceptedAt ? new Date(inv.acceptedAt) : undefined,
+        }));
+
         const actionable = pending.filter(isInvitationActionable);
         setAllInvitations(actionable);
         setSelectedIds(new Set(actionable.map((i) => fromBranded(i.id))));

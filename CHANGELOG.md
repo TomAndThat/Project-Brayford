@@ -9,11 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Invitation Email Automation**: Cloud Functions trigger automatically sends invitation emails when invitation documents are created
+  - `onInvitationCreated` function: Monitors `invitations` collection and queues emails for pending invitations
+  - Completes missing functionality in invitation flow - invites now properly sent
+  - See [docs/briefs/INVITATION_SYSTEM.md](docs/briefs/INVITATION_SYSTEM.md) for invitation flow
+- **Email Queue System Implementation**: Cloud Functions-based email delivery with Firestore queue
+  - `processTransactionalEmail` function: Processes immediate-delivery emails on document creation
+  - `processBulkEmailBatch` function: Scheduled function processes batch emails every minute
+  - Firestore-backed rate limiting with sliding window algorithm (works across distributed instances)
+  - `EMAIL_DEV_MODE` environment variable: Logs emails to console instead of sending via Postmark
+  - Email queue schema in `@brayford/core` with full Zod validation and TypeScript types
+  - Postmark integration with template support and error handling
+  - Firestore indexes and security rules for `emailQueue` collection
+  - 41 unit tests for email queue schema and helper functions
+  - See [docs/briefs/EMAIL_QUEUE_SYSTEM.md](docs/briefs/EMAIL_QUEUE_SYSTEM.md) for full architecture
 - **Organisation Deletion**: Multi-step deletion flow with safety measures and 28-day grace period
   - Type-to-confirm deletion initiation in organisation settings (users must type org name exactly)
   - Email confirmation required within 24 hours (sent to requester with secure token)
   - Soft delete on confirmation — organisation marked as deleted, access immediately revoked
-  - 24-hour undo window — alert emails sent to all users with `org:delete` permission containing undo link
+  - 24-hour undo window — requester receives undo email, plus alert emails sent to other users with `org:delete` permission
   - Scheduled permanent deletion after 28 days via Firebase Functions (`cleanupDeletedOrganizations`)
   - Final notification emails sent to all former members when deletion completes
   - Permission-gated UI — only users with `org:delete` permission can initiate deletion
@@ -29,8 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Test factory `createMockOrganizationDeletion()` for consistent test data
   - 48 comprehensive unit tests covering all scenarios
 - **Deletion Email Templates** (`@brayford/email-utils`): Three email types for deletion flow
-  - Confirmation email: sent to requester, must click within 24 hours
-  - Alert email: sent to all users with `org:delete` permission when deletion confirmed (includes undo link valid for 24 hours)
+  - Confirmation email: sent to requester, must click within 24 hours (no cancellation needed - just don't click!)
+  - Alert email: sent to requester after confirmation, plus other users with `org:delete` permission (includes undo link valid for 24 hours)
   - Completion email: sent to all former members when permanent deletion executes
   - Dev mode link extraction: URLs automatically logged as clickable links in console
   - UK English date/time formatting throughout
@@ -49,6 +63,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Invitation Acceptance Flow**: Unauthenticated users can now view invitation details before signing in
+  - Added `GET /api/invitations/token/[token]` endpoint: Public API route for fetching invitation by token using Firebase Admin SDK (bypasses Firestore security rules)
+  - Added `GET /api/invitations/pending` endpoint: Authenticated API route for fetching all pending invitations for current user's email
+  - Updated join page (`/join`) to use API routes instead of direct Firestore queries
+  - Resolves "Failed to load invitation: FirebaseError: false != true @ L137" error when clicking invitation links
+  - **Root cause**: Firestore security rules require authentication to read invitations, but users need to see invitation details before deciding to sign in
+- **Organisation Deletion**: Three critical fixes to deletion flow
+  1. **Requester not receiving undo link**: Requester now receives an undo email after confirming deletion (previously only sent to other admins with `org:delete` permission). Better UX: users can "cancel" before confirming by simply not clicking the confirmation link (expires in 24h), and after confirming they receive an undo link valid for 24h.
+  2. **Soft-deleted organisations accessible**: Dashboard and onboarding now filter out organisations with `softDeletedAt` set, preventing access to deleted organisations. Users attempting to access a soft-deleted org are redirected to onboarding.
+  3. **Confirmation link reusable**: Confirmation token now invalidated (set to `null`) after successful use, preventing replay attacks.
 - **Email Utils**: Rate limiter argument order corrected in `sendDeletionConfirmEmail()` and `sendInvitationEmail()`
   - `withRateLimit` signature is `(fn, options)` but was being called with `(options, fn)`
   - Caused `TypeError: Cannot read properties of undefined (reading 'maxPerMinute')` at runtime
@@ -65,6 +89,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Email Delivery Architecture**: Migrated all email sending from direct API calls to Firestore-backed queue system
+  - Organisation deletion emails (confirm, alert, complete) now use `emailQueue` collection
+  - Invitation emails now sent via Cloud Functions trigger on invitation creation
+  - Benefits: Automatic retries, distributed rate limiting, audit trail, dev mode support
+  - Old `@brayford/email-utils` helper functions (`sendDeletionConfirmEmail`, `sendDeletionAlertEmail`, `sendDeletionCompleteEmail`) replaced with direct queue writes
+  - All emails now sent via `processTransactionalEmail` or `processBulkEmailBatch` functions
 - **Email Dev Mode Logging**: URLs now extracted and displayed as clickable links after email content
   - Searches template data for any field ending with "Url", "url", "Link", or "link"
   - Displays links in clean format: `🔗 Clickable Links: confirmationUrl: https://...`
