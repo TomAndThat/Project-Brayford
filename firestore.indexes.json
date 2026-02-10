@@ -58,6 +58,15 @@
       "collectionGroup": "brands",
       "queryScope": "COLLECTION",
       "fields": [{ "fieldPath": "organizationId", "order": "ASCENDING" }]
+    },
+    {
+      "collectionGroup": "emailQueue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deliveryMode", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

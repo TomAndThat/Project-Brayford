@@ -100,6 +100,31 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ===== Email Queue =====
+    // Queue-based email delivery system.
+    // Users can create pending emails (triggers Cloud Function processing).
+    // Only Cloud Functions can update status (uses Admin SDK).
+    match /emailQueue/{emailId} {
+      // Authenticated users can queue emails with valid initial state
+      allow create: if request.auth != null
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.attempts == 0
+                    && request.resource.data.to.matches('^[^@]+@[^@]+\\.[^@]+$');
+      
+      // Users can read emails they triggered (via metadata.userId)
+      allow read: if request.auth != null
+                  && request.auth.uid == resource.data.metadata.userId;
+      
+      // Only Cloud Functions can update (uses Admin SDK, bypasses rules)
+      allow update: if false;
+      allow delete: if false;
+      
+      // Rate limit subcollection - server-only
+      match /_rateLimits/{scope}/{type} {
+        allow read, write: if false;
+      }
+    }
+
     // ===== Deleted Organizations Audit =====
     // Server-side only (created by Cloud Functions).
     match /deletedOrganizationsAudit/{auditId} {
