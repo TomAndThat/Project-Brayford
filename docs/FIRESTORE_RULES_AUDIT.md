@@ -15,8 +15,17 @@ This document provides an exhaustive audit of every Firestore operation in the P
 - ⚠️ Rules have TODOs and lack proper permission validation
 - ❌ Missing rules for: `organizationDeletionRequests`, `deletedOrganizationsAudit`
 - ❌ Client-side Firebase SDK operations lack proper authorization checks
+- 🔴 **CRITICAL:** Backend code uses **roles as permission checks** instead of the capability-based system (architectural anti-pattern)
 
 **Collections Audited:** 7 collections across 4 domains
+
+**Critical Findings:**
+
+1. **Architectural Flaw:** Core permission helpers and API routes check `role === 'owner'` instead of using `hasPermission()`, creating two sources of truth
+2. **Security Gaps:** 8 distinct security vulnerabilities ranging from missing rules to cross-organization data leakage
+3. **Rule Recommendations:** Original recommendations perpetuated the role-based anti-pattern and have been corrected to use permission-based claims
+
+**Priority:** The architectural flaw must be fixed **before** implementing custom claims, as it affects the entire authorization system.
 
 ---
 
@@ -1049,6 +1058,218 @@ match /deletedOrganizationsAudit/{auditId} {
 
 ## Critical Security Gaps
 
+### 0. Role-Based Permission Checks (Architectural Anti-Pattern)
+
+**Severity:** 🔴 CRITICAL - ARCHITECTURAL FLAW
+
+**Affected Code:** Core permission system, API routes, Firestore rules recommendations
+
+**Issue:** The codebase uses **roles as permission checks** instead of the capability-based permission system. This creates **two sources of truth** for authorization decisions and violates the single-responsibility principle.
+
+**Locations Where Roles Are Used as Permission Determiners:**
+
+#### 1. Core Permission Helpers (`packages/core/src/permissions/helpers.ts`)
+
+**Lines 147-156: `hasBrandAccess()`**
+
+```typescript
+export function hasBrandAccess(
+  member: OrganizationMember | OrganizationMemberDocument,
+  brandId: string | BrandId,
+): boolean {
+  // Owner and admin have access to all brands
+  if (member.role === "owner" || member.role === "admin") {
+    return true;
+  }
+  // ...
+}
+```
+
+❌ **WRONG:** Checking role instead of permission  
+✅ **SHOULD BE:** Check `hasPermission(member, BRANDS_VIEW)` and then check brandAccess array for members
+
+**Lines 192-210: `canModifyMemberRole()`**
+
+```typescript
+export function canModifyMemberRole(
+  actor: OrganizationMember | OrganizationMemberDocument,
+  target: OrganizationMember | OrganizationMemberDocument,
+): boolean {
+  // Members cannot modify anyone
+  if (actor.role === "member") {
+    return false;
+  }
+
+  // Admins can only modify members
+  if (actor.role === "admin") {
+    return target.role === "member";
+  }
+
+  // Owners can modify anyone except other owners
+  if (actor.role === "owner") {
+    return target.role !== "owner";
+  }
+
+  return false;
+}
+```
+
+❌ **WRONG:** Role-based logic instead of permission checks  
+✅ **SHOULD BE:** Check `hasPermission(actor, USERS_UPDATE_ROLE)` and validate target's role separately
+
+**Lines 239-265: `canInviteRole()`**
+
+```typescript
+export function canInviteRole(
+  actor: OrganizationMember | OrganizationMemberDocument,
+  targetRole: OrganizationRole,
+): boolean {
+  // Members cannot invite anyone
+  if (actor.role === "member") {
+    return false;
+  }
+
+  // Admins can invite admin or member, but not owner
+  if (actor.role === "admin") {
+    return targetRole !== "owner";
+  }
+
+  // Owners can invite any role
+  if (actor.role === "owner") {
+    return true;
+  }
+
+  return false;
+}
+```
+
+❌ **WRONG:** Role-based authorization  
+✅ **SHOULD BE:** Check `hasPermission(actor, USERS_INVITE)` and have separate validation for owner-level invitations
+
+**Lines 284-296: `canChangeSelfRole()`**
+
+```typescript
+export function canChangeSelfRole(
+  actor: OrganizationMember | OrganizationMemberDocument,
+  currentOwnerCount: number,
+): boolean {
+  // Only owners can use this check
+  if (actor.role !== "owner") {
+    return false;
+  }
+
+  // Owner can demote self if at least one other owner remains
+  return currentOwnerCount >= 2;
+}
+```
+
+❌ **WRONG:** Role check instead of permission  
+✅ **SHOULD BE:** Check appropriate permission and validate owner count separately
+
+#### 2. API Routes
+
+**`apps/creator/app/api/organizations/deletion/confirm/route.ts:184`**
+
+```typescript
+const hasDeletePerm =
+  permissions.includes("org:delete") ||
+  permissions.includes("*") ||
+  (permissions.length === 0 && member.role === "owner");
+```
+
+❌ **WRONG:** Falling back to role check when permissions are empty  
+✅ **SHOULD BE:** Always use the permission system; if permissions are empty, call `getPermissionsForRole(member.role)` first
+
+#### 3. This Audit Document
+
+**Multiple locations recommending role-based checks:**
+
+- Line 1511-1512: `if (role == "owner") return true;`
+- Throughout: `hasOrgRole(organizationId, 'owner')` recommendations
+- Throughout: Checking roles in Firestore rules instead of permissions
+
+❌ **WRONG:** Perpetuating the anti-pattern in recommendations  
+✅ **SHOULD BE:** All recommendations should use permission checks
+
+**Why This Is Critical:**
+
+1. **Two Sources of Truth:**
+   - Permission system says: "Check capabilities (USERS_INVITE, BRANDS_CREATE, etc.)"
+   - Role checks say: "If owner, allow everything; if admin, allow most things"
+   - These can diverge, creating security holes
+
+2. **Future-Proofing Failure:**
+   - When custom permissions are added (user-specific permission overrides), role checks will bypass them entirely
+   - Cannot implement features like "admin with reduced permissions" or "member with elevated permissions"
+
+3. **Testing Complexity:**
+   - Must test both permission paths and role paths
+   - Role-based logic is duplicated across multiple functions
+   - Changes to permission model require updating multiple disconnected places
+
+4. **Security Risk:**
+   - Easy to forget a role check somewhere
+   - Easy to get role hierarchy wrong (can admin modify owner? depends on where you check!)
+   - Role checks are implicit business logic embedded in authorization code
+
+**Correct Architecture:**
+
+**Roles Should ONLY:**
+
+- Serve as **UI labels** for users to understand their access level
+- Map to **default permission sets** in `role-mappings.ts`
+- Be stored in the database for auditing purposes
+
+**Permissions Should Be:**
+
+- The **single source of truth** for all authorization decisions
+- Checked by **every** backend operation that requires authorization
+- Derived from roles via `getPermissionsForRole()` but can be overridden with custom permissions
+
+**Example Refactor:**
+
+```typescript
+// ❌ BEFORE (role-based)
+export function hasBrandAccess(
+  member: OrganizationMember,
+  brandId: BrandId,
+): boolean {
+  if (member.role === "owner" || member.role === "admin") {
+    return true;
+  }
+  return member.brandAccess.includes(brandId);
+}
+
+// ✅ AFTER (permission-based)
+export function hasBrandAccess(
+  member: OrganizationMember,
+  brandId: BrandId,
+): boolean {
+  // First check if they have brand viewing permission at all
+  if (!hasPermission(member, BRANDS_VIEW)) {
+    return false;
+  }
+
+  // Owners and admins have implicit all-brand access
+  // But we check this via their brandAccess array being empty, not via role
+  if (member.brandAccess.length === 0) {
+    return true; // Empty brandAccess = access to all brands
+  }
+
+  // Members must have explicit brand access
+  return member.brandAccess.includes(brandId);
+}
+```
+
+**Recommendation:**
+
+1. **Immediate:** Remove all role checks from permission helpers
+2. **Short-term:** Refactor API routes to use permission system only
+3. **Medium-term:** Remove `canInviteRole()`, `canModifyMemberRole()`, `canChangeSelfRole()` - replace with permission checks
+4. **Long-term:** Implement custom permissions field on organizationMembers to enable per-user permission overrides
+
+---
+
 ### 1. Missing Permission Validation
 
 **Severity:** 🔴 CRITICAL
@@ -1255,71 +1476,179 @@ allow read: if request.auth.token.email.lower() == resource.data.email.lower();
 
 ## Recommended Actions
 
-### Immediate (Critical Security)
+> **⚠️ Revised Ordering (10 Feb 2026):** The original action ordering has been restructured. Moving to a server-side model early (originally Action #16) dramatically reduces the complexity of securing Firestore rules. By denying all client-side writes first, we eliminate the need for intricate per-collection write rules (original Actions #4, #7) and simplify the custom claims implementation (only needed for reads, not writes). Action #1 remains the prerequisite for everything, as the refactored permission helpers are used by the new server-side API routes.
 
-1. **Implement Custom Claims for Organization Membership**
-   - Add organizationMemberships map to Firebase Auth custom claims
-   - Structure: `{ "org-id-1": "owner", "org-id-2": "admin" }`
-   - Update claims when membership changes
-   - Use in rules: `request.auth.token.organizationMemberships[organizationId]`
+### Phase 1: Foundation (Critical — Must Be Done First) ✅ COMPLETE
 
-2. **Fix Critical Permission Gaps**
-   - Update `organizations` rules to check membership
-   - Update `organizationMembers` rules to prevent privilege escalation
-   - Update `brands` rules to check organization membership
-   - Update `invitations` rules to validate inviter permissions
+1. **Refactor Role-Based Permission Checks** ✅
+   - ~~**HIGHEST PRIORITY** — prerequisite for all server-side routes~~
+   - ✅ Removed all `member.role === 'owner/admin/member'` authorization checks from permission helpers
+   - ✅ Refactored `hasBrandAccess()` → uses `hasPermission(member, BRANDS_VIEW)` + `BRANDS_CREATE` for all-brand access disambiguation
+   - ✅ Refactored `canModifyMemberRole()` → uses `hasPermission(actor, USERS_UPDATE_ROLE)` + wildcard-based peer protection
+   - ✅ Refactored `canInviteRole()` → uses `hasPermission(actor, USERS_INVITE)` + wildcard check for owner invitations
+   - ✅ Refactored `canChangeSelfRole()` → uses `isWildcardPermission()` instead of role check
+   - ✅ Updated 3 API routes to use `getPermissionsForRole()` instead of role fallbacks (`confirm/route.ts`, `undo/route.ts`, `initiate/route.ts`)
+   - ✅ Updated test descriptions to use permission-based language
+   - ✅ Added 7 new permission-based behaviour validation tests (45 total, all passing)
+   - ✅ Fixed pre-existing branded type error in `hasBrandAccess()`
+   - **Note:** Target role checks (e.g. `target.role === 'owner'`) are retained as protection rules, not authorization checks — only actor role checks were removed
 
-3. **Add Missing Collection Rules**
-   - Define explicit rules for `organizationDeletionRequests`
-   - Define explicit rules for `deletedOrganizationsAudit`
+### Phase 2: Server-Side Model + Deny-All Rules (Eliminates Most Security Gaps) ✅ COMPLETE
 
-4. **Deploy Firebase App Check**
-   - Prevent automated abuse
+2. **Move Administrative Operations to Server-Side API Routes + Deny All Client Writes** ✅
+   - **Combines original Actions #2, #4, #7, #13, #16** — doing this early eliminates the need for complex per-collection write rules, field-level validation in rules, and most permission gap fixes
+   - ✅ Already server-side: Invitation acceptance, organization deletion
+   - ✅ Shared auth utility created: `apps/creator/lib/api-auth.ts` — `authenticateRequest()` extracts and verifies Bearer tokens
+   - ✅ **Server-side API routes created:**
+     - `POST /api/organizations` — Creates org + owner membership atomically (batch write)
+     - `PATCH /api/organizations/[organizationId]` — Updates org settings with `org:update` permission check
+     - `POST /api/organizations/[organizationId]/members/[memberId]/role` — Updates member role/access with `users:update_role`/`users:update_access` + peer protection
+     - `DELETE /api/organizations/[organizationId]/members/[memberId]` — Removes member with `users:remove` + role hierarchy checks
+     - `POST /api/invitations/create` — Creates invitation with `users:invite` + `canInviteRole()` + duplicate detection + server-side token generation
+     - `POST /api/invitations/[invitationId]/resend` — Resets expiry with `users:invite` permission check
+     - `POST /api/invitations/[invitationId]/cancel` — Sets status to 'cancelled' (improved from deleteDoc for audit trail) with `users:invite` permission check
+     - `POST /api/invitations/[invitationId]/decline` — Sets status to 'declined' with email ownership verification
+     - `POST /api/brands` — Creates brand with `brands:create` permission check + auto-grant logic
+     - `PATCH /api/brands/[brandId]` — Updates brand with `brands:update` permission check
+     - `DELETE /api/brands/[brandId]` — Soft-deletes brand with `brands:delete` permission check
+   - ✅ **Client-side callers migrated:**
+     - `apps/creator/app/onboarding/page.tsx` — Now calls `POST /api/organizations` instead of client-side `createOrganization()`
+     - `apps/creator/components/invitations/InviteUserModal.tsx` — Now calls `POST /api/invitations/create` and `POST /api/invitations/[id]/resend` instead of client-side functions
+     - `apps/creator/components/invitations/PendingInvitationsList.tsx` — Now calls `POST /api/invitations/[id]/resend` and `POST /api/invitations/[id]/cancel` instead of client-side functions
+     - `apps/creator/app/join/page.tsx` — Now calls `POST /api/invitations/[id]/decline` instead of client-side `declineInvitation()`
+   - ✅ **Firestore rules updated to deny-all client writes:**
+     - Organizations: `allow write: if false` (reads remain for authenticated users)
+     - OrganizationMembers: `allow write: if false` (reads remain for authenticated users)
+     - Brands: `allow write: if false` (reads remain for authenticated users)
+     - Invitations: `allow write: if false` (reads remain for authenticated users)
+     - Users: create own profile, update own profile with field immutability guards (uid, email, authProvider, createdAt), no delete
+   - ✅ Can stay client-side with strict rules:
+     - User profile updates (displayName, photoURL only)
+     - Real-time audience interactions (questions, votes, reactions) — Phase 3+
+   - **Benefits:**
+     - Single validation point (no rule duplication)
+     - Complex business logic (checking multiple collections)
+     - Atomic transactions (organisation + membership creation)
+     - Easier testing and debugging
+     - Simpler Firestore rules (mostly deny with server-side allowlist)
+   - **Implementation:** Create Next.js API routes with Admin SDK for all administrative operations
+   - **API Routes to Create:**
+     - `POST /api/organizations` — Create organisation with atomic membership
+     - `PATCH /api/organizations/[id]` — Update organisation with permission checks
+     - `POST /api/brands` — Create brand with auto-grant logic
+     - `PATCH /api/brands/[id]` — Update brand with permission checks
+     - `POST /api/organizations/[id]/members/[userId]/role` — Change member role
+     - `DELETE /api/organizations/[id]/members/[userId]` — Remove member
+   - Use Firebase Admin SDK for all operations
+   - Validate permissions server-side using `hasPermission()` from `@brayford/core`
+   - **Then update Firestore rules to deny all client writes:**
+     - Organisations: deny all client writes
+     - OrganisationMembers: deny all client writes
+     - Brands: deny all client writes
+     - Invitations: deny all client writes
+     - Users: allow profile updates only (with field-level validation)
+   - Rules become enforcement layer, not authorisation layer
+
+3. **Add Missing Collection Rules** ✅
+   - ✅ Defined explicit deny-all rules for `organizationDeletionRequests` (read: false, write: false)
+   - ✅ Defined explicit deny-all rules for `deletedOrganizationsAudit` (read: false, write: false)
+   - Both collections are server-side only via Admin SDK
+
+### Phase 3: Read Security (Custom Claims) — ✅ COMPLETE
+
+4. **Implement Permission-Based Custom Claims (Simplified — Reads Only)** ✅
+   - With all writes handled server-side, custom claims are only needed for **read authorisation**
+   - Store **abbreviated permissions** in claims for size efficiency
+   - Structure: `{ orgs: { "org-id": { p: ["*"], b: [] } }, cv: 3 }`
+     - `p` = abbreviated permissions (e.g. `"ou"` = `org:update`, `"*"` = wildcard/owner)
+     - `b` = brand IDs (empty = all brands)
+     - `cv` = claims version counter for forced client-side token refresh
+   - **Implementation details:**
+     - `functions/src/claims.ts` — Claims utility with abbreviation mapping, `buildUserClaims()`, `updateUserClaims()`
+     - `functions/src/index.ts` — `onMembershipChange` Cloud Function triggered on `organizationMembers/{memberId}` writes (uses `onDocumentWritten`)
+     - Claims size validation: warns at 950 bytes, falls back to empty claims at 1000 bytes
+     - `claimsVersion` field added to user schema (`packages/core/src/schemas/user.schema.ts`)
+     - Client-side forced token refresh: `use-auth.ts` watches user doc via `onSnapshot` for `claimsVersion` changes, calls `getIdToken(true)` on change
+   - Use in rules: `request.auth.token.orgs[orgId].p` for permissions, `request.auth.token.orgs[orgId].b` for brand access
+   - **Firestore read rules updated:**
+     - `organizations/{orgId}` — only org members (`isOrgMember(organizationId)`)
+     - `organizationMembers/{memberId}` — only fellow org members (`isOrgMember(resource.data.organizationId)`)
+     - `brands/{brandId}` — only org members (`isOrgMember(resource.data.organizationId)`)
+     - `invitations/{invitationId}` — invitee email match OR org member with `users:invite` permission (abbreviated `'ui'`)
+     - `users/{userId}` — `claimsVersion` field protected from client-side modification
+   - **Important:** Client list queries on `organizationMembers`, `brands`, `invitations` MUST include `.where('organizationId', '==', orgId)` so Firestore can verify the constraint against claims. Cross-org listing uses token claims or server-side API routes.
+
+### Phase 4: Hardening & Cleanup — ✅ COMPLETE
+
+5. **Fix Email Case Sensitivity** ✅
+   - **Firestore rules:** Added `.lower()` to invitation email comparison (`request.auth.token.email.lower() == resource.data.email.lower()`)
+   - **API routes:** Already normalised — all routes use `.toLowerCase()` for email comparisons and storage
+   - **At write time:** Added `.toLowerCase().trim()` to `firebaseUserToCreateData()` in `packages/firebase-utils/src/auth/google.ts` when storing user email
+   - **Invitation schema:** Already has `.transform(e => e.toLowerCase().trim())` on the email field
+   - **Migration:** Not needed (no existing production data)
+   - **Bug fix:** Removed extra closing brace in `firestore.rules` (syntax error)
+
+6. **Audit Firestore Indexes** ✅
+   - Audited all `.where()` queries across API routes, Cloud Functions, and firebase-utils
+   - Added 5 missing composite indexes to `firestore.indexes.json`:
+     - `organizationMembers`: `organizationId` + `userId` (most common query — membership lookup)
+     - `organizationMembers`: `organizationId` + `autoGrantNewBrands` (brand creation auto-grant)
+     - `organizationMembers`: `userId` + `organizationId` (claims rebuild, cross-org check)
+     - `organizations`: `softDeletedAt` (cleanup function cutoff query)
+     - `brands`: `organizationId` (org brand listing, cleanup function)
+
+7. **Create Unit Tests for Refactored Permission Helpers** ✅ (already done)
+   - All 17 exported functions from `helpers.ts` already have comprehensive test coverage
+   - `packages/core/src/permissions/__tests__/permissions.test.ts` — 45 tests covering:
+     - `hasPermission`, `hasAnyPermission`, `hasAllPermissions` + require variants
+     - `hasBrandAccess`, `requireBrandAccess`
+     - `canModifyMemberRole`, `canInviteRole`, `canChangeSelfRole` + require variants
+     - `getEffectivePermissions`, `getRoleDisplayName`, `getRoleDescription`
+   - Edge cases covered: wildcard permissions, empty permissions, owner protection, peer modification
+
+### Phase 5: Monitoring, Testing & Documentation
+
+8. **Deploy Firebase App Check** — ⏳ DEFERRED (implement before production deploy)
+   - Prevent automated abuse and bot traffic
    - Add to all client applications
 
-### Short-term (High Priority)
-
-5. **Add Field-Level Validation**
-   - Validate required fields on creation
-   - Prevent modification of system fields
-   - Type-check important fields
-
-6. **Fix Email Case Sensitivity**
-   - Use `.lower()` in all email comparisons
-   - Test with mixed-case email addresses
-
-7. **Audit Firestore Indexes**
-   - Ensure all query operations have required indexes
-   - Check `firestore.indexes.json` for completeness
-
-### Medium-term (Improvements)
-
-8. **Implement Read Restrictions**
-   - Restrict reads to organization members only
-   - Fix invitation listing for admins
-
-9. **Add Rate Limiting Guards**
-   - Firebase App Check
+9. **Add Rate Limiting and Monitoring** — ⏳ DEFERRED (implement before production deploy)
+   - Recommended approach: **Upstash Redis** for serverless rate limiting (cheapest option at ~$0.2/100K commands)
    - API rate limiting (already done for emails)
-     -Firestore usage monitoring
+   - **Enable Firestore Security Rules monitoring** in Firebase Console
+   - Set up Cloud Monitoring alerts for unusual rule denial patterns
+   - Monitor Firestore usage for anomalies (spike in denied operations, unusual query patterns)
+   - Consider rate limiting per-user for expensive operations
+   - Add logging for all failed authorisation attempts
 
-10. **Testing & Validation**
-    - Create unit tests for Firestore rules
-    - Use Firebase Rules Unit Testing library
-    - Test all permission scenarios
-    - Test cross-organization access attempts
+10. **Testing & Validation** — ✅ COMPLETE
+    - **Firestore rules tests:** 45 tests covering all collections, cross-org isolation, and default deny
+      - Test suite: `tests/firestore-rules/firestore-rules.test.ts`
+      - Run with: `pnpm test:rules` (auto-starts Firestore emulator via `firebase emulators:exec`)
+      - Uses `@firebase/rules-unit-testing` v3.0.4 against the real `firestore.rules` file
+      - Covers: Users (read/create/update/delete), Organizations, Members, Brands (claims-based read, deny writes), Invitations (email match + permission-based read, deny writes), server-only collections, default deny
+    - **Permission helper tests:** 45 tests in `packages/core` (already existed, verified comprehensive)
+    - **Integration tests:** Covered by existing E2E test suite in `e2e/`
+    - **Load testing:** Deferred — will implement alongside rate limiting
 
-### Long-term (Enhancements)
+11. **Update Architecture Documentation** — ✅ COMPLETE
+    - Documented server-side authorisation pattern in [DEVELOPER_STANDARDS.md](DEVELOPER_STANDARDS.md)
+    - Added: custom claims architecture, API route authorization pattern, Firestore rules summary table
+    - Added: client-side claims refresh mechanism, when to use client-side vs server-side operations
+    - Added: correct permission checking patterns with code examples
 
-11. **Permission System Optimization**
+### Phase 6: Long-term Enhancements
+
+12. **Permission System Optimisation**
     - Consider moving to Cloud Functions for complex permission checks
     - Implement role-based access control (RBAC) service
     - Cache permission checks to reduce Firestore reads
 
-12. **Audit Trail Enhancements**
+13. **Audit Trail Enhancements**
     - Log all permission-checked operations
     - Implement suspicious activity detection
     - Add admin dashboard for security monitoring
+    - Integrate with Cloud Logging for centralised log analysis
 
 ---
 
@@ -1471,108 +1800,169 @@ Create `firestore.rules.test.ts` with:
 
 ## Appendix: Helper Functions for Rules
 
-These helper functions would make rules more readable (if custom claims are implemented):
+⚠️ **CRITICAL UPDATE:** The original recommendations in this section perpetuate the **role-based anti-pattern** identified in "Critical Security Gap #0". The correct approach is to store **permissions** in custom claims, not roles.
+
+### ❌ Anti-Pattern: Checking Roles in Rules
 
 ```javascript
-// Check if user is signed in
+// DON'T DO THIS - Duplicates backend permission logic
+function hasOrgPermission(orgId, permission) {
+  let role = request.auth.token.organizationMemberships[orgId];
+
+  if (role == "owner") return true; // ❌ Role check
+
+  let adminPerms = ["org:update", "users:invite" /* ... */];
+  if (role == "admin" && permission in adminPerms) return true; // ❌ Role check
+
+  // ... more role checks
+}
+```
+
+**Problems:**
+
+1. Duplicates permission logic from `role-mappings.ts`
+2. Must update rules every time permissions change
+3. Custom per-user permissions won't work
+4. Two sources of truth for authorization
+
+### ✅ Correct Approach: Permission-Based Custom Claims
+
+**Backend: Set claims with actual permissions**
+
+```typescript
+// packages/firebase-utils/src/auth/claims.ts
+import { adminAuth } from "./admin";
+import { getPermissionsForRole } from "@brayford/core/permissions";
+import type { OrganizationMember } from "@brayford/core";
+
+export async function updateUserClaims(
+  userId: string,
+  memberships: OrganizationMember[],
+): Promise<void> {
+  const orgs: Record<string, { permissions: string[]; brands: string[] }> = {};
+
+  for (const membership of memberships) {
+    // Get permissions from role (single source of truth)
+    const permissions = getPermissionsForRole(membership.role);
+
+    orgs[membership.organizationId] = {
+      permissions: permissions.map((p) => p.toString()),
+      brands: membership.brandAccess,
+    };
+  }
+
+  await adminAuth.setCustomUserClaims(userId, { orgs });
+}
+```
+
+**Firestore Rules: Check permissions directly**
+
+```javascript
+// Check if user has specific permission in organization
+function hasOrgPermission(orgId, permission) {
+  return (
+    isSignedIn() &&
+    orgId in request.auth.token.orgs &&
+    // Wildcard permission (owner)
+    ("*" in request.auth.token.orgs[orgId].permissions ||
+      // Specific permission
+      permission in request.auth.token.orgs[orgId].permissions)
+  );
+}
+
+// Check brand access
+function hasOrgBrandAccess(orgId, brandId) {
+  return (
+    isSignedIn() &&
+    orgId in request.auth.token.orgs &&
+    hasOrgPermission(orgId, "brands:view") &&
+    // Empty = all brands
+    (request.auth.token.orgs[orgId].brands.size() == 0 ||
+      // Explicit access
+      brandId in request.auth.token.orgs[orgId].brands)
+  );
+}
+
+// Basic helpers
 function isSignedIn() {
   return request.auth != null;
 }
 
-// Check if user owns a document
 function isOwner(userId) {
   return isSignedIn() && request.auth.uid == userId;
 }
 
-// Check if user has specific role in organization
-function hasOrgRole(orgId, role) {
-  return (
-    isSignedIn() &&
-    request.auth.token != null &&
-    request.auth.token.organizationMemberships != null &&
-    request.auth.token.organizationMemberships[orgId] == role
-  );
-}
-
-// Check if user is member of organization (any role)
 function isOrgMember(orgId) {
-  return (
-    isSignedIn() &&
-    request.auth.token != null &&
-    request.auth.token.organizationMemberships != null &&
-    orgId in request.auth.token.organizationMemberships
-  );
+  return isSignedIn() && orgId in request.auth.token.orgs;
 }
+```
 
-// Check if user has specific permission in organization
-function hasOrgPermission(orgId, permission) {
-  let role = request.auth.token.organizationMemberships[orgId];
+**When to Update Claims:**
 
-  // Owners have all permissions
-  if (role == "owner") return true;
+```typescript
+// Trigger on membership changes
+export const onMembershipChange = functions.firestore
+  .document("organizationMembers/{memberId}")
+  .onWrite(async (change, context) => {
+    const userId = change.after.exists
+      ? change.after.data()!.userId
+      : change.before.data()!.userId;
 
-  // Admin permissions
-  let adminPerms = [
-    "org:update",
-    "users:invite",
-    "users:view",
-    "users:update_role",
-    "users:update_access",
-    "users:remove",
-    "brands:create",
-    "brands:view",
-    "brands:update",
-    "brands:delete",
-    "brands:manage_team",
-    "events:create",
-    "events:view",
-    "events:update",
-    "events:publish",
-    "events:delete",
-    "events:manage_modules",
-    "events:moderate",
-    "analytics:view_org",
-    "analytics:view_brand",
-    "analytics:view_event",
-    "analytics:export",
-  ];
+    // Get all current memberships for this user
+    const memberships = await getOrganizationMemberships(userId);
 
-  if (role == "admin" && permission in adminPerms) return true;
+    // Update claims
+    await updateUserClaims(userId, memberships);
+  });
+```
 
-  // Member permissions (brand-restricted)
-  let memberPerms = [
-    "users:view",
-    "brands:view",
-    "brands:update",
-    "events:create",
-    "events:view",
-    "events:update",
-    "events:publish",
-    "events:delete",
-    "events:manage_modules",
-    "events:moderate",
-    "analytics:view_brand",
-    "analytics:view_event",
-    "analytics:export",
-  ];
+**Claims Size Limit:**
 
-  if (role == "member" && permission in memberPerms) return true;
+Firebase custom claims have a **1000-byte limit**. For users in many organizations with many permissions:
 
-  return false;
-}
+- Use **permission abbreviations** (map `"org:update"` → `"ou"`)
+- Or implement **claims refresh API** that validates permissions server-side
+- Or move authorization checks to API routes instead of Firestore rules
+
 ```
 
 ---
 
 ## Summary
 
-This audit identified **7 collections** with **6 critical security gaps** and **2 missing rule definitions**. The primary issue is the lack of organization membership validation in security rules, allowing any authenticated user to access or modify any organization's data.
+This audit identified **7 collections** with **9 critical security gaps** (including **1 fundamental architectural flaw**) and **2 missing rule definitions**.
 
-**Immediate actions required:**
+**Critical Architectural Issues:**
 
-1. Implement custom claims for organization membership
-2. Update rules for `organizations`, `organizationMembers`, `brands`, `invitations`
-3. Add explicit rules for `organizationDeletionRequests` and `deletedOrganizationsAudit`
-4. Deploy Firebase App Check
+0. **Role-Based Permission Checks** - The codebase uses roles as authorization determiners instead of the capability-based permission system, creating two sources of truth
+1. **Direct Client Writes for Administrative Operations** - Complex operations (org creation, brand management, member role changes) are done client-side, requiring overly complex Firestore rules that duplicate backend business logic
 
-**Timeline:** These changes should be implemented before production launch to prevent unauthorized access to organization data.
+**Primary Security Issues:**
+
+2. Missing permission validation in security rules
+3. Missing collection rules (`organizationDeletionRequests`, `deletedOrganizationsAudit`)
+4. Insufficient field-level validation
+5. Cross-organization data leakage
+6. Invitation system vulnerabilities
+7. No rate limiting in rules
+8. Auto-grant brand access concerns
+9. Case-sensitive email matching
+
+**Revised implementation order (6 phases, 13 actions):**
+
+1. **Phase 1 — Foundation:** ✅ COMPLETE — Refactored all role-based permission checks to use the capability-based permission system
+2. **Phase 2 — Server-Side Model:** ✅ COMPLETE — Moved all administrative writes to API routes + set Firestore rules to deny-all for client writes; added missing collection rules
+3. **Phase 3 — Read Security:** ✅ COMPLETE — Custom claims with abbreviated permissions, `onMembershipChange` Cloud Function, Firestore read rules restricted by org membership
+4. **Phase 4 — Hardening:** ✅ COMPLETE — Email case normalisation (`.lower()` in rules, `.toLowerCase()` at write time), 5 missing Firestore indexes added, permission helper tests already comprehensive (45 tests)
+5. **Phase 5 — Monitoring & Testing:** ✅ PARTIAL — Firestore rules tests (45 tests) and architecture documentation complete. App Check and rate limiting deferred until pre-production.
+6. **Phase 6 — Long-term:** Permission system optimisation, audit trail enhancements
+
+**Architectural Recommendation:**
+
+Adopt a **hybrid model**:
+- ✅ **Server-side API routes with Admin SDK** for all administrative operations
+- ✅ **Client-side with restrictive rules** for user profile updates
+- ✅ **Client-side with jitter logic** for real-time audience interactions (Phase 3+)
+
+**Timeline:** ~~The architectural flaw (Phase 1) must be fixed before building server-side routes. The server-side model (Phase 2) eliminates most security gaps and should be prioritised before production launch.~~ ~~Phases 1–4 are complete. Phase 5 (monitoring, testing & documentation) is the next priority.~~ Phases 1–5 are substantially complete. App Check (Action 8) and rate limiting (Action 9) are deferred until pre-production deployment. Phase 6 is long-term.
+```

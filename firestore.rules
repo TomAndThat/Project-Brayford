@@ -2,7 +2,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    // ===== Helper Functions =====
     function isSignedIn() {
       return request.auth != null;
     }
@@ -11,57 +11,96 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Users collection - users can read/write their own document
+    // Check if the authenticated user is a member of the given organisation.
+    // Relies on custom claims set by the onMembershipChange Cloud Function.
+    // Claims structure: { orgs: { "orgId": { p: [...], b: [...] } } }
+    function isOrgMember(orgId) {
+      return isSignedIn()
+        && request.auth.token.orgs != null
+        && orgId in request.auth.token.orgs;
+    }
+
+    // Check if the user has a specific abbreviated permission in the given org.
+    // Owner claims contain "*" (wildcard) which grants all permissions.
+    // Permission abbreviations are defined in functions/src/claims.ts.
+    function hasOrgPermission(orgId, abbrevPermission) {
+      return isOrgMember(orgId)
+        && ('*' in request.auth.token.orgs[orgId].p
+            || abbrevPermission in request.auth.token.orgs[orgId].p);
+    }
+
+    // ===== Users Collection =====
+    // Users can read any user profile (needed for team member listings).
+    // Users can create their own profile on first sign-in.
+    // Users can update ONLY safe profile fields on their own document.
+    // claimsVersion is protected — only Cloud Functions (Admin SDK) can change it.
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isOwner(userId);
-    }
-
-    // Organizations collection - authenticated users can create/read
-    match /organizations/{organizationId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
-      // TODO: Check organizationMembers for proper access control
-    }
-
-    // Organization members - authenticated users can create
-    match /organizationMembers/{memberId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
-      // TODO: Check if user is org owner/admin
-    }
-
-    // Brands collection - authenticated users can create/read
-    match /brands/{brandId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
-      // TODO: Check if user is org member
-    }
-
-    // Invitations collection - invitation system rules
-    match /invitations/{invitationId} {
-      // Anyone authenticated can read invitations for their email
-      allow read: if isSignedIn() && 
-                     request.auth.token.email == resource.data.email;
-      
-      // Authenticated users can create invitations
-      // TODO: Add validation that creator is org owner/admin
-      // TODO: Add validation that only owners can invite with role='owner'
-      allow create: if isSignedIn();
-      
-      // Only the invited user can update status to accepted/declined
-      allow update: if isSignedIn() && 
-                       request.auth.token.email == resource.data.email &&
-                       request.resource.data.status in ['accepted', 'declined'];
-      
-      // Invitations should not be deleted (keep for audit trail)
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.authProvider == resource.data.authProvider
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.claimsVersion == resource.data.claimsVersion;
       allow delete: if false;
     }
 
-    // Default: deny all other access
+    // ===== Organizations Collection =====
+    // Only organisation members can read their own org document.
+    // All writes go through server-side API routes (Firebase Admin SDK).
+    match /organizations/{organizationId} {
+      allow read: if isOrgMember(organizationId);
+      allow write: if false;
+    }
+
+    // ===== Organization Members Collection =====
+    // Only fellow org members can read membership records.
+    // Client queries MUST include .where('organizationId', '==', orgId)
+    // so Firestore can verify the constraint against claims.
+    // All writes go through server-side API routes (Firebase Admin SDK).
+    match /organizationMembers/{memberId} {
+      allow read: if isOrgMember(resource.data.organizationId);
+      allow write: if false;
+    }
+
+    // ===== Brands Collection =====
+    // Only org members can read brands in their organisation.
+    // Client queries MUST include .where('organizationId', '==', orgId).
+    // All writes go through server-side API routes (Firebase Admin SDK).
+    match /brands/{brandId} {
+      allow read: if isOrgMember(resource.data.organizationId);
+      allow write: if false;
+    }
+
+    // ===== Invitations Collection =====
+    // Readable by:
+    //   (a) the invitee (matching email, case-insensitive), OR
+    //   (b) an org member with the users:invite permission (abbreviated 'ui').
+    // All writes go through server-side API routes (Firebase Admin SDK).
+    match /invitations/{invitationId} {
+      allow read: if isSignedIn() && (
+        request.auth.token.email.lower() == resource.data.email.lower()
+        || hasOrgPermission(resource.data.organizationId, 'ui')
+      );
+      allow write: if false;
+    }
+
+    // ===== Organization Deletion Requests =====
+    // Server-side only (created by deletion API routes).
+    match /organizationDeletionRequests/{requestId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // ===== Deleted Organizations Audit =====
+    // Server-side only (created by Cloud Functions).
+    match /deletedOrganizationsAudit/{auditId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // ===== Default: deny all other access =====
     match /{document=**} {
       allow read, write: if false;
     }

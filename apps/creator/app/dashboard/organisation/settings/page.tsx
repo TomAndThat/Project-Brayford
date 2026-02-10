@@ -204,12 +204,12 @@ export default function OrganisationSettingsPage() {
                 {organization.name}
               </dd>
             </div>
-            <div>
+            {/* <div>
               <dt className="text-sm font-medium text-gray-500">Type</dt>
               <dd className="mt-1 text-sm text-gray-900 capitalize">
                 {organization.organizationType}
               </dd>
-            </div>
+            </div> */}
             <div>
               <dt className="text-sm font-medium text-gray-500">
                 Organisation ID

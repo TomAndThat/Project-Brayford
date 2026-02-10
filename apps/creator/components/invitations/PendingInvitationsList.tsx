@@ -8,7 +8,7 @@ import {
   isInvitationExpired,
   getRoleDisplayName,
 } from "@brayford/core";
-import { resendInvitation, cancelInvitation } from "@brayford/firebase-utils";
+import { auth } from "@brayford/firebase-utils";
 
 interface PendingInvitationsListProps {
   invitations: InvitationDocument[];
@@ -35,7 +35,19 @@ export default function PendingInvitationsList({
   const handleResend = async (invitation: InvitationDocument) => {
     setActionInProgress(fromBranded(invitation.id));
     try {
-      await resendInvitation(invitation.id);
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error("Not authenticated");
+      const res = await fetch(
+        `/api/invitations/${fromBranded(invitation.id)}/resend`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${idToken}` },
+        },
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to resend invitation");
+      }
       onRefresh();
     } catch (error) {
       console.error("Failed to resend invitation:", error);
@@ -52,7 +64,19 @@ export default function PendingInvitationsList({
 
     setActionInProgress(fromBranded(invitation.id));
     try {
-      await cancelInvitation(invitation.id);
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error("Not authenticated");
+      const res = await fetch(
+        `/api/invitations/${fromBranded(invitation.id)}/cancel`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${idToken}` },
+        },
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to cancel invitation");
+      }
       onRefresh();
     } catch (error) {
       console.error("Failed to cancel invitation:", error);

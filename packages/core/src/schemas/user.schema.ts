@@ -37,6 +37,10 @@ export const UserSchema = z.object({
   authProvider: AuthProviderSchema.describe('Authentication provider used'),
   createdAt: z.date().describe('Account creation timestamp'),
   lastLoginAt: z.date().describe('Last successful login timestamp'),
+  claimsVersion: z.number().int().nonnegative().default(0).describe(
+    'Incremented by Cloud Functions when custom claims change. ' +
+    'Client watches this field via onSnapshot to trigger token refresh.'
+  ),
 });
 
 /**

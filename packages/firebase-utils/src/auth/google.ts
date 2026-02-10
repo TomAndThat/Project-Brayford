@@ -49,7 +49,7 @@ googleProvider.setCustomParameters({
 function firebaseUserToCreateData(firebaseUser: FirebaseUser): CreateUserData {
   const userData: CreateUserData = {
     uid: firebaseUser.uid,
-    email: firebaseUser.email || '',
+    email: (firebaseUser.email || '').toLowerCase().trim(),
     displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
     photoURL: firebaseUser.photoURL,
     authProvider: 'google.com',

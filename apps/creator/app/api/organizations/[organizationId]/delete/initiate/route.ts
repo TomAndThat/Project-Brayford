@@ -30,7 +30,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { sendDeletionConfirmEmail } from "@brayford/email-utils";
-import type { OrganizationId, UserId } from "@brayford/core";
+import { getPermissionsForRole } from "@brayford/core";
+import type { OrganizationId, OrganizationRole, UserId } from "@brayford/core";
 
 export async function POST(
   request: NextRequest,
@@ -121,22 +122,16 @@ export async function POST(
 
     const memberData = memberQuery.docs[0]!.data();
 
-    // Check permissions - either wildcard (*) or explicit org:delete
-    const permissions: string[] = memberData.permissions || [];
-    const hasWildcard = permissions.includes("*");
-    const hasDeletePerm = permissions.includes("org:delete");
+    // Check permissions - derive from role if no custom permissions set
+    const customPermissions: string[] = memberData.permissions || [];
+    const permissions: string[] = customPermissions.length > 0
+      ? customPermissions
+      : getPermissionsForRole(memberData.role as OrganizationRole).map(String);
+    const hasDeletePerm =
+      permissions.includes("org:delete") ||
+      permissions.includes("*");
 
-    // If no custom permissions, derive from role
-    if (permissions.length === 0) {
-      // Owner has wildcard (*), which includes org:delete
-      if (memberData.role !== "owner") {
-        return NextResponse.json(
-          { error: "You do not have permission to delete this organisation" },
-          { status: 403 },
-        );
-      }
-      // Owner role is fine - has implicit org:delete via wildcard
-    } else if (!hasWildcard && !hasDeletePerm) {
+    if (!hasDeletePerm) {
       return NextResponse.json(
         { error: "You do not have permission to delete this organisation" },
         { status: 403 },

@@ -4,9 +4,13 @@
   "private": true,
   "description": "Monorepo for project-brayford",
   "scripts": {
+    "build:packages": "pnpm --filter @brayford/core --filter @brayford/email-utils build",
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "build": "pnpm --parallel --filter \"./apps/*\" build",
+    "functions:build": "pnpm build:packages && cd functions && npm run build",
+    "functions:deploy": "pnpm build:packages && firebase deploy --only functions",
     "test": "vitest",
+    "test:rules": "firebase emulators:exec --only firestore 'vitest --config tests/firestore-rules/vitest.config.ts --run'",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:watch": "vitest --watch",
@@ -21,6 +25,7 @@
     "pnpm": ">=8.0.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
     "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

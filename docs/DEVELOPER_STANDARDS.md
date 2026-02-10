@@ -513,43 +513,192 @@ const event = EventSchema.parse(data); // Throws if invalid
 
 ### Access Control & Permissions
 
-**Organization-level permission checking:**
+#### Architecture Overview
+
+All write operations go through **server-side API routes** (Next.js Route Handlers) that use
+the Firebase Admin SDK. Firestore rules **deny all client writes** and restrict reads via
+**custom claims** embedded in the Firebase Auth token. This ensures security is enforced at two
+layers: Firestore rules for reads and server-side authorization for writes.
+
+```
+Client (useAuth)                     Server (API routes)              Cloud Functions
+─────────────────                    ──────────────────               ────────────────
+onAuthChange → user state            authenticateRequest()            onMembershipChange
+onSnapshot(users/{uid})                ↓ Bearer token → verifyIdToken   ↓
+  ↓ claimsVersion changed?           Fetch membership from Firestore  updateUserClaims()
+  ↓ getIdToken(true)                 hasPermission(member, PERM)       ↓ buildUserClaims()
+  ↓ fresh claims in token            Return 403 or proceed             ↓ setCustomUserClaims()
+                                                                        ↓ bump claimsVersion
+                                                                          → triggers client refresh
+```
+
+#### Custom Claims (Firebase Auth Token)
+
+The `onMembershipChange` Cloud Function fires on any write to `organizationMembers/{memberId}`.
+It rebuilds the user's custom claims from all their memberships and sets them via
+`auth.setCustomUserClaims()`. Claims are **abbreviated** to fit within Firebase's 1,000-byte limit:
+
+```json
+{
+  "orgs": {
+    "orgId1": { "p": ["*"], "b": [] },
+    "orgId2": { "p": ["ou", "ui", "bv"], "b": ["brand1"] }
+  },
+  "cv": 3
+}
+```
+
+- `p` — abbreviated permission codes (e.g. `"ui"` = `USERS_INVITE`, `"*"` = owner/wildcard)
+- `b` — brand IDs the member has access to
+- `cv` — claims version, incremented on each update
+
+Firestore rules reference these claims directly:
+
+```javascript
+function isOrgMember(orgId) {
+  return (
+    isSignedIn() &&
+    request.auth.token.orgs != null &&
+    orgId in request.auth.token.orgs
+  );
+}
+
+function hasOrgPermission(orgId, abbrevPermission) {
+  return (
+    isOrgMember(orgId) &&
+    ("*" in request.auth.token.orgs[orgId].p ||
+      abbrevPermission in request.auth.token.orgs[orgId].p)
+  );
+}
+```
+
+#### Client-side Claims Refresh
+
+The `useAuth()` hook watches the user's Firestore document for `claimsVersion` changes. When
+the Cloud Function bumps `claimsVersion`, the client detects it via `onSnapshot` and calls
+`getIdToken(true)` to force a token refresh, picking up the latest claims:
+
+```typescript
+// In useAuth() — simplified
+useEffect(() => {
+  if (!user) return;
+
+  const unsubscribe = onSnapshot(doc(db, "users", user.uid), (snapshot) => {
+    const newVersion = snapshot.data()?.claimsVersion ?? 0;
+    if (previousVersion !== null && newVersion > previousVersion) {
+      user.getIdToken(true); // Force refresh → new claims
+    }
+    previousVersion = newVersion;
+  });
+
+  return unsubscribe;
+}, [user]);
+```
+
+#### Server-side API Route Pattern
+
+Every authenticated API route follows the same pattern:
+
+1. **Authenticate** — Verify the Firebase ID token
+2. **Validate** — Parse and validate the request body with Zod
+3. **Authorise** — Fetch the actor's membership and check permissions
+4. **Execute** — Perform the write via Firebase Admin SDK
+
+```typescript
+import { authenticateRequest } from "@/lib/api-auth";
+import { hasPermission, BRANDS_CREATE, validateCreateBrandData } from "@brayford/core";
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  // 1. Authenticate
+  const auth = await authenticateRequest(request);
+  if (auth.error) return auth.error;
+
+  // 2. Validate body
+  const body = await request.json();
+  const validatedData = validateCreateBrandData(body);
+
+  // 3. Authorise — fetch membership, check permission
+  const memberQuery = await adminDb
+    .collection("organizationMembers")
+    .where("organizationId", "==", validatedData.organizationId)
+    .where("userId", "==", auth.uid)
+    .limit(1)
+    .get();
+
+  if (memberQuery.empty) {
+    return NextResponse.json({ error: "Not a member" }, { status: 403 });
+  }
+
+  const actorMember = memberQuery.docs[0]!.data() as OrganizationMember;
+  if (!hasPermission(actorMember, BRANDS_CREATE)) {
+    return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+  }
+
+  // 4. Execute via Admin SDK
+  const brandRef = await adminDb.collection("brands").add({ ... });
+  return NextResponse.json({ brandId: brandRef.id }, { status: 201 });
+}
+```
+
+**`authenticateRequest()`** (in `apps/creator/lib/api-auth.ts`) returns a discriminated union:
+
+```typescript
+const auth = await authenticateRequest(request);
+if (auth.error) return auth.error; // 401 response
+// auth.uid, auth.email, auth.token are now available
+```
+
+#### Client-side UI Gating
+
+Use `hasPermission()` and related helpers from `@brayford/core` to control **UI visibility only**.
+These checks are for UX — the server enforces security.
 
 ```typescript
 import { hasPermission, USERS_INVITE, canModifyMemberRole } from '@brayford/core';
 
-// Check if current user can perform an action
+// Hide UI elements the user can't act on
 function InviteButton({ currentMember }: { currentMember: OrganizationMember }) {
-  const canInvite = hasPermission(currentMember, USERS_INVITE);
-
-  if (!canInvite) return null;
-
+  if (!hasPermission(currentMember, USERS_INVITE)) return null;
   return <button>Invite User</button>;
 }
 
-// Check if user can modify another member
-function MemberRow({ actor, target }: { actor: OrganizationMember; target: OrganizationMember }) {
+function MemberRow({ actor, target }: Props) {
   const canModify = canModifyMemberRole(actor, target);
-
   return (
     <tr>
       <td>{target.user.displayName}</td>
-      <td>
-        {canModify && <button>Edit Role</button>}
-      </td>
+      <td>{canModify && <button>Edit Role</button>}</td>
     </tr>
   );
 }
 ```
 
-**Key principles:**
+#### Firestore Rules Summary
 
-- **Backend derives permissions from roles** by default (no redundant storage)
-- **UI respects permissions** via helper functions (`hasPermission`, `canModifyMemberRole`)
-- **Frontend simplifies** to Owner/Admin/Member roles for UX
-- **Future-proof** with optional custom permissions per member
+| Collection                     | Read                                    | Write                    |
+| ------------------------------ | --------------------------------------- | ------------------------ |
+| `users`                        | Authenticated users                     | Owner only (safe fields) |
+| `organizations`                | Org members (via claims)                | Deny all (server-side)   |
+| `organizationMembers`          | Fellow org members (via claims)         | Deny all (server-side)   |
+| `brands`                       | Org members (via claims)                | Deny all (server-side)   |
+| `invitations`                  | Email match OR `hasOrgPermission('ui')` | Deny all (server-side)   |
+| `organizationDeletionRequests` | Deny all                                | Deny all                 |
+| `deletedOrganizationsAudit`    | Deny all                                | Deny all                 |
+| Everything else                | Deny all                                | Deny all                 |
 
-See [docs/PERMISSIONS.md](./PERMISSIONS.md) for complete permission matrix and usage patterns.
+**Testing rules:** Run `pnpm test:rules` — this starts the Firestore emulator automatically and
+runs 45 tests covering all collections, cross-org isolation, and default deny.
+
+#### Key Principles
+
+- **Server-side authorization is the source of truth** — Firestore rules are the second layer, not the only layer
+- **All writes go through API routes** — never write to Firestore directly from the client
+- **Custom claims enable efficient read rules** — no extra Firestore lookups in security rules
+- **Client-side permission checks are for UX only** — hiding buttons, not enforcing security
+- **Permissions are derived from roles** by default (no redundant per-member storage)
+- **Owner role uses wildcard (`*`)** which grants all permissions automatically
+
+See [docs/PERMISSIONS.md](./PERMISSIONS.md) for the complete permission matrix and role definitions.
 
 ---
 

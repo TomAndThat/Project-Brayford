@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { onAuthChange, signInWithGoogle, signOut, getCurrentUser } from '@brayford/firebase-utils';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { onAuthChange, signInWithGoogle, signOut, db } from '@brayford/firebase-utils';
+import { doc, onSnapshot } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
 
 export interface UseAuthReturn {
@@ -13,7 +14,11 @@ export interface UseAuthReturn {
 
 /**
  * Auth hook for Firebase authentication
- * Provides current user state, loading state, and auth methods
+ * Provides current user state, loading state, and auth methods.
+ *
+ * Also watches the user's Firestore document for `claimsVersion` changes
+ * and forces a token refresh when custom claims are updated by Cloud Functions.
+ * This ensures the client always has the latest permissions in the auth token.
  * 
  * @example
  * ```tsx
@@ -39,6 +44,9 @@ export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Track the last-seen claimsVersion to detect changes (not initial load)
+  const claimsVersionRef = useRef<number | null>(null);
+
   useEffect(() => {
     // Subscribe to auth state changes
     // Don't use getCurrentUser() here — Firebase may not have
@@ -52,23 +60,54 @@ export function useAuth(): UseAuthReturn {
     return unsubscribe;
   }, []);
 
-  const handleSignIn = async () => {
+  // Watch user doc for claimsVersion changes → force token refresh
+  useEffect(() => {
+    if (!user) {
+      claimsVersionRef.current = null;
+      return;
+    }
+
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
+      const data = snapshot.data();
+      if (!data) return;
+
+      const newVersion = (data.claimsVersion as number) ?? 0;
+      const previousVersion = claimsVersionRef.current;
+
+      if (previousVersion !== null && newVersion > previousVersion) {
+        // claimsVersion bumped — force token refresh to pick up new claims
+        user.getIdToken(true).catch((err) => {
+          console.error('Failed to refresh auth token after claims update:', err);
+        });
+      }
+
+      claimsVersionRef.current = newVersion;
+    }, (error) => {
+      // Don't crash the app if the snapshot fails
+      console.error('Failed to watch user document for claims changes:', error);
+    });
+
+    return unsubscribe;
+  }, [user]);
+
+  const handleSignIn = useCallback(async () => {
     try {
       await signInWithGoogle();
     } catch (error) {
       console.error('Sign-in failed:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     try {
       await signOut();
     } catch (error) {
       console.error('Sign-out failed:', error);
       throw error;
     }
-  };
+  }, []);
 
   return {
     user,

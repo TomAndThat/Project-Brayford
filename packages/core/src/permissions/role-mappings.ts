@@ -11,10 +11,6 @@ import { WILDCARD_PERMISSION } from './types';
 import {
   // Organization
   ORG_UPDATE,
-  ORG_DELETE,
-  ORG_TRANSFER,
-  ORG_VIEW_BILLING,
-  ORG_MANAGE_BILLING,
   // Users
   USERS_INVITE,
   USERS_VIEW,

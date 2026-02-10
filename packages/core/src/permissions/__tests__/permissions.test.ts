@@ -207,23 +207,23 @@ describe('Permission System - requireAllPermissions', () => {
 });
 
 describe('Permission System - Brand Access', () => {
-  it('should grant brand access to owners for all brands', () => {
+  it('should grant all-brand access to members with wildcard permission (owners)', () => {
     expect(hasBrandAccess(ownerMember, 'any_brand')).toBe(true);
     expect(hasBrandAccess(ownerMember, 'another_brand')).toBe(true);
   });
 
-  it('should grant brand access to admins for all brands', () => {
+  it('should grant all-brand access to members with BRANDS_CREATE (admins)', () => {
     expect(hasBrandAccess(adminMember, 'any_brand')).toBe(true);
     expect(hasBrandAccess(adminMember, 'another_brand')).toBe(true);
   });
 
-  it('should grant brand access to members only for brands in their list', () => {
+  it('should grant brand access to members only for brands in their brandAccess list', () => {
     expect(hasBrandAccess(memberWithAccess, 'brand_abc')).toBe(true);
     expect(hasBrandAccess(memberWithAccess, 'brand_xyz')).toBe(true);
     expect(hasBrandAccess(memberWithAccess, 'brand_other')).toBe(false);
   });
 
-  it('should deny brand access to members with empty brandAccess array', () => {
+  it('should deny brand access to members with empty brandAccess and no BRANDS_CREATE', () => {
     expect(hasBrandAccess(memberNoAccess, 'any_brand')).toBe(false);
   });
 
@@ -237,17 +237,17 @@ describe('Permission System - Brand Access', () => {
 });
 
 describe('Permission System - canModifyMemberRole', () => {
-  it('should allow owners to modify admins and members', () => {
+  it('should allow members with wildcard permission to modify admins and members', () => {
     expect(canModifyMemberRole(ownerMember, adminMember)).toBe(true);
     expect(canModifyMemberRole(ownerMember, memberWithAccess)).toBe(true);
   });
 
-  it('should not allow owners to modify other owners', () => {
+  it('should not allow modification of owners (protected role)', () => {
     const anotherOwner: OrganizationMember = { ...ownerMember, userId: 'user999' };
     expect(canModifyMemberRole(ownerMember, anotherOwner)).toBe(false);
   });
 
-  it('should allow admins to modify members only', () => {
+  it('should allow admins to modify members but not peers with USERS_UPDATE_ROLE', () => {
     expect(canModifyMemberRole(adminMember, memberWithAccess)).toBe(true);
     expect(canModifyMemberRole(adminMember, ownerMember)).toBe(false);
     
@@ -255,10 +255,15 @@ describe('Permission System - canModifyMemberRole', () => {
     expect(canModifyMemberRole(adminMember, anotherAdmin)).toBe(false);
   });
 
-  it('should not allow members to modify anyone', () => {
+  it('should not allow members without USERS_UPDATE_ROLE to modify anyone', () => {
     expect(canModifyMemberRole(memberWithAccess, ownerMember)).toBe(false);
     expect(canModifyMemberRole(memberWithAccess, adminMember)).toBe(false);
     expect(canModifyMemberRole(memberWithAccess, memberNoAccess)).toBe(false);
+  });
+
+  it('should not allow self-modification (use canChangeSelfRole instead)', () => {
+    expect(canModifyMemberRole(ownerMember, ownerMember)).toBe(false);
+    expect(canModifyMemberRole(adminMember, adminMember)).toBe(false);
   });
 
   it('should throw when requiring modification rights user does not have', () => {
@@ -275,19 +280,19 @@ describe('Permission System - canModifyMemberRole', () => {
 });
 
 describe('Permission System - canInviteRole', () => {
-  it('should allow owners to invite any role', () => {
+  it('should allow members with wildcard permission to invite any role', () => {
     expect(canInviteRole(ownerMember, 'owner')).toBe(true);
     expect(canInviteRole(ownerMember, 'admin')).toBe(true);
     expect(canInviteRole(ownerMember, 'member')).toBe(true);
   });
 
-  it('should allow admins to invite admin and member, but not owner', () => {
+  it('should allow members with USERS_INVITE to invite admin and member, but not owner', () => {
     expect(canInviteRole(adminMember, 'owner')).toBe(false);
     expect(canInviteRole(adminMember, 'admin')).toBe(true);
     expect(canInviteRole(adminMember, 'member')).toBe(true);
   });
 
-  it('should not allow members to invite anyone', () => {
+  it('should not allow members without USERS_INVITE to invite anyone', () => {
     expect(canInviteRole(memberWithAccess, 'owner')).toBe(false);
     expect(canInviteRole(memberWithAccess, 'admin')).toBe(false);
     expect(canInviteRole(memberWithAccess, 'member')).toBe(false);
@@ -307,17 +312,17 @@ describe('Permission System - canInviteRole', () => {
 });
 
 describe('Permission System - canChangeSelfRole', () => {
-  it('should allow owner to change own role if multiple owners exist', () => {
+  it('should allow wildcard holders to change own role if multiple owners exist', () => {
     expect(canChangeSelfRole(ownerMember, 2)).toBe(true);
     expect(canChangeSelfRole(ownerMember, 3)).toBe(true);
     expect(canChangeSelfRole(ownerMember, 10)).toBe(true);
   });
 
-  it('should not allow owner to change own role if they are the last owner', () => {
+  it('should not allow wildcard holders to change own role if they are the last owner', () => {
     expect(canChangeSelfRole(ownerMember, 1)).toBe(false);
   });
 
-  it('should not allow non-owners to use this check', () => {
+  it('should not allow non-wildcard holders to use this check', () => {
     expect(canChangeSelfRole(adminMember, 2)).toBe(false);
     expect(canChangeSelfRole(memberWithAccess, 2)).toBe(false);
   });
@@ -331,10 +336,61 @@ describe('Permission System - canChangeSelfRole', () => {
     ).toThrow(/Cannot change role.*only owner/);
   });
 
-  it('should throw when non-owner tries to use this check', () => {
+  it('should throw when non-wildcard holder tries to use this check', () => {
     expect(() =>
       requireCanChangeSelfRole(adminMember, 2)
     ).toThrow(/Cannot change role.*only owner/);
+  });
+});
+
+describe('Permission System - Permission-based behaviour validation', () => {
+  it('should use BRANDS_VIEW permission, not role, for brand access gating', () => {
+    // A member with BRANDS_VIEW + populated brandAccess works
+    expect(hasBrandAccess(memberWithAccess, 'brand_abc')).toBe(true);
+    
+    // A member with empty brandAccess but no BRANDS_CREATE gets denied
+    expect(hasBrandAccess(memberNoAccess, 'any_brand')).toBe(false);
+  });
+
+  it('should use USERS_UPDATE_ROLE permission, not role, for role modification gating', () => {
+    // Members lack USERS_UPDATE_ROLE → can't modify anyone
+    expect(canModifyMemberRole(memberWithAccess, memberNoAccess)).toBe(false);
+    
+    // Admins have USERS_UPDATE_ROLE → can modify members
+    expect(canModifyMemberRole(adminMember, memberWithAccess)).toBe(true);
+  });
+
+  it('should use USERS_INVITE permission for invitation gating', () => {
+    // Members lack USERS_INVITE → can't invite
+    expect(canInviteRole(memberWithAccess, 'member')).toBe(false);
+    
+    // Admins have USERS_INVITE → can invite non-owners
+    expect(canInviteRole(adminMember, 'member')).toBe(true);
+  });
+
+  it('should use wildcard permission for owner-level actions', () => {
+    // Only wildcard holders can invite owners
+    expect(canInviteRole(ownerMember, 'owner')).toBe(true);
+    expect(canInviteRole(adminMember, 'owner')).toBe(false);
+    
+    // Only wildcard holders can self-demote
+    expect(canChangeSelfRole(ownerMember, 2)).toBe(true);
+    expect(canChangeSelfRole(adminMember, 2)).toBe(false);
+  });
+
+  it('should protect owners from modification regardless of actor permissions', () => {
+    // Even owners can't modify other owners
+    const anotherOwner: OrganizationMember = { ...ownerMember, userId: 'user999' };
+    expect(canModifyMemberRole(ownerMember, anotherOwner)).toBe(false);
+  });
+
+  it('should prevent peer modification for non-wildcard holders', () => {
+    // Admin cannot modify another admin (both have USERS_UPDATE_ROLE)
+    const anotherAdmin: OrganizationMember = { ...adminMember, userId: 'user888' };
+    expect(canModifyMemberRole(adminMember, anotherAdmin)).toBe(false);
+    
+    // Owner CAN modify admin (wildcard bypasses peer check)
+    expect(canModifyMemberRole(ownerMember, adminMember)).toBe(true);
   });
 });
 

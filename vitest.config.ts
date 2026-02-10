@@ -9,6 +9,7 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/e2e/**',
+      '**/tests/firestore-rules/**',
     ],
     env: {
       // Dummy Firebase config for tests  
@@ -18,6 +19,11 @@ export default defineConfig({
       NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: 'test.appspot.com',
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '123456789',
       NEXT_PUBLIC_FIREBASE_APP_ID: '1:123456789:web:abcdef',
+      // Email configuration for tests
+      EMAIL_DEV_MODE: 'true',
+      POSTMARK_API_KEY: 'test-api-key',
+      POSTMARK_FROM_EMAIL: 'test@example.com',
+      POSTMARK_FROM_NAME: 'Test Sender',
     },
     coverage: {
       provider: 'v8',

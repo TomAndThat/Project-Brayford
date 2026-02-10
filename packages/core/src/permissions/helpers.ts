@@ -12,6 +12,7 @@ import type {
   OrganizationRole,
 } from '../schemas/organization.schema';
 import { getPermissionsForRole } from './role-mappings';
+import { BRANDS_VIEW, BRANDS_CREATE, USERS_UPDATE_ROLE, USERS_INVITE } from './constants';
 import type { BrandId } from '../types/branded';
 
 /**
@@ -139,6 +140,12 @@ export function requireAllPermissions(
 /**
  * Check if a member has access to a specific brand
  * 
+ * Uses the permission system (not role checks) to determine access.
+ * Members with brand management capability (BRANDS_CREATE) and an empty
+ * brandAccess array have implicit access to all brands (owners/admins).
+ * Members with a populated brandAccess array must have the specific brand listed.
+ * Members without brand management capability and an empty array have no access.
+ * 
  * @param member - Organization member to check
  * @param brandId - Brand ID to check access for
  * @returns true if member can access the brand
@@ -147,14 +154,20 @@ export function hasBrandAccess(
   member: OrganizationMember | OrganizationMemberDocument,
   brandId: string | BrandId
 ): boolean {
-  // Owner and admin have access to all brands
-  if (member.role === 'owner' || member.role === 'admin') {
-    return true;
+  // Must have brand viewing permission
+  if (!hasPermission(member, BRANDS_VIEW)) {
+    return false;
   }
   
-  // Members with empty brandAccess array have no access
-  // Members with brandAccess array must have the specific brand
-  return member.brandAccess.includes(brandId as string);
+  // Members with specific brand assignments → check the list
+  if (member.brandAccess.length > 0) {
+    return member.brandAccess.includes(brandId as BrandId);
+  }
+  
+  // Empty brandAccess: only members with brand management capability
+  // (BRANDS_CREATE — owners/admins) have implicit all-brand access.
+  // Members without it have no access when brandAccess is empty.
+  return hasPermission(member, BRANDS_CREATE);
 }
 
 /**
@@ -178,10 +191,11 @@ export function requireBrandAccess(
 /**
  * Check if a member can modify another member's role
  * 
- * Validation rules:
- * - Owners can modify anyone except other owners
- * - Admins can modify members only (not owners or other admins)
- * - Members cannot modify anyone
+ * Uses the permission system to validate capability, then applies
+ * structural constraints:
+ * - Must have users:update_role permission
+ * - Cannot modify owners (protected role)
+ * - Cannot modify yourself (use canChangeSelfRole for self-demotion)
  * 
  * @param actor - Member attempting the action
  * @param target - Member being modified
@@ -191,22 +205,28 @@ export function canModifyMemberRole(
   actor: OrganizationMember | OrganizationMemberDocument,
   target: OrganizationMember | OrganizationMemberDocument
 ): boolean {
-  // Members cannot modify anyone
-  if (actor.role === 'member') {
+  // Must have the permission to update roles
+  if (!hasPermission(actor, USERS_UPDATE_ROLE)) {
     return false;
   }
   
-  // Admins can only modify members
-  if (actor.role === 'admin') {
-    return target.role === 'member';
+  // Cannot modify owners (only owners can self-demote via canChangeSelfRole)
+  if (target.role === 'owner') {
+    return false;
   }
   
-  // Owners can modify anyone except other owners
-  if (actor.role === 'owner') {
-    return target.role !== 'owner';
+  // Cannot modify yourself
+  if (actor.userId === target.userId) {
+    return false;
   }
   
-  return false;
+  // Non-wildcard holders (admins) cannot modify peers who also have update_role
+  const actorPermissions = getEffectivePermissions(actor);
+  if (!actorPermissions.some(isWildcardPermission) && hasPermission(target, USERS_UPDATE_ROLE)) {
+    return false;
+  }
+  
+  return true;
 }
 
 /**
@@ -230,10 +250,9 @@ export function requireCanModifyMemberRole(
 /**
  * Check if a member can invite someone with a specific role
  * 
- * Validation rules:
- * - Owners can invite any role (owner, admin, member)
- * - Admins can invite admin or member (not owner)
- * - Members cannot invite anyone
+ * Uses the permission system to validate capability:
+ * - Must have users:invite permission
+ * - Only members with wildcard permission (owners) can invite to owner role
  * 
  * @param actor - Member attempting to invite
  * @param targetRole - Role to be assigned to invitee
@@ -243,22 +262,18 @@ export function canInviteRole(
   actor: OrganizationMember | OrganizationMemberDocument,
   targetRole: OrganizationRole
 ): boolean {
-  // Members cannot invite anyone
-  if (actor.role === 'member') {
+  // Must have the permission to invite
+  if (!hasPermission(actor, USERS_INVITE)) {
     return false;
   }
   
-  // Admins can invite admin or member, but not owner
-  if (actor.role === 'admin') {
-    return targetRole !== 'owner';
+  // Only members with wildcard permission can invite to owner role
+  if (targetRole === 'owner') {
+    const permissions = getEffectivePermissions(actor);
+    return permissions.some(isWildcardPermission);
   }
   
-  // Owners can invite any role
-  if (actor.role === 'owner') {
-    return true;
-  }
-  
-  return false;
+  return true;
 }
 
 /**
@@ -280,12 +295,11 @@ export function requireCanInviteRole(
 }
 
 /**
- * Check if an owner can change their own role (demote themselves)
+ * Check if a member can change their own role (self-demotion)
  * 
- * Validation rules:
- * - Owners can demote themselves only if at least one other owner remains
- * - Last owner cannot demote themselves (prevents org lockout)
- * - Non-owners cannot use this check (returns false)
+ * Uses the permission system to validate capability:
+ * - Only members with wildcard permission (owners) can self-demote
+ * - Must have at least one other owner remaining to prevent org lockout
  * 
  * @param actor - Member attempting the role change
  * @param currentOwnerCount - Total number of owners in the organization
@@ -295,12 +309,13 @@ export function canChangeSelfRole(
   actor: OrganizationMember | OrganizationMemberDocument,
   currentOwnerCount: number
 ): boolean {
-  // Only owners can use this check
-  if (actor.role !== 'owner') {
+  // Only members with wildcard permission (owners) can self-demote
+  const permissions = getEffectivePermissions(actor);
+  if (!permissions.some(isWildcardPermission)) {
     return false;
   }
   
-  // Owner can demote self if at least one other owner remains
+  // Must have at least one other owner remaining
   return currentOwnerCount >= 2;
 }
 

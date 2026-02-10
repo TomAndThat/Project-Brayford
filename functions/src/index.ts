@@ -9,11 +9,13 @@
 
 import {setGlobalOptions} from "firebase-functions";
 import {onSchedule} from "firebase-functions/v2/scheduler";
+import {onDocumentWritten} from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import {getFirestore, Timestamp} from "firebase-admin/firestore";
 import {initializeApp} from "firebase-admin/app";
 import {sendDeletionCompleteEmail} from "@brayford/email-utils";
 import type {OrganizationId} from "@brayford/core";
+import {updateUserClaims} from "./claims.js";
 
 // Initialize Firebase Admin
 initializeApp();
@@ -33,6 +35,62 @@ const db = getFirestore();
 // In the v1 API, each function can only serve one request per container, so
 // this will be the maximum concurrent request count.
 setGlobalOptions({ maxInstances: 10 });
+
+// ===== Claims Sync =====
+
+/**
+ * Firestore trigger: Sync custom claims when organisation membership changes
+ *
+ * Fires on any create, update, or delete of an organizationMembers document.
+ * Rebuilds the user's full custom claims from all their current memberships,
+ * then bumps claimsVersion on the user doc to trigger a client-side token refresh.
+ *
+ * This covers all membership mutations:
+ * - Invitation accepted (member created)
+ * - Role changed (member updated)
+ * - Brand access changed (member updated)
+ * - Member removed (member deleted)
+ * - Organisation created (owner member created)
+ */
+export const onMembershipChange = onDocumentWritten(
+  {
+    document: "organizationMembers/{memberId}",
+    maxInstances: 10,
+  },
+  async (event) => {
+    // Get the userId from either the new or old document (handles deletes)
+    const afterData = event.data?.after?.data();
+    const beforeData = event.data?.before?.data();
+
+    const userId = (afterData?.userId ?? beforeData?.userId) as string | undefined;
+
+    if (!userId) {
+      logger.warn("Membership change event with no userId", {
+        memberId: event.params.memberId,
+      });
+      return;
+    }
+
+    const changeType = !beforeData ? "create" :
+      !afterData ? "delete" : "update";
+
+    logger.info(`Membership ${changeType} for user ${userId}`, {
+      memberId: event.params.memberId,
+      userId,
+      changeType,
+      organizationId: (afterData?.organizationId ?? beforeData?.organizationId) as string,
+    });
+
+    try {
+      await updateUserClaims(userId);
+    } catch (error) {
+      logger.error(`Failed to update claims for user ${userId}:`, error);
+      // Don't rethrow — we don't want infinite retries for permanent failures
+    }
+  },
+);
+
+// ===== Scheduled Functions =====
 
 // export const helloWorld = onRequest((request, response) => {
 //   logger.info("Hello logs!", {structuredData: true});

@@ -7,15 +7,12 @@ import {
   type OrganizationMemberDocument,
   type BrandDocument,
   type BrandId,
-  generateInvitationToken,
-  calculateInvitationExpiry,
   type InvitationRole,
   canInviteRole,
 } from "@brayford/core";
 import {
-  createInvitation,
+  auth,
   pendingInvitationExists,
-  resendInvitation,
   getOrganizationMembers,
 } from "@brayford/firebase-utils";
 import { isValidEmail, normalizeEmail } from "@brayford/email-utils";
@@ -139,7 +136,19 @@ export default function InviteUserModal({
           `A pending invitation already exists for ${normalizedEmail}. Would you like to resend it?`,
         );
         if (shouldResend) {
-          await resendInvitation(existingInvitation.id);
+          const idToken = await auth.currentUser?.getIdToken();
+          if (!idToken) throw new Error("Not authenticated");
+          const resendRes = await fetch(
+            `/api/invitations/${fromBranded(existingInvitation.id)}/resend`,
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${idToken}` },
+            },
+          );
+          if (!resendRes.ok) {
+            const data = await resendRes.json();
+            throw new Error(data.error || "Failed to resend invitation");
+          }
           setSuccessMessage(`Invitation resent to ${normalizedEmail}`);
           setTimeout(() => {
             resetForm();
@@ -156,28 +165,40 @@ export default function InviteUserModal({
           ? []
           : selectedBrands.map((b) => fromBranded(b));
 
-      // Create invitation
-      await createInvitation({
-        email: normalizedEmail,
-        organizationId: fromBranded(organizationId),
-        organizationName,
-        role,
-        brandAccess,
-        autoGrantNewBrands:
-          role === "admin" || role === "owner" ? true : autoGrantNewBrands,
-        invitedBy: fromBranded(currentMember.userId),
-        token: generateInvitationToken(),
-        expiresAt: calculateInvitationExpiry(),
-        metadata: {
-          inviterName: currentMember.user
-            ? (currentMember.user as { displayName?: string }).displayName ||
-              undefined
-            : undefined,
-          inviterEmail: currentMember.user
-            ? (currentMember.user as { email?: string }).email || undefined
-            : undefined,
+      // Create invitation via server-side API
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error("Not authenticated");
+
+      const createRes = await fetch("/api/invitations/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
         },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          organizationId: fromBranded(organizationId),
+          organizationName,
+          role,
+          brandAccess,
+          autoGrantNewBrands:
+            role === "admin" || role === "owner" ? true : autoGrantNewBrands,
+          metadata: {
+            inviterName: currentMember.user
+              ? (currentMember.user as { displayName?: string }).displayName ||
+                undefined
+              : undefined,
+            inviterEmail: currentMember.user
+              ? (currentMember.user as { email?: string }).email || undefined
+              : undefined,
+          },
+        }),
       });
+
+      if (!createRes.ok) {
+        const data = await createRes.json();
+        throw new Error(data.error || "Failed to create invitation");
+      }
 
       // TODO: Send invitation email via API route (deferred until email sending is wired to API)
       // For now, the invitation is created in Firestore and can be shared via direct link

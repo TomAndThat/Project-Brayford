@@ -84,11 +84,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Firestore Rules Audit**: Comprehensive security audit of all Firestore operations
   - Created exhaustive documentation of all 7 collections requiring security rules
-  - Identified 6 critical security gaps including missing permission validation and cross-organization data leakage
+  - Identified **9 critical security gaps** including 1 fundamental architectural flaw
+  - **CRITICAL FINDING:** Codebase uses role-based permission checks (anti-pattern) instead of capability-based system
+    - Core permission helpers (`hasBrandAccess`, `canModifyMemberRole`, `canInviteRole`) check `role === 'owner'` directly
+    - API routes fall back to role checks when permissions array is empty
+    - Creates two sources of truth for authorization decisions
+    - Must be refactored to use `hasPermission()` exclusively before implementing custom claims
+  - Documented 8 additional security vulnerabilities: missing permission validation, cross-organization data leakage, invitation system issues
   - Documented missing rules for `organizationDeletionRequests` and `deletedOrganizationsAudit` collections
-  - Provided detailed recommendations for implementing custom claims-based authorization
+  - Corrected recommendations to use permission-based custom claims (not role-based)
   - Specified required Firestore indexes for all query operations
-  - See `docs/FIRESTORE_RULES_AUDIT.md` for complete findings and action plan
+  - See `docs/FIRESTORE_RULES_AUDIT.md` for complete findings and remediation plan
 - **User Management**: Owners can now invite additional owners to organisations
   - Owner role option added to invitation flow with confirmation warnings
   - Detailed confirmation dialog explaining owner-level permissions (billing, account deletion, member management)

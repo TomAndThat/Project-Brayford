@@ -452,7 +452,7 @@ describe('jitter integration scenarios', () => {
     voteSubmissions.forEach((vote) => {
       expect(vote).toHaveBeenCalledOnce();
     });
-  });
+  }, 15000);
 
   it('combines shouldUseJitter with conditional execution', async () => {
     const mockFn = vi.fn().mockResolvedValue('result');

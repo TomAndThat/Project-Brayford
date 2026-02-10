@@ -29,6 +29,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
+import { getPermissionsForRole } from "@brayford/core";
+import type { OrganizationRole } from "@brayford/core";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -133,11 +135,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const memberData = memberQuery.docs[0]!.data();
-    const permissions: string[] = memberData.permissions || [];
+    // Derive permissions from role if no custom permissions set
+    const customPermissions: string[] = memberData.permissions || [];
+    const permissions: string[] = customPermissions.length > 0
+      ? customPermissions
+      : getPermissionsForRole(memberData.role as OrganizationRole).map(String);
     const hasDeletePerm =
       permissions.includes("org:delete") ||
-      permissions.includes("*") ||
-      (permissions.length === 0 && memberData.role === "owner");
+      permissions.includes("*");
 
     if (!hasDeletePerm) {
       return NextResponse.json(

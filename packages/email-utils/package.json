@@ -3,18 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "description": "Email sending utilities for Project Brayford",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./templates": "./src/templates/index.ts",
-    "./rate-limiter": "./src/rate-limiter.ts"
+    ".": "./dist/index.js",
+    "./templates": "./dist/templates/index.js",
+    "./rate-limiter": "./dist/rate-limiter.js"
   },
   "scripts": {
+    "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@brayford/core": "workspace:*",

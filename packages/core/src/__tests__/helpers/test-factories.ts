@@ -31,6 +31,7 @@ export function createMockUser(overrides?: Partial<User>): User {
     authProvider: 'google.com',
     createdAt: new Date('2024-01-01T00:00:00Z'),
     lastLoginAt: new Date('2024-01-15T10:30:00Z'),
+    claimsVersion: 0,
     ...overrides,
   };
 }
@@ -47,6 +48,7 @@ export function createMockCreateUserData(
     displayName: 'Test User',
     photoURL: 'https://example.com/photo.jpg',
     authProvider: 'google.com',
+    claimsVersion: 0,
     ...overrides,
   };
 }

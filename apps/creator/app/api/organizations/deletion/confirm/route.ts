@@ -27,7 +27,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { sendDeletionAlertEmail } from "@brayford/email-utils";
-import type { OrganizationId } from "@brayford/core";
+import { getPermissionsForRole } from "@brayford/core";
+import type { OrganizationId, OrganizationRole } from "@brayford/core";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -177,11 +178,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const member = memberDoc.data();
 
       // Check if member has org:delete permission
-      const permissions: string[] = member.permissions || [];
+      // Derive permissions from role if no custom permissions set
+      const customPermissions: string[] = member.permissions || [];
+      const permissions: string[] = customPermissions.length > 0
+        ? customPermissions
+        : getPermissionsForRole(member.role as OrganizationRole).map(String);
       const hasDeletePerm =
         permissions.includes("org:delete") ||
-        permissions.includes("*") ||
-        (permissions.length === 0 && member.role === "owner");
+        permissions.includes("*");
 
       if (hasDeletePerm && member.userId !== deletionRequest.requestedBy) {
         // Look up member's email from users collection

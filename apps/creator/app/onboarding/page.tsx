@@ -4,17 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  createOrganization,
-  getUserOrganizations,
-} from "@brayford/firebase-utils";
-import {
-  type CreateOrganizationData,
-  type OrganizationType,
-  toBranded,
-  type UserId,
-} from "@brayford/core";
-import { fromBranded } from "@brayford/core";
+import { getUserOrganizations } from "@brayford/firebase-utils";
+import { type OrganizationType, toBranded, type UserId } from "@brayford/core";
 
 interface OnboardingFormData {
   organizationName: string;
@@ -90,15 +81,25 @@ export default function OnboardingPage() {
       const orgType: OrganizationType =
         selectedType === "individual" ? "individual" : "team";
 
-      // Create organization
-      const orgData: CreateOrganizationData = {
-        name: data.organizationName,
-        type: orgType,
-        billingEmail: data.billingEmail,
-        createdBy: fromBranded(userId),
-      };
+      // Create organisation via server-side API route (atomic batch write)
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/organizations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          name: data.organizationName,
+          type: orgType,
+          billingEmail: data.billingEmail,
+        }),
+      });
 
-      await createOrganization(orgData, userId);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create organisation");
+      }
 
       // Redirect to dashboard
       router.push("/dashboard");

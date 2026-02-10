@@ -205,9 +205,19 @@ function JoinPageContent() {
         return;
       }
 
-      // For decline, we can use the client SDK directly (simpler operation)
-      const { declineInvitation } = await import("@brayford/firebase-utils");
-      await declineInvitation(primaryInvitation.id);
+      // Decline via server-side API
+      const idToken = await currentUser.getIdToken();
+      const res = await fetch(
+        `/api/invitations/${fromBranded(primaryInvitation.id)}/decline`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${idToken}` },
+        },
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to decline invitation");
+      }
 
       setErrorMessage(
         "Invitation declined. Contact the inviter if you change your mind.",

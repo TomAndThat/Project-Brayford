@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  transpilePackages: [
+    '@brayford/core',
+    '@brayford/firebase-utils',
+  ],
 };
 
 export default nextConfig;

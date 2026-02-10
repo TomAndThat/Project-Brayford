@@ -3,19 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "description": "Shared types, schemas, and constants for Project Brayford",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./schemas": "./src/schemas/index.ts",
-    "./test-helpers": "./src/__tests__/helpers/test-factories.ts"
+    ".": "./dist/index.js",
+    "./schemas": "./dist/schemas/index.js",
+    "./test-helpers": "./dist/__tests__/helpers/test-factories.js"
   },
   "scripts": {
+    "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "zod": "^3.22.4"
