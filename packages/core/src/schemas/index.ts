@@ -64,6 +64,38 @@ export {
   type UpdateBrandData,
 } from './brand.schema';
 
+// Event Schema (Event Management Domain)
+export {
+  EventSchema,
+  CreateEventSchema,
+  UpdateEventSchema,
+  EventStatus,
+  validateEventData,
+  validateCreateEventData,
+  validateUpdateEventData,
+  type Event,
+  type EventDocument,
+  type CreateEventData,
+  type UpdateEventData,
+  type EventStatus as EventStatusType,
+} from './event.schema';
+
+// QR Code Schema (Event Management Domain)
+export {
+  QRCodeSchema,
+  CreateQRCodeSchema,
+  UpdateQRCodeSchema,
+  validateQRCodeData,
+  validateCreateQRCodeData,
+  validateUpdateQRCodeData,
+  generateQRCode,
+  buildQRCodeUrl,
+  type QRCode,
+  type QRCodeDocument,
+  type CreateQRCodeData,
+  type UpdateQRCodeData,
+} from './qr-code.schema';
+
 // Invitation Schema (Organization Domain)
 export {
   InvitationSchema,

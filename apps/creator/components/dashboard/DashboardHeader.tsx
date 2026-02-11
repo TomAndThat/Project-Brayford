@@ -15,10 +15,6 @@ interface DashboardHeaderProps {
   organizationName: string;
   onSignOut: () => Promise<void>;
   pageTitle?: string; // Optional page title override
-  breadcrumb?: {
-    label: string;
-    onClick: () => void;
-  };
   /** Optional org switcher rendered below the title */
   orgSwitcher?: ReactNode;
   /** Optional current member for permission checks */
@@ -26,7 +22,7 @@ interface DashboardHeaderProps {
 }
 
 /**
- * Reusable dashboard header with user profile dropdown
+ * Reusable dashboard header with user profile dropdown and home navigation
  * Used across all dashboard pages for consistent UX
  */
 export default function DashboardHeader({
@@ -34,13 +30,15 @@ export default function DashboardHeader({
   organizationName,
   onSignOut,
   pageTitle,
-  breadcrumb,
   orgSwitcher,
   currentMember,
 }: DashboardHeaderProps) {
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Determine if we're on the home dashboard
+  const isOnHomePage = !pageTitle;
 
   // Check permissions
   const canViewSettings = currentMember

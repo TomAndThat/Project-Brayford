@@ -41,6 +41,7 @@ export type InvitationId = Brand<string, 'InvitationId'>;
  * Event Management Domain
  */
 export type EventId = Brand<string, 'EventId'>;
+export type QRCodeId = Brand<string, 'QRCodeId'>;
 
 /**
  * Interaction Domain

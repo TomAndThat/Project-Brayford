@@ -51,6 +51,26 @@ export {
   brandExists,
 } from './brands';
 
+// Event operations
+export {
+  getEventRef,
+  getEvent,
+  createEvent,
+  updateEvent,
+  getBrandEvents,
+  getOrganizationEvents,
+} from './events';
+
+// QR Code operations
+export {
+  getQRCodeRef,
+  getQRCode,
+  getEventQRCodes,
+  createQRCode,
+  updateQRCode,
+  getQRCodeByCode,
+} from './qr-codes';
+
 // Invitation operations
 export {
   getInvitationRef,

@@ -50,6 +50,11 @@
 
 **Example:** A button label says "Organise Event" (UK), but the code calls `createOrganization()` (US).
 
+### 🎬 Production Ready
+
+- All code must be production-ready quality, even in early stages
+- It is _never_ acceptable to use alert() style messaging. All user-facing messages must be presented in proper components with appropriate styling and UX patterns.
+
 ## Project Overview
 
 Real-time "second screen" interaction platform for live events (podcasts, creator shows). Handles 5,000+ concurrent participants per event. Four Next.js apps + shared packages in a pnpm workspace. Firebase (Firestore + Realtime DB) for real-time sync. See [docs/DOMAIN_MODEL.md](../docs/DOMAIN_MODEL.md) for full architecture.

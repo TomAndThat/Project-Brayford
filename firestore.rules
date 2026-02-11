@@ -93,6 +93,24 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ===== Events Collection =====
+    // Only org members can read events in their organisation.
+    // Client queries MUST include .where('organizationId', '==', orgId).
+    // All writes go through server-side API routes (Firebase Admin SDK).
+    match /events/{eventId} {
+      allow read: if isOrgMember(resource.data.organizationId);
+      allow write: if false;
+    }
+
+    // ===== QR Codes Collection =====
+    // Only org members can read QR codes for events in their organisation.
+    // Client queries MUST include .where('organizationId', '==', orgId).
+    // All writes go through server-side API routes (Firebase Admin SDK).
+    match /qrCodes/{qrCodeId} {
+      allow read: if isOrgMember(resource.data.organizationId);
+      allow write: if false;
+    }
+
     // ===== Organization Deletion Requests =====
     // Server-side only (created by deletion API routes).
     match /organizationDeletionRequests/{requestId} {

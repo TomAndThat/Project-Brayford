@@ -9,6 +9,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Event Management UI**: Complete interface for managing events in the creator app
+  - Event schema with timezone support and lifecycle statuses (draft, active, live, ended)
+  - **Create Event Modal**: Form for creating new events with validation
+    - Event name input (1-100 characters)
+    - Brand selection dropdown (shows all brands user has access to)
+    - Venue input (optional, 1-200 characters)
+    - Date and start time pickers (required)
+    - Optional end date and time for multi-day events
+    - Automatic timezone detection (IANA timezone identifiers)
+    - DST-aware "advertised time" - ensures event times don't shift due to daylight savings
+    - Displays in viewer's local timezone while preserving advertised time
+    - Validation prevents creating events without selecting a brand
+  - **Events List Page** (`/dashboard/events`): Table view of all events with filtering
+    - Filter tabs: Active | Archived | All with badge counts
+    - Table columns: Event Name, Brand, Date & Time, Venue, Status
+    - Status badges with colour coding (draft=gray, active=green, live=blue, ended=red)
+    - Click row to navigate to event settings
+    - Empty states with CTAs based on filter selection
+    - Permission checks for create/update/delete actions
+  - **Event Settings Page**: Edit event details post-creation
+    - Update name, venue, date/time, status
+    - Brand displayed as read-only (cannot change after creation)
+    - Timezone displayed as read-only (set at creation)
+    - Optional end date/time can be added or removed
+    - Archive event button with confirmation dialog
+    - Unarchive event button for restoring archived events (restores `isActive: true`)
+    - Permission-based UI (show/hide controls based on `events:update`/`events:delete`)
+  - **Dashboard Integration**:
+    - Events card on main dashboard (navigates to `/dashboard/events`)
+    - Events section showing up to 5 upcoming events with status badges
+    - "...and X more events" indicator when >5 events exist
+  - **Server-side API Routes**:
+    - `POST /api/events` - Create event with brand access verification
+    - `PATCH /api/events/[eventId]` - Update event fields
+    - `DELETE /api/events/[eventId]` - Soft-delete (archive) event
+    - All routes enforce `events:create`, `events:update`, `events:delete` permissions
+    - Brand access verification ensures users can only modify events for brands they have access to
+  - **Firebase Utilities**: CRUD operations for events collection
+    - `getEvent`, `createEvent`, `updateEvent`
+    - `getBrandEvents`, `getOrganizationEvents` with active/archived filtering
+  - **QR Code System**: Full CRUD system for managing multiple QR codes per event
+    - Automatically creates default "Main QR Code" when event is created
+    - Create additional QR codes with custom names (e.g., "Social Media", "VIP Entrance")
+    - Activate/deactivate QR codes for security invalidation without deletion
+    - Visual QR code display with status indicators (active/inactive)
+    - Copy QR code URL to clipboard
+    - Download QR codes as PNG images
+    - API routes: `POST /api/events/[eventId]/qr-codes`, `PATCH/DELETE /api/events/[eventId]/qr-codes/[qrCodeId]`
+    - Firebase utilities: `getQRCode`, `getEventQRCodes`, `createQRCode`, `updateQRCode`, `getQRCodeByCode`
+    - QR code URL format: `{AUDIENCE_APP_URL}/events/{eventId}/join/{qrCodeId}` (configurable via `NEXT_PUBLIC_AUDIENCE_URL`)
+    - Schema with unique unpredictable codes (UUID), names, and active status
+    - Client-side QR generation using `qrcode.react` library
+    - Automatic date conversion and validation
+  - **Comprehensive Tests**: Schema and Firebase utilities tests with 100% coverage
+    - Event schema validation tests (required fields, time format, status enum)
+    - CreateEventSchema and UpdateEventSchema tests
+    - Firestore operations mocked and tested
+
 - **Brand Management UI**: Complete interface for managing brands in the creator app
   - Brand hub page (`/dashboard/brands`) with brand listing table
   - Create brand modal with name validation (1-100 characters)

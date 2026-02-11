@@ -50,26 +50,32 @@
 
 **Priority:** Critical blocker for Phase 3 (Event Management)
 
-- [ ] Brand creation UI in creator app
-- [ ] Brand editing & settings page
-  - [ ] Brand name, description, logo upload
+- [x] Brand creation UI in creator app
+- [x] Brand editing & settings page
   - [ ] Brand customization (colors, branding)
 - [ ] Brand listing & selection (brand switcher in dashboard)
 - [ ] Brand member access management UI
   - [ ] View which team members have access to specific brands
   - [ ] Grant/revoke brand access for organization members
-- [ ] Brand archival/deletion (with dependency checks)
+- [x] Brand archival/deletion (with dependency checks)
 - [ ] Default brand selection for new organizations
 - [ ] Brand-level permissions enforcement in UI
 
 ### Phase 3: Event Management Domain
 
-- [ ] Event schema (CRUD)
-- [ ] Event lifecycle (draft → live → ended → archived)
+- [x] Event schema (CRUD)
+- [x] Event creation UI in creator app
+- [x] Event editing & settings page
+- [x] Events list page with filtering (active/archived/all)
+- [x] Event lifecycle statuses (draft → active → live → ended)
+- [x] Event scheduling & timezone handling (IANA timezone support with DST-aware "advertised time")
+- [x] Dashboard integration (events card and events section)
+- [x] Event archival/soft-delete functionality
+- [x] Basic CRUD tests for schema and Firebase utilities
 - [ ] QR code generation for audience entry
-- [ ] Event scheduling & timezone handling
 - [ ] Event templates (reusable configs)
 - [ ] Block organisation deletion while events are live (depends on org deletion from Phase 1)
+- [ ] Event restore functionality for archived events
 
 ### Phase 4: Core Product - Interaction Domain
 

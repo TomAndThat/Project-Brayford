@@ -7,6 +7,7 @@ import {
   getUserOrganizations,
   getOrganization,
   getOrganizationBrands,
+  getOrganizationEvents,
 } from "@brayford/firebase-utils";
 import {
   toBranded,
@@ -15,9 +16,11 @@ import {
   type OrganizationDocument,
   type OrganizationMemberDocument,
   type BrandDocument,
+  type EventDocument,
   hasPermission,
   USERS_VIEW,
   BRANDS_VIEW,
+  EVENTS_VIEW,
 } from "@brayford/core";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import OrgSwitcher, {
@@ -35,6 +38,7 @@ export default function DashboardPage() {
     null,
   );
   const [brands, setBrands] = useState<BrandDocument[]>([]);
+  const [events, setEvents] = useState<EventDocument[]>([]);
   const [allOrgs, setAllOrgs] = useState<OrgSwitcherItem[]>([]);
   const [memberships, setMemberships] = useState<OrganizationMemberDocument[]>(
     [],
@@ -60,6 +64,8 @@ export default function DashboardPage() {
         setOrganization(org);
         const orgBrands = await getOrganizationBrands(orgId);
         setBrands(orgBrands);
+        const orgEvents = await getOrganizationEvents(orgId);
+        setEvents(orgEvents);
         // Persist the selected org
         if (typeof window !== "undefined") {
           localStorage.setItem(SELECTED_ORG_KEY, orgId as string);
@@ -84,22 +90,23 @@ export default function DashboardPage() {
       setMemberships(userMemberships);
 
       // Load org names for the switcher - filter out soft-deleted organizations
-      const orgItems: OrgSwitcherItem[] = (
-        await Promise.all(
-          userMemberships.map(async (m) => {
-            const org = await getOrganization(m.organizationId);
-            // Skip soft-deleted organizations
-            if (org?.softDeletedAt) {
-              return null;
-            }
-            return {
-              id: m.organizationId,
-              name: org?.name ?? "Unknown",
-              role: m.role,
-            };
-          }),
-        )
-      ).filter((item): item is OrgSwitcherItem => item !== null);
+      const orgItemsWithNulls = await Promise.all(
+        userMemberships.map(async (m) => {
+          const org = await getOrganization(m.organizationId);
+          // Skip soft-deleted organizations
+          if (org?.softDeletedAt) {
+            return null;
+          }
+          return {
+            id: m.organizationId,
+            name: org?.name ?? "Unknown",
+            role: m.role,
+          } as OrgSwitcherItem;
+        }),
+      );
+      const orgItems = orgItemsWithNulls.filter(
+        (item): item is OrgSwitcherItem => item !== null,
+      );
 
       // If no active organizations remain, redirect to onboarding
       if (orgItems.length === 0) {
@@ -281,30 +288,37 @@ export default function DashboardPage() {
             </button>
           )}
 
-          <div
-            data-testid="events-card"
-            className="bg-gray-100 rounded-lg shadow-md p-6 opacity-50 cursor-not-allowed"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Events</h3>
-                <p className="text-sm text-gray-600 mt-1">Coming soon</p>
+          {currentMember && hasPermission(currentMember, EVENTS_VIEW) && (
+            <button
+              onClick={() => router.push("/dashboard/events")}
+              data-testid="events-card"
+              className="bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition-shadow"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Events
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Manage your organisation's events
+                  </p>
+                </div>
+                <svg
+                  className="w-8 h-8 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
               </div>
-              <svg
-                className="w-8 h-8 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-          </div>
+            </button>
+          )}
 
           <div
             data-testid="analytics-card"
@@ -334,27 +348,60 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Brands Section */}
+        {/* Events Section */}
         <div
-          data-testid="brands-section"
+          data-testid="events-section"
           className="bg-white rounded-lg shadow-md p-8 mb-8"
         >
           <h3 className="text-xl font-semibold text-gray-900 mb-4">
-            Your Brands
+            Your Events
           </h3>
-          {brands.length > 0 ? (
+          {events.length > 0 ? (
             <div className="space-y-2">
-              {brands.map((brand) => (
+              {events.slice(0, 5).map((event) => (
                 <div
-                  key={fromBranded(brand.id)}
+                  key={fromBranded(event.id)}
                   className="p-4 border border-gray-200 rounded-md"
                 >
-                  <h4 className="font-medium text-gray-900">{brand.name}</h4>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-medium text-gray-900">
+                        {event.name}
+                      </h4>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {event.scheduledDate.toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}{" "}
+                        at {event.scheduledStartTime}
+                      </p>
+                    </div>
+                    <span
+                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        event.status === "draft"
+                          ? "bg-gray-100 text-gray-800"
+                          : event.status === "active"
+                            ? "bg-green-100 text-green-800"
+                            : event.status === "live"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {event.status.charAt(0).toUpperCase() +
+                        event.status.slice(1)}
+                    </span>
+                  </div>
                 </div>
               ))}
+              {events.length > 5 && (
+                <p className="text-sm text-gray-500 text-center pt-2">
+                  ...and {events.length - 5} more events
+                </p>
+              )}
             </div>
           ) : (
-            <p className="text-gray-600">No brands yet.</p>
+            <p className="text-gray-600">No events yet.</p>
           )}
         </div>
 
