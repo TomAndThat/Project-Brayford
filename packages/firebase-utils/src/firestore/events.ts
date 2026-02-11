@@ -239,3 +239,52 @@ export async function getOrganizationEvents(
   
   return events;
 }
+
+/**
+ * Get child events for an event group
+ * 
+ * @param parentEventId - Parent event group ID
+ * @param activeOnly - Whether to only include active events (default: true)
+ * @returns Array of child event documents
+ * 
+ * @example
+ * ```ts
+ * const childEvents = await getChildEvents(eventGroupId);
+ * ```
+ */
+export async function getChildEvents(
+  parentEventId: EventId,
+  activeOnly = true
+): Promise<EventDocument[]> {
+  const eventsRef = collection(db, 'events');
+  let q = query(
+    eventsRef,
+    where('parentEventId', '==', fromBranded(parentEventId)),
+    where('eventType', '==', 'event'),
+    orderBy('scheduledDate', 'asc')
+  );
+  
+  const querySnap = await getDocs(q);
+  
+  const events: EventDocument[] = [];
+  for (const docSnap of querySnap.docs) {
+    const data = validateEventData({
+      ...docSnap.data(),
+      createdAt: docSnap.data().createdAt?.toDate(),
+      scheduledDate: docSnap.data().scheduledDate?.toDate(),
+      scheduledEndDate: docSnap.data().scheduledEndDate?.toDate(),
+    });
+    
+    // Filter by isActive if needed
+    if (activeOnly && !data.isActive) continue;
+    
+    events.push({
+      id: toBranded<EventId>(docSnap.id),
+      ...data,
+      brandId: toBranded<BrandId>(data.brandId),
+      organizationId: toBranded<OrganizationId>(data.organizationId),
+    });
+  }
+  
+  return events;
+}

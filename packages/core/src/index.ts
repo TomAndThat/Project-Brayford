@@ -16,6 +16,7 @@ export {
   type BrandId,
   type InvitationId,
   type EventId,
+  type QRCodeId,
   type ModuleId,
   type InteractionId,
   type ParticipantId,
@@ -37,6 +38,9 @@ export * from './schemas/index';
 
 // Re-export permission system
 export * from './permissions/index';
+
+// Re-export auth utilities
+export * from './auth/super-admin';
 
 // Re-export utilities
 export * from './utils/index';

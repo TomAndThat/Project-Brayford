@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Super Admin System** (Creator App - Phase 1): Internal support access infrastructure
+  - **Custom Claims Utilities** (`@brayford/core`)
+    - `isSuperAdmin(user)`: Check if user has super admin custom claim
+    - `isSuperAdminFromToken(tokenResult)`: Check from already-fetched token
+    - `refreshSuperAdminStatus(user)`: Force token refresh after claim grant/revoke
+  - **Support Mode Detection** (`apps/creator`)
+    - `useSupportMode()` hook: Automatically detects super admin status
+    - Returns `isSupportMode` boolean and `loading` state
+  - **Support Mode Banner** (`apps/creator`)
+    - Sticky amber banner at top of screen showing current organization
+    - "Exit Support Mode" button redirects to admin app
+    - Non-dismissible and always visible when super admin accesses org
+    - Distinctive styling for clear visibility
+  - **Dashboard Integration** (`apps/creator`)
+    - `DashboardLayoutWrapper` component adds banner to all dashboard pages
+    - Automatic spacing offset when banner is visible
+    - Zero code changes needed in individual pages
+  - **Environment Configuration**
+    - `NEXT_PUBLIC_ADMIN_APP_URL` env var for admin app redirect
+    - Supports local development and production URLs
+  - **Documentation**
+    - [SUPER_ADMIN_SYSTEM.md](./docs/briefs/SUPER_ADMIN_SYSTEM.md): Complete implementation guide
+    - Design document covers admin app requirements, security measures, audit logging
+    - Phase 1 (creator app) complete, Phase 2 (admin app) pending
+  - **Note**: Admin app authentication and organization browser not yet implemented
+
 - **Event Groups & Hierarchies**: Two-tier event organization system
   - **Event Type Enum**: Explicit `eventType` field with validation
     - `'group'`: Event groups that can contain child events (cannot have a parent)

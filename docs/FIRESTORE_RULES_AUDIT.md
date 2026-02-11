@@ -1639,12 +1639,48 @@ allow read: if request.auth.token.email.lower() == resource.data.email.lower();
 
 ### Phase 6: Long-term Enhancements
 
-12. **Permission System Optimisation**
+12. **Super Admin System for Internal Support** — 🔄 IN PROGRESS (creator app ready, admin app pending)
+    - **Purpose:** Allow Project Brayford staff to access any organization for support without being formal members
+    - **Custom claim:** `superAdmin: true` added to internal staff Firebase Auth tokens
+    - **Architecture:** Multi-app design — admin app browses all orgs, creator app displays support mode banner
+    - **Creator app implementation (✅ COMPLETE):**
+      - `packages/core/src/auth/super-admin.ts` — Utilities for checking super admin status
+      - `apps/creator/hooks/use-support-mode.ts` — Hook to detect support mode
+      - `apps/creator/components/support/SupportModeBanner.tsx` — Amber banner with org name and exit button
+      - `apps/creator/components/dashboard/DashboardLayoutWrapper.tsx` — Automatically adds banner to all dashboard pages
+    - **Firestore rules pattern:**
+
+      ```javascript
+      function isSuperAdmin() {
+        return request.auth.token.superAdmin == true;
+      }
+
+      match /organizations/{orgId} {
+        // Super admins bypass membership requirement
+        allow read: if isSuperAdmin() || isOrgMember(orgId);
+        allow write: if isSuperAdmin() || (isOrgMember(orgId) && hasRequiredPermissions());
+      }
+      ```
+
+    - **Admin app (pending):**
+      - Separate authentication flow restricted to `@projectbrayford.com` emails
+      - Organization browser with search/filters (name, domain, billing tier, status)
+      - "Enter Organization" action redirects to creator app with org context
+      - First super admin created via manual Firebase Admin SDK script
+    - **Security measures:**
+      - All super admin actions logged to `auditLogs` collection with actor, org, action, timestamp
+      - MFA requirement for all super admin accounts (configurable via Firebase Auth)
+      - Shorter session duration (30 minutes) with re-auth prompt
+      - Support access transparency: organizations can see "Recently accessed by support" in settings
+    - **Token refresh:** Custom claims cached for 1 hour, use `user.getIdToken(true)` to force refresh after claim grant/revoke
+    - **Documentation:** Full implementation guide in [SUPER_ADMIN_SYSTEM.md](./briefs/SUPER_ADMIN_SYSTEM.md)
+
+13. **Permission System Optimisation**
     - Consider moving to Cloud Functions for complex permission checks
     - Implement role-based access control (RBAC) service
     - Cache permission checks to reduce Firestore reads
 
-13. **Audit Trail Enhancements**
+14. **Audit Trail Enhancements**
     - Log all permission-checked operations
     - Implement suspicious activity detection
     - Add admin dashboard for security monitoring

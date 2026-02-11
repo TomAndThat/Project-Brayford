@@ -94,19 +94,32 @@ service cloud.firestore {
     }
 
     // ===== Events Collection =====
-    // Only org members can read events in their organisation.
-    // Client queries MUST include .where('organizationId', '==', orgId).
+    // Get (single doc): Org members OR anyone if event is active
+    // List (queries): Anyone (for child event discovery, filtered client-side)
     // All writes go through server-side API routes (Firebase Admin SDK).
     match /events/{eventId} {
-      allow read: if isOrgMember(resource.data.organizationId);
+      allow get: if isOrgMember(resource.data.organizationId)
+                 || resource.data.isActive == true;
+      allow list: if true; // Public queries for audience to discover child events
       allow write: if false;
     }
 
     // ===== QR Codes Collection =====
-    // Only org members can read QR codes for events in their organisation.
-    // Client queries MUST include .where('organizationId', '==', orgId).
+    // Get (single doc): Org members OR anyone if QR code is active  
+    // List (queries): Org members only (creator app needs to list QR codes for management)
     // All writes go through server-side API routes (Firebase Admin SDK).
     match /qrCodes/{qrCodeId} {
+      allow get: if isOrgMember(resource.data.organizationId)
+                 || resource.data.isActive == true;
+      allow list: if isOrgMember(resource.data.organizationId);
+      allow write: if false;
+    }
+
+    // ===== Audience Sessions Collection =====
+    // Tracks audience member sessions for billing and analytics.
+    // All writes go through server-side API routes (Firebase Admin SDK).
+    // Org members can read sessions for their events (analytics).
+    match /audienceSessions/{sessionId} {
       allow read: if isOrgMember(resource.data.organizationId);
       allow write: if false;
     }

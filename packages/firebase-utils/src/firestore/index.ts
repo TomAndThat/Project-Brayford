@@ -59,6 +59,7 @@ export {
   updateEvent,
   getBrandEvents,
   getOrganizationEvents,
+  getChildEvents,
 } from './events';
 
 // QR Code operations
@@ -70,6 +71,18 @@ export {
   updateQRCode,
   getQRCodeByCode,
 } from './qr-codes';
+
+// Audience Session operations
+export {
+  getAudienceSessionRef,
+  getAudienceSession,
+  getActiveAudienceSession,
+  createAudienceSession,
+  updateAudienceSession,
+  updateSessionHeartbeat,
+  endAudienceSession,
+  getEventActiveSessions,
+} from './audience-sessions';
 
 // Invitation operations
 export {

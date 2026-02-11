@@ -96,6 +96,20 @@ export {
   type UpdateQRCodeData,
 } from './qr-code.schema';
 
+// Audience Session Schema (Audience Domain)
+export {
+  AudienceSessionSchema,
+  CreateAudienceSessionSchema,
+  UpdateAudienceSessionSchema,
+  validateAudienceSessionData,
+  validateCreateAudienceSessionData,
+  validateUpdateAudienceSessionData,
+  type AudienceSession,
+  type AudienceSessionDocument,
+  type CreateAudienceSessionData,
+  type UpdateAudienceSessionData,
+} from './audience-session.schema';
+
 // Invitation Schema (Organization Domain)
 export {
   InvitationSchema,
