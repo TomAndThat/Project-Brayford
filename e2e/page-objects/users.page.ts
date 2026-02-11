@@ -15,8 +15,8 @@ export class UsersPage extends BasePage {
   readonly soloState: Locator;
   readonly rolesInfoBox: Locator;
 
-  // Breadcrumb
-  readonly backToDashboard: Locator;
+  // Navigation
+  readonly homeButton: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -28,7 +28,7 @@ export class UsersPage extends BasePage {
     this.soloState = page.getByText("It's just you for now");
     this.rolesInfoBox = page.getByTestId('roles-info-box');
 
-    this.backToDashboard = page.getByTestId('breadcrumb-back');
+    this.homeButton = page.getByTestId('home-button');
   }
 
   async goto(): Promise<void> {
@@ -44,10 +44,10 @@ export class UsersPage extends BasePage {
   }
 
   /**
-   * Navigate back to the dashboard via the breadcrumb.
+   * Navigate back to the dashboard via the home button.
    */
   async goBackToDashboard(): Promise<void> {
-    await this.backToDashboard.click();
+    await this.homeButton.click();
     await this.page.waitForURL('**/dashboard');
   }
 }

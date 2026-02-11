@@ -36,7 +36,7 @@ export default function DashboardHeader({
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
+
   // Determine if we're on the home dashboard
   const isOnHomePage = !pageTitle;
 
@@ -74,39 +74,48 @@ export default function DashboardHeader({
   return (
     <header className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-        <div>
-          {breadcrumb && (
-            <button
-              onClick={breadcrumb.onClick}
-              data-testid="breadcrumb-back"
-              className="text-sm text-blue-600 hover:text-blue-800 mb-1 flex items-center gap-1"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-              {breadcrumb.label}
-            </button>
-          )}
-          <h1
-            data-testid="header-org-name"
-            className="text-2xl font-bold text-gray-900"
+        <div className="flex items-center gap-3">
+          {/* Home Icon Button */}
+          <button
+            onClick={() => router.push("/dashboard")}
+            disabled={isOnHomePage}
+            data-testid="home-button"
+            aria-label="Dashboard home"
+            aria-current={isOnHomePage ? "page" : undefined}
+            className={`p-2 rounded-lg transition-colors ${
+              isOnHomePage
+                ? "text-gray-400 cursor-default"
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            }`}
           >
-            {pageTitle || organizationName}
-          </h1>
-          <p className="text-sm text-gray-500">
-            {pageTitle ? organizationName : "Project Brayford"}
-          </p>
-          {orgSwitcher}
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+              />
+            </svg>
+          </button>
+
+          {/* Title Area */}
+          <div>
+            <h1
+              data-testid="header-org-name"
+              className="text-2xl font-bold text-gray-900"
+            >
+              {pageTitle || organizationName}
+            </h1>
+            <p className="text-sm text-gray-500">
+              {pageTitle ? organizationName : "Project Brayford"}
+            </p>
+            {orgSwitcher}
+          </div>
         </div>
 
         {/* User Profile Dropdown */}

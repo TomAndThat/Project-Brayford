@@ -82,14 +82,14 @@ test.describe('Dashboard navigation', () => {
     await dashboard.expectLoaded();
   });
 
-  test('breadcrumb navigates back to dashboard from users page', async ({
+  test('home button navigates back to dashboard from users page', async ({
     authenticatedPage: { page },
   }) => {
     const usersPage = new UsersPage(page);
     await usersPage.goto();
     await usersPage.expectLoaded();
 
-    // Click "Back to Dashboard" breadcrumb
+    // Click home button to return to dashboard
     await usersPage.goBackToDashboard();
 
     // Dashboard should load

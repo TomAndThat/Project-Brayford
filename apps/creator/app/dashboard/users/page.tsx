@@ -231,10 +231,6 @@ export default function UsersPage() {
         onSignOut={handleSignOut}
         currentMember={currentMember}
         pageTitle="Team Members"
-        breadcrumb={{
-          label: "Back to Dashboard",
-          onClick: () => router.push("/dashboard"),
-        }}
       />
 
       {/* Notification Banner */}

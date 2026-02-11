@@ -128,6 +128,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Creator App Navigation**: Replaced contextual "Back to Dashboard" breadcrumbs with universal home icon button
+  - Home icon appears in header on all dashboard pages for consistent navigation
+  - Always visible and clickable to return to dashboard from any view
+  - Shows as muted/inactive when already on dashboard home page
+  - Removed context-specific breadcrumbs from Brands, Users, and Organisation Settings pages
+  - Updated E2E tests to use new home button navigation pattern
 - **CreateBrandModal UI Cleanup**: Simplified modal layout to match InviteUserModal pattern
   - Removed complex nested layout structure and responsive classes
   - Cleaner header with close button

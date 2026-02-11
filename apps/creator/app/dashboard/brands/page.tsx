@@ -184,10 +184,6 @@ export default function BrandsPage() {
         onSignOut={handleSignOut}
         currentMember={currentMember}
         pageTitle="Brands"
-        breadcrumb={{
-          label: "Back to Dashboard",
-          onClick: () => router.push("/dashboard"),
-        }}
       />
 
       {/* Notification Banner */}

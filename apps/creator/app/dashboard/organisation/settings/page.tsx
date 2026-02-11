@@ -144,10 +144,6 @@ export default function OrganisationSettingsPage() {
         organizationName={organization.name}
         onSignOut={handleSignOut}
         pageTitle="Organisation Settings"
-        breadcrumb={{
-          label: "Back to Dashboard",
-          onClick: () => router.push("/dashboard"),
-        }}
       />
 
       {/* Main Content */}
