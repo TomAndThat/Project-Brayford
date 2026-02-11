@@ -21,28 +21,6 @@ describe('BrandSchema', () => {
       expect(result.isActive).toBe(true);
     });
 
-    it('allows null logo', () => {
-      const brand = createMockBrand({ logo: null });
-      const result = BrandSchema.parse(brand);
-      
-      expect(result.logo).toBeNull();
-    });
-
-    it('allows optional description', () => {
-      const brandWithoutDescription = createMockBrand();
-      delete brandWithoutDescription.description;
-      
-      const result = BrandSchema.parse(brandWithoutDescription);
-      expect(result.description).toBeUndefined();
-    });
-
-    it('accepts valid description within 500 characters', () => {
-      const description = 'A'.repeat(500);
-      const brand = createMockBrand({ description });
-      
-      expect(() => BrandSchema.parse(brand)).not.toThrow();
-    });
-
     it('defaults isActive to true if not provided', () => {
       const brand = createMockBrand();
       delete (brand as any).isActive;
@@ -78,21 +56,6 @@ describe('BrandSchema', () => {
 
     it('rejects brand name exceeding 100 characters', () => {
       const brand = createMockBrand({ name: 'a'.repeat(101) });
-      expect(() => BrandSchema.parse(brand)).toThrow(ZodError);
-    });
-
-    it('rejects invalid logo URL format', () => {
-      // These are strings that Zod's .url() will reject
-      const invalidUrls = ['not-a-url', 'just text', ''];
-
-      invalidUrls.forEach((logo) => {
-        const brand = createMockBrand({ logo });
-        expect(() => BrandSchema.parse(brand)).toThrow(ZodError);
-      });
-    });
-
-    it('rejects description exceeding 500 characters', () => {
-      const brand = createMockBrand({ description: 'a'.repeat(501) });
       expect(() => BrandSchema.parse(brand)).toThrow(ZodError);
     });
 
@@ -143,20 +106,6 @@ describe('CreateBrandSchema', () => {
     
     expect(() => CreateBrandSchema.parse(createData)).toThrow(ZodError);
   });
-
-  it('allows null logo', () => {
-    const createData = createMockCreateBrandData({ logo: null });
-    const result = CreateBrandSchema.parse(createData);
-    
-    expect(result.logo).toBeNull();
-  });
-
-  it('allows optional description', () => {
-    const createData = createMockCreateBrandData();
-    delete createData.description;
-    
-    expect(() => CreateBrandSchema.parse(createData)).not.toThrow();
-  });
 });
 
 describe('UpdateBrandSchema', () => {
@@ -167,33 +116,6 @@ describe('UpdateBrandSchema', () => {
 
     const result = UpdateBrandSchema.parse(updates);
     expect(result.name).toBe('Updated Brand Name');
-  });
-
-  it('allows updating logo', () => {
-    const updates = {
-      logo: 'https://newlogo.example.com/logo.png',
-    };
-
-    const result = UpdateBrandSchema.parse(updates);
-    expect(result.logo).toBe('https://newlogo.example.com/logo.png');
-  });
-
-  it('allows setting logo to null', () => {
-    const updates = {
-      logo: null,
-    };
-
-    const result = UpdateBrandSchema.parse(updates);
-    expect(result.logo).toBeNull();
-  });
-
-  it('allows updating description', () => {
-    const updates = {
-      description: 'Updated description text',
-    };
-
-    const result = UpdateBrandSchema.parse(updates);
-    expect(result.description).toBe('Updated description text');
   });
 
   it('allows updating isActive', () => {
@@ -218,8 +140,6 @@ describe('UpdateBrandSchema', () => {
 
   it('validates types of provided fields', () => {
     expect(() => UpdateBrandSchema.parse({ name: '' })).toThrow(ZodError);
-    expect(() => UpdateBrandSchema.parse({ logo: 'invalid-url' })).toThrow(ZodError);
-    expect(() => UpdateBrandSchema.parse({ description: 'a'.repeat(501) })).toThrow(ZodError);
     expect(() => UpdateBrandSchema.parse({ isActive: 'yes' })).toThrow(ZodError);
   });
 
@@ -231,13 +151,11 @@ describe('UpdateBrandSchema', () => {
   it('allows multiple fields to be updated simultaneously', () => {
     const updates = {
       name: 'New Name',
-      description: 'New description',
       isActive: false,
     };
 
     const result = UpdateBrandSchema.parse(updates);
     expect(result.name).toBe('New Name');
-    expect(result.description).toBe('New description');
     expect(result.isActive).toBe(false);
   });
 });
@@ -286,7 +204,7 @@ describe('validateCreateBrandData', () => {
     try {
       validateCreateBrandData({
         organizationId: 'org-123',
-        // missing name and logo
+        // missing name
       });
       expect.fail('Should have thrown');
     } catch (error) {
@@ -305,7 +223,6 @@ describe('validateUpdateBrandData', () => {
 
   it('throws ZodError for invalid data', () => {
     expect(() => validateUpdateBrandData({ name: '' })).toThrow(ZodError);
-    expect(() => validateUpdateBrandData({ logo: 'not-a-url' })).toThrow(ZodError);
     expect(() => validateUpdateBrandData({ isActive: 123 })).toThrow(ZodError);
   });
 
@@ -321,10 +238,10 @@ describe('validateUpdateBrandData', () => {
     // Invalid name update
     expect(() => validateUpdateBrandData({ name: '' })).toThrow(ZodError);
     
-    // Valid logo update
-    expect(() => validateUpdateBrandData({ logo: 'https://example.com/logo.png' })).not.toThrow();
+    // Valid isActive update
+    expect(() => validateUpdateBrandData({ isActive: false })).not.toThrow();
     
-    // Invalid logo update
-    expect(() => validateUpdateBrandData({ logo: 'not a url' })).toThrow(ZodError);
+    // Invalid isActive update
+    expect(() => validateUpdateBrandData({ isActive: 'not a boolean' })).toThrow(ZodError);
   });
 });

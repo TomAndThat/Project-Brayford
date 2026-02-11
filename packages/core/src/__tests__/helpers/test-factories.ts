@@ -115,8 +115,6 @@ export function createMockBrand(overrides?: Partial<Brand>): Brand {
   return {
     organizationId: 'test-org-123',
     name: 'Test Brand',
-    logo: 'https://example.com/logo.png',
-    description: 'A test brand for testing purposes',
     createdAt: new Date('2024-01-01T00:00:00Z'),
     isActive: true,
     ...overrides,
@@ -130,8 +128,6 @@ export function createMockCreateBrandData(overrides?: Partial<CreateBrandData>):
   return {
     organizationId: 'test-org-123',
     name: 'Test Brand',
-    logo: 'https://example.com/logo.png',
-    description: 'A test brand for testing purposes',
     ...overrides,
   };
 }

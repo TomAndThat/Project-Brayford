@@ -17,16 +17,12 @@ import type { BrandId, OrganizationId } from '../types/branded';
  * 
  * @property organizationId - Reference to owning organization
  * @property name - Public-facing brand name
- * @property logo - URL to brand logo (for display in audience/stage apps)
- * @property description - Optional brand description
  * @property createdAt - When the brand was created
  * @property isActive - Whether brand is active (false = archived, hidden from UI)
  */
 export const BrandSchema = z.object({
   organizationId: z.string().describe('Reference to owning organization'),
   name: z.string().min(1).max(100).describe('Brand name'),
-  logo: z.string().url().nullable().describe('Brand logo URL'),
-  description: z.string().max(500).optional().describe('Brand description'),
   createdAt: z.date().describe('Brand creation timestamp'),
   isActive: z.boolean().default(true).describe('Whether brand is active'),
 });

@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Brand Management UI**: Complete interface for managing brands in the creator app
+  - Brand hub page (`/dashboard/brands`) with brand listing table
+  - Create brand modal with name validation (1-100 characters)
+  - Brand settings page for editing name
+  - Brand archival/soft-delete functionality (sets `isActive: false`)
+  - **Archive Brand Dialog**: Professional confirmation dialog for archiving brands
+    - Amber warning styling with clear explanation of what archiving means
+    - Mentions that brands can be restored later
+    - Loading state during API call ("Archiving..." button state)
+    - Replaces browser-native `window.confirm()` with proper modal UX
+  - **Status Filtering**: View active, archived, or all brands
+    - Filter tabs at top of brand listing with badge counts (e.g., "Active (3)")
+    - Preserved filter state while navigating
+    - Empty state messages specific to each filter ("No active brands" vs "No archived brands")
+  - **Restore Archived Brands**: Bring archived brands back to active status
+    - "Restore" button appears for archived brands when user has `brands:update` permission
+    - Restores brand by setting `isActive: true` via PATCH endpoint
+    - Loading state during restore operation ("Restoring..." button state)
+    - Archived brands shown with reduced opacity (60%) in table
+    - Success notifications on restore completion
+  - Permission-based access control using `brands:view`, `brands:create`, `brands:update`, `brands:delete` permissions
+  - Empty state with "Create your first brand" call-to-action
+  - Brand card on dashboard for quick access (requires `brands:view` permission)
+  - Automatic redirect to brand settings after creation
+  - Character counter for name (100 max)
+  - Active/archived status badges in brand listing
+  - Breadcrumb navigation for easy return to brands hub
+  - Initial letter avatars for brands (logo and description fields removed for MVP simplicity)
 - **Billing Tier Infrastructure**: Foundation for subscription sharing prevention
   - Two-tier billing system: `per_brand` (free email domains) and `flat_rate` (corporate domains)
   - Organizations automatically assigned billing tier based on founder's email domain during creation
@@ -42,6 +70,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **CreateBrandModal UI Cleanup**: Simplified modal layout to match InviteUserModal pattern
+  - Removed complex nested layout structure and responsive classes
+  - Cleaner header with close button
+  - Simpler form layout with better spacing
+  - Consistent button styling and positioning
+  - Improved backdrop with black/50 opacity
+  - Better visual hierarchy and readability
+- **DashboardHeader Type Fix**: Updated `DashboardHeader` component to accept Firebase User type instead of UserDocument
+  - Component only uses `displayName`, `email`, and `photoURL` properties
+  - Now accepts minimal user interface compatible with both Firebase User and UserDocument
+  - Fixes TypeScript errors across all dashboard pages
 - **Owner Role Hierarchy**: Owners can now modify other owners' roles (downgrade/remove), not just admins and members
   - Enables ownership transitions without requiring self-demotion workarounds
   - Admins still cannot modify owners or other admins

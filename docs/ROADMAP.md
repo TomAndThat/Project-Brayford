@@ -46,7 +46,23 @@
 
 ## Upcoming Phases
 
-### Phase 2: Event Management Domain
+### Phase 2: Brand Management
+
+**Priority:** Critical blocker for Phase 3 (Event Management)
+
+- [ ] Brand creation UI in creator app
+- [ ] Brand editing & settings page
+  - [ ] Brand name, description, logo upload
+  - [ ] Brand customization (colors, branding)
+- [ ] Brand listing & selection (brand switcher in dashboard)
+- [ ] Brand member access management UI
+  - [ ] View which team members have access to specific brands
+  - [ ] Grant/revoke brand access for organization members
+- [ ] Brand archival/deletion (with dependency checks)
+- [ ] Default brand selection for new organizations
+- [ ] Brand-level permissions enforcement in UI
+
+### Phase 3: Event Management Domain
 
 - [ ] Event schema (CRUD)
 - [ ] Event lifecycle (draft → live → ended → archived)
@@ -55,7 +71,7 @@
 - [ ] Event templates (reusable configs)
 - [ ] Block organisation deletion while events are live (depends on org deletion from Phase 1)
 
-### Phase 3: Core Product - Interaction Domain
+### Phase 4: Core Product - Interaction Domain
 
 - [ ] Module system architecture (plugin-like)
 - [ ] Q&A module MVP
@@ -63,14 +79,14 @@
 - [ ] Real-time module state management
 - [ ] Moderation tools for Q&A
 
-### Phase 4: Audience Domain
+### Phase 5: Audience Domain
 
 - [ ] Anonymous participant entry
 - [ ] Session tracking
 - [ ] Optional email capture (gated content)
 - [ ] Participation history
 
-### Phase 5: Billing & Subscriptions
+### Phase 6: Billing & Subscriptions
 
 - [ ] Stripe integration
 - [ ] Subscription plans (Free, Pro, Enterprise)
@@ -78,7 +94,7 @@
 - [ ] Overage handling
 - [ ] Require billing settlement before organisation deletion (depends on org deletion from Phase 1)
 
-### Phase 6: Analytics & Reporting
+### Phase 7: Analytics & Reporting
 
 - [ ] Event statistics dashboard
 - [ ] Lead generation reports

@@ -3,11 +3,15 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { UserDocument, OrganizationMemberDocument } from "@brayford/core";
+import type { OrganizationMemberDocument } from "@brayford/core";
 import { hasPermission, ORG_VIEW_SETTINGS } from "@brayford/core";
 
 interface DashboardHeaderProps {
-  user: UserDocument;
+  user: {
+    displayName: string | null;
+    email: string | null;
+    photoURL: string | null;
+  };
   organizationName: string;
   onSignOut: () => Promise<void>;
   pageTitle?: string; // Optional page title override

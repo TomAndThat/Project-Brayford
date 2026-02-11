@@ -7,7 +7,7 @@
  * Also handles auto-granting the new brand to members who have
  * autoGrantNewBrands enabled (previously done client-side).
  *
- * Request body: { organizationId: string, name: string, logo?: string, description?: string }
+ * Request body: { organizationId: string, name: string }
  * Authorization: Bearer <Firebase ID Token>
  *
  * Response:
