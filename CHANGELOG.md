@@ -9,6 +9,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Event Groups & Hierarchies**: Two-tier event organization system
+  - **Event Type Enum**: Explicit `eventType` field with validation
+    - `'group'`: Event groups that can contain child events (cannot have a parent)
+    - `'event'`: Regular events that can optionally belong to a group
+    - Defaults to `'event'` if not specified
+    - Cannot be changed after creation
+    - Schema validation prevents groups from having parents (enforces two-tier limit)
+  - **Event Group Schema**: Added `parentEventId`, `maxAttendees`, and `eventType` fields to Event schema
+    - `parentEventId`: Optional reference to parent event group (only allowed for regular events)
+    - `maxAttendees`: Optional capacity limit (positive integer)
+    - `eventType`: Required enum determining event capabilities
+    - Validation tests prevent unlimited nesting
+  - **Event Creation**: Choose event type at creation
+    - Radio button selection: "Regular Event" vs "Event Group"
+    - Parent Event Group dropdown only appears for regular events
+    - Dropdown filtered to show only event groups (not regular events)
+    - Maximum Attendees field with number validation
+    - Auto-clear parent selection when switching to group type
+    - Dynamic help text based on selected type
+  - **Event Editing**: Type shown as read-only with icon
+    - Event Type display with visual icons (folder for groups, calendar for events)
+    - Parent group dropdown only shown for regular events
+    - Prevents changing event type after creation (business logic protection)
+    - Child events list filtered to show only regular events
+  - **Visual Indicators**: Clear distinction between event types in list view
+    - Event Groups: Purple folder icon + "Group (X)" badge showing child count
+    - Child Events: Indigo arrow icon + "Child Event" badge
+    - Standalone Events: Blue calendar icon (default)
+  - **Advanced Filtering**: Filter events by type on Events page
+    - Active: All active events (existing)
+    - Event Groups: Events where `eventType === 'group'`
+    - Standalone: Regular events with no parent (`eventType === 'event' && !parentEventId`)
+    - Child Events: Regular events with a parent (`eventType === 'event' && parentEventId`)
+    - Archived: Archived events (existing)
+    - All: Everything (existing)
+  - **Child Events Display**: Event group detail pages show all child events
+    - Dedicated section listing all children with names, dates, status
+    - Filtered to show only regular events with matching parentEventId
+    - Click child event card to navigate to its settings
+    - Visual indicators matching list view (indigo styling)
 - **Event Management UI**: Complete interface for managing events in the creator app
   - Event schema with timezone support and lifecycle statuses (draft, active, live, ended)
   - **Create Event Modal**: Form for creating new events with validation

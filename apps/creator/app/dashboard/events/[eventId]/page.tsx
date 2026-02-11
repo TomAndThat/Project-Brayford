@@ -8,10 +8,12 @@ import {
   getEvent,
   getBrand,
   getOrganization,
+  getOrganizationEvents,
   auth,
 } from "@brayford/firebase-utils";
 import {
   toBranded,
+  fromBranded,
   type UserId,
   type EventId,
   type EventDocument,
@@ -39,6 +41,8 @@ export default function EventSettingsPage() {
     useState<OrganizationMemberDocument | null>(null);
   const [event, setEvent] = useState<EventDocument | null>(null);
   const [brand, setBrand] = useState<BrandDocument | null>(null);
+  const [events, setEvents] = useState<EventDocument[]>([]);
+  const [childEvents, setChildEvents] = useState<EventDocument[]>([]);
 
   // Form state
   const [name, setName] = useState("");
@@ -47,6 +51,8 @@ export default function EventSettingsPage() {
   const [scheduledStartTime, setScheduledStartTime] = useState("");
   const [scheduledEndDate, setScheduledEndDate] = useState("");
   const [scheduledEndTime, setScheduledEndTime] = useState("");
+  const [parentEventId, setParentEventId] = useState("");
+  const [maxAttendees, setMaxAttendees] = useState("");
   const [status, setStatus] = useState<"draft" | "active" | "live" | "ended">(
     "draft",
   );
@@ -109,6 +115,10 @@ export default function EventSettingsPage() {
           : "",
       );
       setScheduledEndTime(eventData.scheduledEndTime || "");
+      setParentEventId(eventData.parentEventId || "");
+      setMaxAttendees(
+        eventData.maxAttendees ? String(eventData.maxAttendees) : "",
+      );
       setStatus(eventData.status);
 
       // Load brand
@@ -116,6 +126,24 @@ export default function EventSettingsPage() {
       if (brandData) {
         setBrand(brandData);
       }
+
+      // Load all organization events for parent selection (only groups)
+      const orgEvents = await getOrganizationEvents(orgId, true);
+      // Filter to only event groups, excluding the current event
+      setEvents(
+        orgEvents.filter(
+          (e) => e.eventType === "group" && e.id !== eventData.id,
+        ),
+      );
+
+      // Load child events if this is an event group
+      const children = orgEvents.filter(
+        (e) =>
+          e.eventType === "event" &&
+          e.parentEventId &&
+          fromBranded(e.parentEventId as any) === eventId,
+      );
+      setChildEvents(children);
     } catch (error) {
       console.error("Error loading event data:", error);
       alert("Failed to load event");
@@ -206,6 +234,23 @@ export default function EventSettingsPage() {
 
       if (scheduledEndTime) {
         updateData.scheduledEndTime = scheduledEndTime;
+      }
+
+      if (parentEventId) {
+        updateData.parentEventId = parentEventId;
+      } else if (event?.parentEventId) {
+        // Explicitly remove parentEventId if it was cleared
+        updateData.parentEventId = null;
+      }
+
+      if (maxAttendees) {
+        const attendeeCount = parseInt(maxAttendees, 10);
+        if (attendeeCount > 0) {
+          updateData.maxAttendees = attendeeCount;
+        }
+      } else if (event?.maxAttendees) {
+        // Explicitly remove maxAttendees if it was cleared
+        updateData.maxAttendees = null;
       }
 
       const response = await fetch(`/api/events/${eventId}`, {
@@ -435,6 +480,53 @@ export default function EventSettingsPage() {
               </p>
             </div>
 
+            {/* Event Type (Read-only) */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Event Type
+              </label>
+              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-gray-600">
+                {event.eventType === "group" ? (
+                  <span className="inline-flex items-center">
+                    <svg
+                      className="w-4 h-4 mr-2 text-purple-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                      />
+                    </svg>
+                    Event Group
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center">
+                    <svg
+                      className="w-4 h-4 mr-2 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    Regular Event
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                The event type cannot be changed after event creation
+              </p>
+            </div>
+
             {/* Event Name */}
             <div className="mb-6">
               <label
@@ -472,6 +564,62 @@ export default function EventSettingsPage() {
                 disabled={!canUpdate || isSubmitting}
                 placeholder="e.g., London Studio"
               />
+            </div>
+
+            {/* Parent Event Group - Only for regular events */}
+            {event.eventType === "event" && (
+              <div className="mb-6">
+                <label
+                  htmlFor="parent-event"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Event Group (Optional)
+                </label>
+                <select
+                  id="parent-event"
+                  value={parentEventId}
+                  onChange={(e) => setParentEventId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={!canUpdate || isSubmitting}
+                >
+                  <option value="">None - Standalone Event</option>
+                  {events.map((evt) => (
+                    <option
+                      key={fromBranded(evt.id)}
+                      value={fromBranded(evt.id)}
+                    >
+                      {evt.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Make this event part of a larger event group (e.g., a festival
+                  or conference)
+                </p>
+              </div>
+            )}
+
+            {/* Maximum Attendees */}
+            <div className="mb-6">
+              <label
+                htmlFor="max-attendees"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Maximum Attendees (Optional)
+              </label>
+              <input
+                type="number"
+                id="max-attendees"
+                value={maxAttendees}
+                onChange={(e) => setMaxAttendees(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., 500"
+                min="1"
+                disabled={!canUpdate || isSubmitting}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Set a capacity limit for this event
+              </p>
             </div>
 
             {/* Date and Start Time */}
@@ -625,6 +773,94 @@ export default function EventSettingsPage() {
             )}
           </form>
         </div>
+
+        {/* Child Events Section (for Event Groups) */}
+        {childEvents.length > 0 && (
+          <div className="mt-8 bg-white rounded-lg shadow-md p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Child Events
+            </h2>
+            <p className="text-sm text-gray-600 mb-6">
+              This event group contains {childEvents.length} child event
+              {childEvents.length !== 1 ? "s" : ""}.
+            </p>
+            <div className="space-y-4">
+              {childEvents.map((child) => (
+                <div
+                  key={fromBranded(child.id)}
+                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() =>
+                    router.push(`/dashboard/events/${fromBranded(child.id)}`)
+                  }
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded bg-indigo-100 flex items-center justify-center">
+                        <svg
+                          className="w-5 h-5 text-indigo-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">
+                          {child.name}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {child.scheduledDate.toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                          {" at "}
+                          {child.scheduledStartTime}
+                          {child.venue && ` • ${child.venue}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          child.status === "draft"
+                            ? "bg-gray-100 text-gray-800"
+                            : child.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : child.status === "live"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {child.status.charAt(0).toUpperCase() +
+                          child.status.slice(1)}
+                      </span>
+                      <svg
+                        className="w-5 h-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* QR Code Management Section */}
         <div className="mt-8">

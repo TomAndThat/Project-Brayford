@@ -24,7 +24,13 @@ import {
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import CreateEventModal from "@/components/events/CreateEventModal";
 
-type EventFilter = "active" | "archived" | "all";
+type EventFilter =
+  | "active"
+  | "archived"
+  | "all"
+  | "groups"
+  | "standalone"
+  | "children";
 
 export default function EventsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -151,6 +157,21 @@ export default function EventsPage() {
     }
   };
 
+  // Check if event is an event group
+  const isEventGroup = (event: EventDocument): boolean => {
+    return event.eventType === "group";
+  };
+
+  // Get count of child events
+  const getChildEventCount = (eventId: string): number => {
+    return events.filter(
+      (e) =>
+        e.eventType === "event" &&
+        e.parentEventId &&
+        fromBranded(e.parentEventId as any) === eventId,
+    ).length;
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -168,8 +189,25 @@ export default function EventsPage() {
 
   // Filter events based on selected filter
   const filteredEvents = events.filter((event) => {
+    // First apply active/archived filter for non-type-specific filters
     if (filter === "active") return event.isActive;
     if (filter === "archived") return !event.isActive;
+
+    // Type-specific filters (apply to active events only)
+    if (filter === "groups") {
+      return event.isActive && isEventGroup(event);
+    }
+    if (filter === "standalone") {
+      return (
+        event.isActive && event.eventType === "event" && !event.parentEventId
+      );
+    }
+    if (filter === "children") {
+      return (
+        event.isActive && event.eventType === "event" && !!event.parentEventId
+      );
+    }
+
     return true; // "all"
   });
 
@@ -261,69 +299,135 @@ export default function EventsPage() {
 
         {/* Filter Tabs */}
         {events.length > 0 && (
-          <div className="mb-6 border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-              <button
-                onClick={() => setFilter("active")}
-                className={`${
-                  filter === "active"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-                data-testid="filter-active"
-              >
-                Active
-                <span
-                  className={`ml-2 ${
+          <div className="mb-6">
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                <button
+                  onClick={() => setFilter("active")}
+                  className={`${
                     filter === "active"
-                      ? "bg-blue-100 text-blue-600"
-                      : "bg-gray-100 text-gray-900"
-                  } py-0.5 px-2.5 rounded-full text-xs font-medium`}
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                  data-testid="filter-active"
                 >
-                  {events.filter((e) => e.isActive).length}
-                </span>
-              </button>
-              <button
-                onClick={() => setFilter("archived")}
-                className={`${
-                  filter === "archived"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-                data-testid="filter-archived"
-              >
-                Archived
-                <span
-                  className={`ml-2 ${
+                  Active
+                  <span
+                    className={`ml-2 ${
+                      filter === "active"
+                        ? "bg-blue-100 text-blue-600"
+                        : "bg-gray-100 text-gray-900"
+                    } py-0.5 px-2.5 rounded-full text-xs font-medium`}
+                  >
+                    {events.filter((e) => e.isActive).length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setFilter("groups")}
+                  className={`${
+                    filter === "groups"
+                      ? "border-purple-500 text-purple-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  Event Groups
+                  <span
+                    className={`ml-2 ${
+                      filter === "groups"
+                        ? "bg-purple-100 text-purple-600"
+                        : "bg-gray-100 text-gray-900"
+                    } py-0.5 px-2.5 rounded-full text-xs font-medium`}
+                  >
+                    {events.filter((e) => e.isActive && isEventGroup(e)).length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setFilter("standalone")}
+                  className={`${
+                    filter === "standalone"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  Standalone
+                  <span
+                    className={`ml-2 ${
+                      filter === "standalone"
+                        ? "bg-blue-100 text-blue-600"
+                        : "bg-gray-100 text-gray-900"
+                    } py-0.5 px-2.5 rounded-full text-xs font-medium`}
+                  >
+                    {
+                      events.filter(
+                        (e) =>
+                          e.isActive &&
+                          e.eventType === "event" &&
+                          !e.parentEventId,
+                      ).length
+                    }
+                  </span>
+                </button>
+                <button
+                  onClick={() => setFilter("children")}
+                  className={`${
+                    filter === "children"
+                      ? "border-indigo-500 text-indigo-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  Child Events
+                  <span
+                    className={`ml-2 ${
+                      filter === "children"
+                        ? "bg-indigo-100 text-indigo-600"
+                        : "bg-gray-100 text-gray-900"
+                    } py-0.5 px-2.5 rounded-full text-xs font-medium`}
+                  >
+                    {events.filter((e) => e.isActive && e.parentEventId).length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setFilter("archived")}
+                  className={`${
                     filter === "archived"
-                      ? "bg-blue-100 text-blue-600"
-                      : "bg-gray-100 text-gray-900"
-                  } py-0.5 px-2.5 rounded-full text-xs font-medium`}
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                  data-testid="filter-archived"
                 >
-                  {events.filter((e) => !e.isActive).length}
-                </span>
-              </button>
-              <button
-                onClick={() => setFilter("all")}
-                className={`${
-                  filter === "all"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-                data-testid="filter-all"
-              >
-                All
-                <span
-                  className={`ml-2 ${
+                  Archived
+                  <span
+                    className={`ml-2 ${
+                      filter === "archived"
+                        ? "bg-blue-100 text-blue-600"
+                        : "bg-gray-100 text-gray-900"
+                    } py-0.5 px-2.5 rounded-full text-xs font-medium`}
+                  >
+                    {events.filter((e) => !e.isActive).length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setFilter("all")}
+                  className={`${
                     filter === "all"
-                      ? "bg-blue-100 text-blue-600"
-                      : "bg-gray-100 text-gray-900"
-                  } py-0.5 px-2.5 rounded-full text-xs font-medium`}
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                  data-testid="filter-all"
                 >
-                  {events.length}
-                </span>
-              </button>
-            </nav>
+                  All
+                  <span
+                    className={`ml-2 ${
+                      filter === "all"
+                        ? "bg-blue-100 text-blue-600"
+                        : "bg-gray-100 text-gray-900"
+                    } py-0.5 px-2.5 rounded-full text-xs font-medium`}
+                  >
+                    {events.length}
+                  </span>
+                </button>
+              </nav>
+            </div>
           </div>
         )}
 
@@ -421,24 +525,70 @@ export default function EventsPage() {
                       {/* Event Info */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center">
+                          <div
+                            className={`w-10 h-10 rounded flex items-center justify-center ${
+                              isEventGroup(event)
+                                ? "bg-purple-100"
+                                : event.parentEventId
+                                  ? "bg-indigo-100"
+                                  : "bg-blue-100"
+                            }`}
+                          >
                             <svg
-                              className="w-5 h-5 text-blue-600"
+                              className={`w-5 h-5 ${
+                                isEventGroup(event)
+                                  ? "text-purple-600"
+                                  : event.parentEventId
+                                    ? "text-indigo-600"
+                                    : "text-blue-600"
+                              }`}
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                              />
+                              {isEventGroup(event) ? (
+                                // Folder icon for event groups
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                                />
+                              ) : event.parentEventId ? (
+                                // Sub-item icon for child events
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              ) : (
+                                // Calendar icon for standalone events
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              )}
                             </svg>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {event.name}
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-medium text-gray-900">
+                                {event.name}
+                              </div>
+                              {isEventGroup(event) && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                  Group (
+                                  {getChildEventCount(fromBranded(event.id))})
+                                </span>
+                              )}
+                              {event.parentEventId && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                                  Child Event
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>

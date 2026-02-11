@@ -319,33 +319,6 @@ export default function DashboardPage() {
               </div>
             </button>
           )}
-
-          <div
-            data-testid="analytics-card"
-            className="bg-gray-100 rounded-lg shadow-md p-6 opacity-50 cursor-not-allowed"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Analytics
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">Coming soon</p>
-              </div>
-              <svg
-                className="w-8 h-8 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-            </div>
-          </div>
         </div>
 
         {/* Events Section */}
@@ -403,35 +376,6 @@ export default function DashboardPage() {
           ) : (
             <p className="text-gray-600">No events yet.</p>
           )}
-        </div>
-
-        {/* Empty State - Create Event */}
-        <div className="bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-12 text-center">
-          <svg
-            className="mx-auto h-12 w-12 text-blue-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">
-            Create your first event
-          </h3>
-          <p className="mt-2 text-sm text-gray-600">
-            Start engaging your audience with live Q&A, polls, and more.
-          </p>
-          <button
-            className="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            disabled
-          >
-            Create Event (Coming Soon)
-          </button>
         </div>
       </main>
     </div>

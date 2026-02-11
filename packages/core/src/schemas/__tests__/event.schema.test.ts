@@ -9,6 +9,7 @@ import {
   CreateEventSchema,
   UpdateEventSchema,
   EventStatus,
+  EventType,
   validateEventData,
   validateCreateEventData,
   validateUpdateEventData,
@@ -22,6 +23,7 @@ describe('EventSchema', () => {
     brandId: 'brand123',
     organizationId: 'org123',
     name: 'Episode 42',
+    eventType: 'event',
     venue: 'London Studio',
     scheduledDate: new Date('2026-03-30'),
     scheduledStartTime: '13:00',
@@ -43,6 +45,7 @@ describe('EventSchema', () => {
         brandId: 'brand123',
         organizationId: 'org123',
         name: 'Test Event',
+        eventType: 'event',
         scheduledDate: new Date('2026-03-30'),
         scheduledStartTime: '13:00',
         timezone: 'Europe/London',
@@ -126,6 +129,75 @@ describe('EventSchema', () => {
       const parsed = EventSchema.parse(dataWithoutIsActive);
       expect(parsed.isActive).toBe(true);
     });
+
+    it('accepts optional parentEventId for event groups', () => {
+      const dataWithParent = { ...validEventData, parentEventId: 'parent123' };
+      expect(() => EventSchema.parse(dataWithParent)).not.toThrow();
+    });
+
+    it('accepts optional maxAttendees capacity limit', () => {
+      const dataWithCapacity = { ...validEventData, maxAttendees: 500 };
+      expect(() => EventSchema.parse(dataWithCapacity)).not.toThrow();
+    });
+
+    it('rejects negative maxAttendees', () => {
+      const invalidData = { ...validEventData, maxAttendees: -10 };
+      expect(() => EventSchema.parse(invalidData)).toThrow();
+    });
+
+    it('rejects zero maxAttendees', () => {
+      const invalidData = { ...validEventData, maxAttendees: 0 };
+      expect(() => EventSchema.parse(invalidData)).toThrow();
+    });
+
+    it('rejects non-integer maxAttendees', () => {
+      const invalidData = { ...validEventData, maxAttendees: 100.5 };
+      expect(() => EventSchema.parse(invalidData)).toThrow();
+    });
+
+    it('accepts eventType "event"', () => {
+      const data = { ...validEventData, eventType: 'event' as const };
+      expect(() => EventSchema.parse(data)).not.toThrow();
+    });
+
+    it('accepts eventType "group"', () => {
+      const data = { ...validEventData, eventType: 'group' as const, parentEventId: undefined };
+      expect(() => EventSchema.parse(data)).not.toThrow();
+    });
+
+    it('defaults eventType to "event"', () => {
+      const dataWithoutType = { ...validEventData };
+      delete (dataWithoutType as any).eventType;
+      const parsed = EventSchema.parse(dataWithoutType);
+      expect(parsed.eventType).toBe('event');
+    });
+
+    it('rejects event groups with parentEventId', () => {
+      const invalidGroup = { 
+        ...validEventData, 
+        eventType: 'group' as const, 
+        parentEventId: 'parent123' 
+      };
+      expect(() => EventSchema.parse(invalidGroup)).toThrow('Event groups cannot have a parent event');
+    });
+
+    it('allows regular events with parentEventId', () => {
+      const validChild = { 
+        ...validEventData, 
+        eventType: 'event' as const, 
+        parentEventId: 'group123' 
+      };
+      expect(() => EventSchema.parse(validChild)).not.toThrow();
+    });
+
+    it('allows regular events without parentEventId (standalone)', () => {
+      const standalone = { 
+        ...validEventData, 
+        eventType: 'event' as const, 
+        parentEventId: undefined 
+      };
+      expect(() => EventSchema.parse(standalone)).not.toThrow();
+    });
   });
 
   describe('CreateEventSchema', () => {
@@ -134,6 +206,7 @@ describe('EventSchema', () => {
         brandId: 'brand123',
         organizationId: 'org123',
         name: 'Test Event',
+        eventType: 'event',
         venue: 'London Studio',
         scheduledDate: new Date('2026-03-30'),
         scheduledStartTime: '13:00',
@@ -147,6 +220,7 @@ describe('EventSchema', () => {
         brandId: 'brand123',
         organizationId: 'org123',
         name: 'Test Event',
+        eventType: 'event',
         scheduledDate: new Date('2026-03-30'),
         scheduledStartTime: '13:00',
         timezone: 'Europe/London',
@@ -194,6 +268,75 @@ describe('EventSchema', () => {
         timezone: 'Europe/London',
       };
       expect(() => CreateEventSchema.parse(createData)).not.toThrow();
+    });
+
+    it('accepts optional parentEventId for child events', () => {
+      const createData = {
+        brandId: 'brand123',
+        organizationId: 'org123',
+        name: 'Test Event',
+        scheduledDate: new Date('2026-03-30'),
+        scheduledStartTime: '13:00',
+        timezone: 'Europe/London',
+        parentEventId: 'parent123',
+      };
+      expect(() => CreateEventSchema.parse(createData)).not.toThrow();
+    });
+
+    it('accepts optional maxAttendees', () => {
+      const createData = {
+        brandId: 'brand123',
+        organizationId: 'org123',
+        name: 'Test Event',
+        eventType: 'event',
+        scheduledDate: new Date('2026-03-30'),
+        scheduledStartTime: '13:00',
+        timezone: 'Europe/London',
+        maxAttendees: 1000,
+      };
+      expect(() => CreateEventSchema.parse(createData)).not.toThrow();
+    });
+
+    it('requires eventType field', () => {
+      const createData = {
+        brandId: 'brand123',
+        organizationId: 'org123',
+        name: 'Test Event',
+        scheduledDate: new Date('2026-03-30'),
+        scheduledStartTime: '13:00',
+        timezone: 'Europe/London',
+        // eventType omitted
+      };
+      const parsed = CreateEventSchema.parse(createData);
+      // Should default to 'event'
+      expect(parsed.eventType).toBe('event');
+    });
+
+    it('allows creating event groups', () => {
+      const createData = {
+        brandId: 'brand123',
+        organizationId: 'org123',
+        name: 'Festival 2026',
+        eventType: 'group',
+        scheduledDate: new Date('2026-03-30'),
+        scheduledStartTime: '13:00',
+        timezone: 'Europe/London',
+      };
+      expect(() => CreateEventSchema.parse(createData)).not.toThrow();
+    });
+
+    it('prevents creating groups with parentEventId', () => {
+      const createData = {
+        brandId: 'brand123',
+        organizationId: 'org123',
+        name: 'Festival 2026',
+        eventType: 'group',
+        scheduledDate: new Date('2026-03-30'),
+        scheduledStartTime: '13:00',
+        timezone: 'Europe/London',
+        parentEventId: 'parent123',
+      };
+      expect(() => CreateEventSchema.parse(createData)).toThrow('Event groups cannot have a parent event');
     });
   });
 
@@ -256,6 +399,48 @@ describe('EventSchema', () => {
         scheduledStartTime: 'invalid-time',
       };
       expect(() => UpdateEventSchema.parse(invalidUpdate)).toThrow();
+    });
+
+    it('allows updating parentEventId', () => {
+      const updateData: UpdateEventData = {
+        parentEventId: 'newParent123',
+      };
+      expect(() => UpdateEventSchema.parse(updateData)).not.toThrow();
+    });
+
+    it('allows updating maxAttendees', () => {
+      const updateData: UpdateEventData = {
+        maxAttendees: 2000,
+      };
+      expect(() => UpdateEventSchema.parse(updateData)).not.toThrow();
+    });
+
+    it('allows removing parentEventId', () => {
+      const updateData = {
+        parentEventId: undefined,
+      };
+      expect(() => UpdateEventSchema.parse(updateData)).not.toThrow();
+    });
+
+    it('does not allow changing eventType', () => {
+      const updateData = {
+        name: 'Updated Event',
+        eventType: 'group', // Should be omitted
+      };
+      const parsed = UpdateEventSchema.parse(updateData);
+      expect((parsed as any).eventType).toBeUndefined();
+    });
+  });
+
+  describe('EventType Enum', () => {
+    it('includes all valid type values', () => {
+      expect(EventType.enum.group).toBe('group');
+      expect(EventType.enum.event).toBe('event');
+    });
+
+    it('rejects invalid type values', () => {
+      expect(() => EventType.parse('container')).toThrow();
+      expect(() => EventType.parse('session')).toThrow();
     });
   });
 

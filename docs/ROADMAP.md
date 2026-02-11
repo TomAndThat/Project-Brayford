@@ -54,12 +54,12 @@
 - [x] Brand editing & settings page
   - [ ] Brand customization (colors, branding)
 - [ ] Brand listing & selection (brand switcher in dashboard)
-- [ ] Brand member access management UI
-  - [ ] View which team members have access to specific brands
-  - [ ] Grant/revoke brand access for organization members
+- [x] Brand member access management UI
+  - [x] View which team members have access to specific brands
+  - [x] Grant/revoke brand access for organization members
 - [x] Brand archival/deletion (with dependency checks)
 - [ ] Default brand selection for new organizations
-- [ ] Brand-level permissions enforcement in UI
+- [x] Brand-level permissions enforcement in UI
 
 ### Phase 3: Event Management Domain
 
@@ -67,6 +67,11 @@
 - [x] Event creation UI in creator app
 - [x] Event editing & settings page
 - [x] Events list page with filtering (active/archived/all)
+- [x] Event groups & hierarchies (two-tier system with eventType enum)
+  - [x] Event type selection (regular event vs event group)
+  - [x] Parent-child relationships with validation preventing unlimited nesting
+  - [x] Visual indicators and filtering by type
+  - [x] Child events display on group detail pages
 - [x] Event lifecycle statuses (draft → active → live → ended)
 - [x] Event scheduling & timezone handling (IANA timezone support with DST-aware "advertised time")
 - [x] Dashboard integration (events card and events section)

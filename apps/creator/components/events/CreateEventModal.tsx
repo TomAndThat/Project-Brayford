@@ -5,8 +5,13 @@ import {
   fromBranded,
   type OrganizationId,
   type BrandDocument,
+  type EventDocument,
 } from "@brayford/core";
-import { auth, getOrganizationBrands } from "@brayford/firebase-utils";
+import {
+  auth,
+  getOrganizationBrands,
+  getOrganizationEvents,
+} from "@brayford/firebase-utils";
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -36,6 +41,7 @@ export default function CreateEventModal({
   onSuccess,
 }: CreateEventModalProps) {
   const [name, setName] = useState("");
+  const [eventType, setEventType] = useState<"event" | "group">("event");
   const [brandId, setBrandId] = useState("");
   const [venue, setVenue] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
@@ -43,19 +49,25 @@ export default function CreateEventModal({
   const [scheduledEndDate, setScheduledEndDate] = useState("");
   const [scheduledEndTime, setScheduledEndTime] = useState("");
   const [timezone, setTimezone] = useState("");
+  const [parentEventId, setParentEventId] = useState("");
+  const [maxAttendees, setMaxAttendees] = useState("");
 
   const [brands, setBrands] = useState<BrandDocument[]>([]);
+  const [events, setEvents] = useState<EventDocument[]>([]);
   const [loadingBrands, setLoadingBrands] = useState(true);
+  const [loadingEvents, setLoadingEvents] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load brands on mount
+  // Load brands and events on mount
   useEffect(() => {
     if (!isOpen) return;
 
-    const loadBrands = async () => {
+    const loadData = async () => {
       setLoadingBrands(true);
+      setLoadingEvents(true);
       try {
+        // Load brands
         const orgBrands = await getOrganizationBrands(organizationId, true);
         setBrands(orgBrands);
 
@@ -63,15 +75,21 @@ export default function CreateEventModal({
         if (orgBrands.length === 1) {
           setBrandId(fromBranded(orgBrands[0]!.id));
         }
+
+        // Load events (for parent event group selection - only groups)
+        const orgEvents = await getOrganizationEvents(organizationId, true);
+        // Filter to only show groups
+        setEvents(orgEvents.filter((e) => e.eventType === "group"));
       } catch (error) {
-        console.error("Error loading brands:", error);
-        setError("Failed to load brands");
+        console.error("Error loading data:", error);
+        setError("Failed to load brands and events");
       } finally {
         setLoadingBrands(false);
+        setLoadingEvents(false);
       }
     };
 
-    loadBrands();
+    loadData();
   }, [isOpen, organizationId]);
 
   // Detect user's timezone on mount
@@ -137,6 +155,7 @@ export default function CreateEventModal({
         brandId,
         organizationId: fromBranded(organizationId),
         name: trimmedName,
+        eventType,
         scheduledDate,
         scheduledStartTime,
         timezone,
@@ -152,6 +171,18 @@ export default function CreateEventModal({
 
       if (scheduledEndTime) {
         requestBody.scheduledEndTime = scheduledEndTime;
+      }
+
+      // Only include parentEventId if this is an event (not a group)
+      if (eventType === "event" && parentEventId) {
+        requestBody.parentEventId = parentEventId;
+      }
+
+      if (maxAttendees) {
+        const attendeeCount = parseInt(maxAttendees, 10);
+        if (attendeeCount > 0) {
+          requestBody.maxAttendees = attendeeCount;
+        }
       }
 
       const response = await fetch("/api/events", {
@@ -172,12 +203,15 @@ export default function CreateEventModal({
 
       // Reset form
       setName("");
+      setEventType("event");
       setBrandId("");
       setVenue("");
       setScheduledDate("");
       setScheduledStartTime("");
       setScheduledEndDate("");
       setScheduledEndTime("");
+      setParentEventId("");
+      setMaxAttendees("");
       onClose();
 
       // Call success handler with new event ID
@@ -197,12 +231,15 @@ export default function CreateEventModal({
   const handleClose = () => {
     if (!isSubmitting) {
       setName("");
+      setEventType("event");
       setBrandId("");
       setVenue("");
       setScheduledDate("");
       setScheduledStartTime("");
       setScheduledEndDate("");
       setScheduledEndTime("");
+      setParentEventId("");
+      setMaxAttendees("");
       setError(null);
       onClose();
     }
@@ -219,9 +256,9 @@ export default function CreateEventModal({
             Create a new event for {organizationName}
           </p>
 
-          {loadingBrands ? (
+          {loadingBrands || loadingEvents ? (
             <div className="text-center py-12">
-              <div className="text-gray-600">Loading brands...</div>
+              <div className="text-gray-600">Loading...</div>
             </div>
           ) : brands.length === 0 ? (
             <div className="text-center py-12">
@@ -285,6 +322,56 @@ export default function CreateEventModal({
                 </select>
               </div>
 
+              {/* Event Type Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Type *
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="eventType"
+                      value="event"
+                      checked={eventType === "event"}
+                      onChange={(e) => {
+                        setEventType(e.target.value as "event" | "group");
+                        // Clear parent if switching to group
+                        if (e.target.value === "group") {
+                          setParentEventId("");
+                        }
+                      }}
+                      className="mr-2"
+                      disabled={isSubmitting}
+                    />
+                    <span className="text-sm text-gray-700">Regular Event</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="eventType"
+                      value="group"
+                      checked={eventType === "group"}
+                      onChange={(e) => {
+                        setEventType(e.target.value as "event" | "group");
+                        // Clear parent if switching to group
+                        if (e.target.value === "group") {
+                          setParentEventId("");
+                        }
+                      }}
+                      className="mr-2"
+                      disabled={isSubmitting}
+                    />
+                    <span className="text-sm text-gray-700">Event Group</span>
+                  </label>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {eventType === "event"
+                    ? "A regular event (can optionally belong to a group)"
+                    : "A container for multiple related events (e.g., a festival or conference)"}
+                </p>
+              </div>
+
               {/* Venue */}
               <div className="mb-4">
                 <label
@@ -303,6 +390,62 @@ export default function CreateEventModal({
                   maxLength={200}
                   disabled={isSubmitting}
                 />
+              </div>
+
+              {/* Parent Event Group - Only for regular events */}
+              {eventType === "event" && (
+                <div className="mb-4">
+                  <label
+                    htmlFor="parent-event"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Event Group (Optional)
+                  </label>
+                  <select
+                    id="parent-event"
+                    value={parentEventId}
+                    onChange={(e) => setParentEventId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={isSubmitting}
+                  >
+                    <option value="">None - Standalone Event</option>
+                    {events.map((event) => (
+                      <option
+                        key={fromBranded(event.id)}
+                        value={fromBranded(event.id)}
+                      >
+                        {event.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Make this event part of a larger event group (e.g., a
+                    festival or conference)
+                  </p>
+                </div>
+              )}
+
+              {/* Maximum Attendees */}
+              <div className="mb-4">
+                <label
+                  htmlFor="max-attendees"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Maximum Attendees (Optional)
+                </label>
+                <input
+                  type="number"
+                  id="max-attendees"
+                  value={maxAttendees}
+                  onChange={(e) => setMaxAttendees(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., 500"
+                  min="1"
+                  disabled={isSubmitting}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Set a capacity limit for this event
+                </p>
               </div>
 
               {/* Date and Start Time */}
