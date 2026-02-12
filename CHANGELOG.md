@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Scene Builder Functionality**: Complete scene creation and editing workflow
+  - **Scenes List Page** (`/dashboard/scenes`):
+    - Display all scenes for the organisation with name, description, module count, and scope
+    - Filter by scope: All Scenes, Organisation-wide, by Brand, or by Event
+    - Search functionality across scene names, descriptions, and associated brand/event names
+    - "Create Scene" button navigates to scene builder
+    - Click scene card to edit
+  - **Scene Editor** (`/dashboard/scenes/new` and `/dashboard/scenes/[sceneId]`):
+    - Scene settings: name and description fields
+    - Drag-and-drop module reordering using @dnd-kit/sortable
+    - Add/edit/delete text modules with modal editor
+    - Visual module list with drag handles and action buttons
+    - Save/cancel actions with loading states
+  - **API Routes**:
+    - `GET /api/scenes` - List all scenes for organisation
+    - `POST /api/scenes` - Create new scene
+    - `GET /api/scenes/[sceneId]` - Get single scene
+    - `PATCH /api/scenes/[sceneId]` - Update scene
+    - All routes require `events:manage_modules` permission
+  - **Text Module**: First production module type
+    - Simple content field for displaying text on audience devices
+    - Stored in module config as `{ content: string }`
+    - Module editor with textarea for content input
+
 - **Scenes Dashboard Page**: New `/dashboard/scenes` page in Creator app
   - Top-level navigation section alongside Team Members, Brands, and Events
   - Quick-action card on dashboard home (permission-gated via `events:manage_modules`)
@@ -16,6 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Empty state with description of upcoming scene builder functionality
 
 ### Changed
+
+- **Module Types**: Refactored to only include implemented modules
+  - Removed placeholder module types (`welcome`, `qna`, `poll`, `countdown`, `sponsor`)
+  - Added `text` module as the only current module type
+  - Updated `ModuleType` union and `MODULE_TYPES` array in `packages/core/src/types/module.ts`
+  - Updated all test fixtures and test cases to use `text` module
+  - Module system remains extensible - new types can be added as they're implemented
 
 - **Scene System: Three-Tier Hierarchy** — Replaced template-based model with org/brand/event scope
   - Added `brandId` field to scene schema (nullable — null means org-wide)

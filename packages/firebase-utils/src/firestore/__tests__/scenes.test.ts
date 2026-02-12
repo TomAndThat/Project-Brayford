@@ -88,7 +88,7 @@ describe('Scene Firestore Operations', () => {
     name: 'Welcome Screen',
     description: 'Opening scene',
     modules: [
-      { id: 'mod-1', moduleType: 'welcome', order: 0, config: { title: 'Hello' } },
+      { id: 'mod-1', moduleType: 'text', order: 0, config: { content: 'Hello' } },
     ],
     createdAt: new Date('2026-02-01T10:00:00Z'),
     updatedAt: new Date('2026-02-01T10:00:00Z'),
@@ -127,7 +127,7 @@ describe('Scene Firestore Operations', () => {
         id: mockSceneId,
         name: 'Welcome Screen',
         modules: expect.arrayContaining([
-          expect.objectContaining({ id: 'mod-1', moduleType: 'welcome' }),
+          expect.objectContaining({ id: 'mod-1', moduleType: 'text' }),
         ]),
       });
     });

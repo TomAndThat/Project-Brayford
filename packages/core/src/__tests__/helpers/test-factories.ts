@@ -282,11 +282,10 @@ export function createMockModuleInstance(
 ): ModuleInstance {
   return {
     id: 'module-inst-1',
-    moduleType: 'welcome',
+    moduleType: 'text',
     order: 0,
     config: {
-      title: 'Welcome to the show!',
-      message: 'Interactive features coming soon.',
+      content: 'Sample text content for testing',
     },
     ...overrides,
   };

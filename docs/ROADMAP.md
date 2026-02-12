@@ -77,7 +77,7 @@
 - [x] Dashboard integration (events card and events section)
 - [x] Event archival/soft-delete functionality
 - [x] Basic CRUD tests for schema and Firebase utilities
-- [ ] QR code generation for audience entry
+- [x] QR code generation for audience entry
 - [ ] Event templates (reusable configs)
 - [ ] Block organisation deletion while events are live (depends on org deletion from Phase 1)
 - [ ] Event restore functionality for archived events

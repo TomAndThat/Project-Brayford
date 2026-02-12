@@ -28,12 +28,12 @@ describe('ModuleInstanceSchema', () => {
       const result = ModuleInstanceSchema.parse(module);
 
       expect(result).toEqual(module);
-      expect(result.moduleType).toBe('welcome');
+      expect(result.moduleType).toBe('text');
       expect(result.order).toBe(0);
     });
 
     it('validates all module types', () => {
-      const types = ['welcome', 'qna', 'poll', 'countdown', 'sponsor'] as const;
+      const types = ['text'] as const;
       
       types.forEach((type) => {
         const module = createMockModuleInstance({ moduleType: type });
@@ -141,8 +141,8 @@ describe('SceneSchema', () => {
       const scene = createMockScene({
         modules: [
           createMockModuleInstance({ id: 'mod-1', order: 0 }),
-          createMockModuleInstance({ id: 'mod-2', moduleType: 'qna', order: 10 }),
-          createMockModuleInstance({ id: 'mod-3', moduleType: 'poll', order: 20 }),
+          createMockModuleInstance({ id: 'mod-2', order: 10 }),
+          createMockModuleInstance({ id: 'mod-3', order: 20 }),
         ],
       });
       const result = SceneSchema.parse(scene);
@@ -284,7 +284,7 @@ describe('CreateSceneSchema', () => {
     const createData = createMockCreateSceneData({
       modules: [
         createMockModuleInstance({ id: 'new-mod-1', order: 0 }),
-        createMockModuleInstance({ id: 'new-mod-2', moduleType: 'poll', order: 10 }),
+        createMockModuleInstance({ id: 'new-mod-2', order: 10 }),
       ],
     });
     const result = CreateSceneSchema.parse(createData);

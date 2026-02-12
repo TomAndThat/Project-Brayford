@@ -33,11 +33,7 @@ export {
   MODULE_TYPES,
   type ModuleType,
   type ModuleConfig,
-  type WelcomeModuleConfig,
-  type QnaModuleConfig,
-  type PollModuleConfig,
-  type CountdownModuleConfig,
-  type SponsorModuleConfig,
+  type TextModuleConfig,
 } from './types/module';
 
 // Billing types
