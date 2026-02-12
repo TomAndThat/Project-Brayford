@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Scene System Architecture**: Comprehensive design for controlling audience device content during live events
+  - Event organisers can create "scenes" (content views) with multiple modules in a defined order
+  - Real-time scene switching broadcasts to all audience devices via Firestore listeners
+  - Cost-optimised with lightweight live state subcollection (~4 cents per 5K-user event)
+  - Scenes can be pre-configured or edited during live events
+  - Template system for reusing common scene patterns across events
+  - See [Scene System Architecture](./docs/briefs/SCENE_SYSTEM.md) for full technical design
+  - Updated Interaction Domain documentation in [DOMAIN_MODEL.md](./docs/DOMAIN_MODEL.md)
+  - Implementation roadmap added to Phase 4 in [ROADMAP.md](./docs/ROADMAP.md)
+
 - **Brand Styling System** (Phase 1 - Background Colour): Per-brand visual customisation for audience app
   - **Creator App - Brand Settings**
     - Visual colour picker in brand settings page

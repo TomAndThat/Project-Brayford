@@ -84,9 +84,23 @@
 
 ### Phase 4: Core Product - Interaction Domain
 
-- [ ] Module system architecture (plugin-like)
-- [ ] Q&A module MVP
-- [ ] Polling module MVP
+**Scene System** (see [Scene System Architecture](./briefs/SCENE_SYSTEM.md)):
+
+- [ ] Scene schema and Firestore collections
+- [ ] Event live state subcollection for real-time sync
+- [ ] Scene CRUD API routes
+- [ ] Module type registry and config validation
+- [ ] Creator UI: Scene builder with drag-and-drop
+- [ ] Creator UI: Live scene switcher panel
+- [ ] Audience: Real-time scene renderer with onSnapshot
+- [ ] Scene templates and reusability
+
+**Interactive Modules:**
+
+- [ ] Welcome/static content module
+- [ ] Q&A module MVP (submit questions, moderation)
+- [ ] Polling module MVP (create polls, vote, view results)
+- [ ] Module integration with scene system
 - [ ] Real-time module state management
 - [ ] Moderation tools for Q&A
 

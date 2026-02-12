@@ -11,6 +11,7 @@
 
 import { z } from 'zod';
 import type { EventId, BrandId, OrganizationId } from '../types/branded';
+import { MAX_SCENE_HISTORY_ENTRIES } from '../constants/scene';
 
 /**
  * Event status lifecycle
@@ -71,6 +72,11 @@ const BaseEventSchema = z.object({
   maxAttendees: z.number().int().positive().optional().describe('Maximum capacity for the event'),
   createdAt: z.date().describe('Event creation timestamp'),
   isActive: z.boolean().default(true).describe('Whether event is active'),
+  sceneHistory: z.array(z.object({
+    sceneId: z.string().describe('Scene that was activated'),
+    switchedAt: z.date().describe('When the switch happened'),
+    switchedBy: z.string().describe('User who triggered the switch'),
+  })).max(MAX_SCENE_HISTORY_ENTRIES).optional().describe('History of scene switches for analytics'),
 });
 
 export const EventSchema = BaseEventSchema.refine(

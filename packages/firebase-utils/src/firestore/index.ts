@@ -100,3 +100,24 @@ export {
   resendInvitation,
   cancelInvitation,
 } from './invitations';
+
+// Scene operations (Interaction Domain)
+export {
+  getSceneRef,
+  getScene,
+  createScene,
+  updateScene,
+  deleteScene,
+  getEventScenes,
+  getOrganizationTemplateScenes,
+  duplicateScene,
+} from './scenes';
+
+// Event Live State operations (Interaction Domain)
+export {
+  getEventLiveState,
+  initializeEventLiveState,
+  switchScene,
+  markSceneContentUpdated,
+  useEventLiveState,
+} from './event-live-state';

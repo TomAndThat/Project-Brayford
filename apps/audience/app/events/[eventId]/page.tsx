@@ -146,7 +146,7 @@ export default function EventPage() {
       case "profile":
         return brand?.styling?.profileImageUrl ? (
           <div
-            className="w-full py-15 px-30 bg-cover bg-center bg-no-repeat"
+            className="w-full py-15 px-30 bg-cover bg-center bg-no-repeat border-b-1 "
             style={headerBgStyle}
           >
             <div className="w-full">
@@ -164,7 +164,7 @@ export default function EventPage() {
       case "logo":
         return brand?.styling?.logoImageUrl ? (
           <div
-            className="w-full py-15 px-30 bg-cover bg-center bg-no-repeat"
+            className="w-full py-15 px-30 bg-cover bg-center bg-no-repeat border-b-1 "
             style={headerBgStyle}
           >
             <div className="w-full flex items-center justify-center">
@@ -181,7 +181,7 @@ export default function EventPage() {
       case "banner":
         return brand?.styling?.bannerImageUrl ? (
           <div
-            className="w-full bg-cover bg-center bg-no-repeat"
+            className="w-full bg-cover bg-center bg-no-repeat border-b-1 "
             style={headerBgStyle}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}

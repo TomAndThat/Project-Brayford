@@ -46,6 +46,8 @@ export type QRCodeId = Brand<string, 'QRCodeId'>;
 /**
  * Interaction Domain
  */
+export type SceneId = Brand<string, 'SceneId'>;
+export type ModuleInstanceId = Brand<string, 'ModuleInstanceId'>;
 export type ModuleId = Brand<string, 'ModuleId'>;
 export type InteractionId = Brand<string, 'InteractionId'>;
 

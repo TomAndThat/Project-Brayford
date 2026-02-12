@@ -199,3 +199,31 @@ export {
   type EmailError,
   type RateLimitConfig,
 } from './email-queue.schema';
+
+// Scene Schema (Interaction Domain)
+export {
+  ModuleTypeSchema,
+  ModuleInstanceSchema,
+  SceneSchema,
+  CreateSceneSchema,
+  UpdateSceneSchema,
+  validateSceneData,
+  validateCreateSceneData,
+  validateUpdateSceneData,
+  type ModuleInstance,
+  type Scene,
+  type SceneDocument,
+  type CreateSceneData,
+  type UpdateSceneData,
+} from './scene.schema';
+
+// Event Live State Schema (Interaction Domain)
+export {
+  EventLiveStateSchema,
+  UpdateEventLiveStateSchema,
+  validateEventLiveStateData,
+  validateUpdateEventLiveStateData,
+  type EventLiveState,
+  type EventLiveStateDocument,
+  type UpdateEventLiveStateData,
+} from './event-live-state.schema';

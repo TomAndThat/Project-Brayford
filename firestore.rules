@@ -104,6 +104,26 @@ service cloud.firestore {
                  || resource.data.isActive == true;
       allow list: if true; // Public queries for audience to discover child events
       allow write: if false;
+
+      // ===== Event Live State (Subcollection) =====
+      // Read: Anyone (audience devices subscribe via onSnapshot for real-time scene updates).
+      // Write: Server-side only (creator app uses API routes → Admin SDK).
+      // Document path: /events/{eventId}/live/state
+      match /live/{docId} {
+        allow read: if true;
+        allow write: if false;
+      }
+    }
+
+    // ===== Scenes Collection =====
+    // Stores scene definitions (modules + config) for events.
+    // Read: Org members (creator app) — audience app fetches scenes via
+    //        the scene ID from the live state document using server-side rendering
+    //        or an API route, not direct Firestore reads.
+    // Write: Server-side only (API routes → Admin SDK).
+    match /scenes/{sceneId} {
+      allow read: if isOrgMember(resource.data.organizationId);
+      allow write: if false;
     }
 
     // ===== QR Codes Collection =====

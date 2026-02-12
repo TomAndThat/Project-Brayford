@@ -83,16 +83,21 @@ Our application features seven core domains:
 
 ### 4. **Interaction Domain**
 
-**Responsibility:** Real-time audience engagement modules
+**Responsibility:** Real-time audience engagement modules and content orchestration
 
 **Key Concepts:**
 
-- Modules (Q&A, polling, reactions, voting)
-- Module instances (a specific poll within a specific event)
-- Module state (active, paused, closed)
-- Interaction data structure (questions, votes, reactions)
+- **Scenes** (content views that define what audiences see - like slides in a presentation)
+- **Modules** (Q&A, polling, reactions, voting, welcome screens, sponsor content)
+- **Module instances** (a specific poll within a specific scene)
+- **Module state** (active, paused, closed)
+- **Event live state** (currently active scene, real-time broadcast state)
+- **Interaction data** (questions, votes, reactions)
+- **Scene templates** (reusable scene configurations across events)
 
-**Why separate?** This is where the platform's uniqueness lives. Modules need to be plugin-like and extensible.
+**Why separate?** This is where the platform's uniqueness lives. Modules need to be plugin-like and extensible. The scene system provides the orchestration layer that lets event organisers control when and how content appears on audience devices.
+
+**See:** [Scene System Architecture](./briefs/SCENE_SYSTEM.md) for detailed design
 
 ---
 

@@ -15,8 +15,12 @@ import type {
   CreateInvitationData,
   OrganizationDeletionRequest,
   CreateDeletionRequestData,
+  Scene,
+  CreateSceneData,
+  ModuleInstance,
+  EventLiveState,
 } from '../../schemas';
-import type { UserId, OrganizationId, BrandId, InvitationId } from '../../types/branded';
+import type { UserId, OrganizationId, BrandId, InvitationId, SceneId, EventId } from '../../types/branded';
 import { toBranded } from '../../types/branded';
 import { getPermissionsForRole } from '../../permissions';
 
@@ -264,6 +268,90 @@ export function createMockCreateDeletionRequestData(
     requestedBy: 'test-user-123',
     confirmationToken: 'test-confirmation-token-uuid',
     tokenExpiresAt,
+    ...overrides,
+  };
+}
+
+// ===== Scene System Factories =====
+
+/**
+ * Create a valid ModuleInstance for testing
+ */
+export function createMockModuleInstance(
+  overrides?: Partial<ModuleInstance>
+): ModuleInstance {
+  return {
+    id: 'module-inst-1',
+    moduleType: 'welcome',
+    order: 0,
+    config: {
+      title: 'Welcome to the show!',
+      message: 'Interactive features coming soon.',
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Create a valid Scene object for testing
+ */
+export function createMockScene(overrides?: Partial<Scene>): Scene {
+  return {
+    eventId: 'test-event-123',
+    organizationId: 'test-org-123',
+    name: 'Welcome Screen',
+    description: 'Opening scene for the event',
+    modules: [
+      createMockModuleInstance(),
+    ],
+    isTemplate: false,
+    createdAt: new Date('2026-02-01T10:00:00Z'),
+    updatedAt: new Date('2026-02-01T10:00:00Z'),
+    createdBy: 'test-user-123',
+    ...overrides,
+  };
+}
+
+/**
+ * Create valid CreateSceneData for testing
+ */
+export function createMockCreateSceneData(
+  overrides?: Partial<CreateSceneData>
+): CreateSceneData {
+  return {
+    eventId: 'test-event-123',
+    organizationId: 'test-org-123',
+    name: 'Welcome Screen',
+    modules: [],
+    createdBy: 'test-user-123',
+    ...overrides,
+  };
+}
+
+/**
+ * Create a branded SceneId for testing
+ */
+export function createMockSceneId(id = 'test-scene-123'): SceneId {
+  return toBranded<SceneId>(id);
+}
+
+/**
+ * Create a branded EventId for testing
+ */
+export function createMockEventId(id = 'test-event-123'): EventId {
+  return toBranded<EventId>(id);
+}
+
+/**
+ * Create a valid EventLiveState object for testing
+ */
+export function createMockEventLiveState(
+  overrides?: Partial<EventLiveState>
+): EventLiveState {
+  return {
+    activeSceneId: null,
+    sceneUpdatedAt: new Date('2026-02-01T10:00:00Z'),
+    updatedAt: new Date('2026-02-01T10:00:00Z'),
     ...overrides,
   };
 }

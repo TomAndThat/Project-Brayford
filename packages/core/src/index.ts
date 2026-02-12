@@ -17,6 +17,8 @@ export {
   type InvitationId,
   type EventId,
   type QRCodeId,
+  type SceneId,
+  type ModuleInstanceId,
   type ModuleId,
   type InteractionId,
   type ParticipantId,
@@ -25,6 +27,18 @@ export {
   type UsageRecordId,
   type InvoiceId,
 } from './types/branded';
+
+// Module types (Interaction Domain)
+export {
+  MODULE_TYPES,
+  type ModuleType,
+  type ModuleConfig,
+  type WelcomeModuleConfig,
+  type QnaModuleConfig,
+  type PollModuleConfig,
+  type CountdownModuleConfig,
+  type SponsorModuleConfig,
+} from './types/module';
 
 // Billing types
 export type {
@@ -44,3 +58,6 @@ export * from './auth/super-admin';
 
 // Re-export utilities
 export * from './utils/index';
+
+// Re-export constants
+export * from './constants/index';
