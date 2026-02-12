@@ -217,6 +217,7 @@ export default function EventsPage() {
         user={user}
         organizationName={organization.name}
         onSignOut={handleSignOut}
+        currentMember={currentMember}
         pageTitle="Events"
       />
 
