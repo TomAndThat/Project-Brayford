@@ -98,7 +98,7 @@ describe('SceneSchema', () => {
 
       expect(result.name).toBe('Welcome Screen');
       expect(result.modules).toHaveLength(1);
-      expect(result.isTemplate).toBe(false);
+      expect(result.brandId).toBe('test-brand-123');
     });
 
     it('validates a scene with no modules', () => {
@@ -107,14 +107,34 @@ describe('SceneSchema', () => {
       expect(result.modules).toHaveLength(0);
     });
 
-    it('validates a template scene with null eventId', () => {
+    it('validates an org-wide scene (brandId and eventId null)', () => {
       const scene = createMockScene({
+        brandId: null,
         eventId: null,
-        isTemplate: true,
       });
       const result = SceneSchema.parse(scene);
-      expect(result.isTemplate).toBe(true);
+      expect(result.brandId).toBeNull();
       expect(result.eventId).toBeNull();
+    });
+
+    it('validates a brand-specific scene (brandId set, eventId null)', () => {
+      const scene = createMockScene({
+        brandId: 'brand-123',
+        eventId: null,
+      });
+      const result = SceneSchema.parse(scene);
+      expect(result.brandId).toBe('brand-123');
+      expect(result.eventId).toBeNull();
+    });
+
+    it('validates an event-specific scene (both brandId and eventId set)', () => {
+      const scene = createMockScene({
+        brandId: 'brand-123',
+        eventId: 'event-123',
+      });
+      const result = SceneSchema.parse(scene);
+      expect(result.brandId).toBe('brand-123');
+      expect(result.eventId).toBe('event-123');
     });
 
     it('validates a scene with multiple modules', () => {
@@ -129,11 +149,10 @@ describe('SceneSchema', () => {
       expect(result.modules).toHaveLength(3);
     });
 
-    it('defaults isTemplate to false', () => {
+    it('defaults isTemplate-free scene structure', () => {
       const scene = createMockScene();
-      delete (scene as any).isTemplate;
       const result = SceneSchema.parse(scene);
-      expect(result.isTemplate).toBe(false);
+      expect(result).not.toHaveProperty('isTemplate');
     });
 
     it('accepts optional description', () => {
@@ -175,10 +194,10 @@ describe('SceneSchema', () => {
       expect(() => SceneSchema.parse(scene)).toThrow(ZodError);
     });
 
-    it('rejects template scenes with a non-null eventId', () => {
+    it('rejects event-specific scenes without a brandId', () => {
       const scene = createMockScene({
+        brandId: null,
         eventId: 'event-123',
-        isTemplate: true,
       });
       expect(() => SceneSchema.parse(scene)).toThrow(ZodError);
     });
@@ -238,11 +257,18 @@ describe('CreateSceneSchema', () => {
     expect(result.modules).toEqual([]);
   });
 
-  it('defaults isTemplate to false if not provided', () => {
-    const createData = createMockCreateSceneData();
-    delete (createData as any).isTemplate;
+  it('defaults brandId to null if not provided', () => {
+    const createData = createMockCreateSceneData({ eventId: null });
+    delete (createData as any).brandId;
     const result = CreateSceneSchema.parse(createData);
-    expect(result.isTemplate).toBe(false);
+    expect(result.brandId).toBeNull();
+  });
+
+  it('defaults eventId to null if not provided', () => {
+    const createData = createMockCreateSceneData();
+    delete (createData as any).eventId;
+    const result = CreateSceneSchema.parse(createData);
+    expect(result.eventId).toBeNull();
   });
 
   it('does not require createdAt or updatedAt', () => {
@@ -265,10 +291,10 @@ describe('CreateSceneSchema', () => {
     expect(result.modules).toHaveLength(2);
   });
 
-  it('rejects template creation with eventId', () => {
+  it('rejects event-specific scenes without brandId set', () => {
     const createData = createMockCreateSceneData({
+      brandId: null,
       eventId: 'event-123',
-      isTemplate: true,
     });
     expect(() => CreateSceneSchema.parse(createData)).toThrow(ZodError);
   });
@@ -333,6 +359,16 @@ describe('UpdateSceneSchema', () => {
   it('does not allow changing createdBy', () => {
     const result = UpdateSceneSchema.parse({ name: 'Test' });
     expect(result).not.toHaveProperty('createdBy');
+  });
+
+  it('allows updating brandId', () => {
+    const result = UpdateSceneSchema.parse({ brandId: 'new-brand' });
+    expect(result.brandId).toBe('new-brand');
+  });
+
+  it('allows setting brandId to null', () => {
+    const result = UpdateSceneSchema.parse({ brandId: null });
+    expect(result.brandId).toBeNull();
   });
 });
 

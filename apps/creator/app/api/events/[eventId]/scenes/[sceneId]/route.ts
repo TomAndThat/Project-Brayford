@@ -13,7 +13,8 @@
  *   name: string,
  *   description: string,
  *   modules: ModuleInstance[],
- *   isTemplate: boolean
+ *   brandId: string | null,
+ *   eventId: string | null
  * }>
  * PATCH Response:
  * 200: { success: true }

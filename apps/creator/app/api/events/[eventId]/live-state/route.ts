@@ -293,7 +293,7 @@ async function handleSwitchScene(
     );
   }
 
-  // If activating a scene, verify it exists and belongs to this event
+  // If activating a scene, verify it exists and belongs to this event's org
   if (typeof sceneId === "string") {
     const sceneDoc = await adminDb.collection("scenes").doc(sceneId).get();
     if (!sceneDoc.exists) {
@@ -302,9 +302,12 @@ async function handleSwitchScene(
         { status: 404 },
       );
     }
-    if (sceneDoc.data()?.eventId !== eventId) {
+    // Scene must belong to the same org as the event
+    const eventDoc = await adminDb.collection("events").doc(eventId).get();
+    const eventOrgId = eventDoc.data()?.organizationId;
+    if (sceneDoc.data()?.organizationId !== eventOrgId) {
       return NextResponse.json(
-        { error: "Scene does not belong to this event" },
+        { error: "Scene does not belong to this organisation" },
         { status: 400 },
       );
     }

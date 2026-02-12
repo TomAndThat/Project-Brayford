@@ -21,6 +21,7 @@ import {
   USERS_VIEW,
   BRANDS_VIEW,
   EVENTS_VIEW,
+  EVENTS_MANAGE_MODULES,
 } from "@brayford/core";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import DashboardLayoutWrapper from "@/components/dashboard/DashboardLayoutWrapper";
@@ -225,7 +226,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {currentMember && hasPermission(currentMember, USERS_VIEW) && (
               <button
                 onClick={() => router.push("/dashboard/users")}
@@ -321,6 +322,39 @@ export default function DashboardPage() {
                 </div>
               </button>
             )}
+
+            {currentMember &&
+              hasPermission(currentMember, EVENTS_MANAGE_MODULES) && (
+                <button
+                  onClick={() => router.push("/dashboard/scenes")}
+                  data-testid="scenes-card"
+                  className="bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Scenes
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Build reusable screen layouts
+                      </p>
+                    </div>
+                    <svg
+                      className="w-8 h-8 text-indigo-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+                      />
+                    </svg>
+                  </div>
+                </button>
+              )}
           </div>
 
           {/* Events Section */}

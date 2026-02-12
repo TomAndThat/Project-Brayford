@@ -109,7 +109,8 @@ export {
   updateScene,
   deleteScene,
   getEventScenes,
-  getOrganizationTemplateScenes,
+  getBrandScenes,
+  getOrganizationScenes,
   duplicateScene,
 } from './scenes';
 

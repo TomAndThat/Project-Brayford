@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Scenes Dashboard Page**: New `/dashboard/scenes` page in Creator app
+  - Top-level navigation section alongside Team Members, Brands, and Events
+  - Quick-action card on dashboard home (permission-gated via `events:manage_modules`)
+  - Auth guard, org resolution, and support mode banner following existing patterns
+  - Empty state with description of upcoming scene builder functionality
+
+### Changed
+
+- **Scene System: Three-Tier Hierarchy** — Replaced template-based model with org/brand/event scope
+  - Added `brandId` field to scene schema (nullable — null means org-wide)
+  - Removed `isTemplate` field entirely
+  - Three scoping levels: org-wide (`brandId: null, eventId: null`), brand-specific (`brandId` set, `eventId: null`), event-specific (both set)
+  - Constraint: event-specific scenes must have `brandId` set (events belong to brands)
+  - Duplication replaces templates — users can copy scenes across brands/events
+  - New Firestore operations: `getOrganizationScenes()`, `getBrandScenes()` (replacing `getOrganizationTemplateScenes()`)
+  - Updated `duplicateScene()` signature to accept target scope `{ brandId, eventId }`
+  - Live state scene validation now checks org membership rather than event ownership
+  - All tests updated for new schema (85+ tests)
+  - Updated SCENE_SYSTEM.md brief to reflect new architecture
+
 - **Scene System Architecture**: Comprehensive design for controlling audience device content during live events
   - Event organisers can create "scenes" (content views) with multiple modules in a defined order
   - Real-time scene switching broadcasts to all audience devices via Firestore listeners

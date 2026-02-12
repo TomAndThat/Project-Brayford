@@ -29,10 +29,11 @@ We've chosen a **scene-based approach** (similar to slides in a presentation or 
 
 1. **Natural mental model**: Event flows have a narrative structure (welcome → Q&A → poll → results → thank you)
 2. **Pre-planning friendly**: Most organisers prepare content ahead of time as part of pre-production
-3. **Template-friendly**: Common scene patterns can be saved and reused
+3. **Three-tier reusability**: Scenes can be org-wide, brand-specific, or event-specific
 4. **Still flexible**: Scenes aren't locked once the event starts - organisers can edit scenes on the fly
 5. **Simple real-time sync**: One field change broadcasts new state to all devices
 6. **Room to grow**: Architecture supports adding live overrides later if needed
+7. **Duplication over templates**: Easy to copy scenes across brands/events without a separate template concept
 
 ---
 
@@ -46,16 +47,24 @@ We've chosen a **scene-based approach** (similar to slides in a presentation or 
 // Collection: /scenes/{sceneId}
 {
   id: SceneId                    // Unique identifier
-  eventId: EventId               // Parent event (null for templates)
-  organizationId: OrganizationId // For templates, determine ownership
+  organizationId: OrganizationId // Owning organization
+  brandId: BrandId | null        // Parent brand (null for org-wide scenes)
+  eventId: EventId | null        // Parent event (null for brand-wide or org-wide)
   name: string                   // "Welcome Screen", "Open Q&A", "Poll #1"
   description?: string           // Optional notes for the creator
   modules: ModuleInstance[]      // Ordered array of modules in this scene
-  isTemplate: boolean            // Can be reused across events
   createdAt: Timestamp
   updatedAt: Timestamp
   createdBy: UserId              // User who created this scene
 }
+
+// Three-tier hierarchy:
+// - Org-wide:       brandId = null, eventId = null  → available to all events
+// - Brand-specific:  brandId set,   eventId = null  → available to all events in brand
+// - Event-specific:  brandId set,   eventId set     → only for that event
+//
+// Constraint: if eventId is set, brandId must also be set (events belong to brands)
+// Duplication: users can duplicate scenes across scopes instead of templates
 ```
 
 #### Module Instance (Embedded in Scene)

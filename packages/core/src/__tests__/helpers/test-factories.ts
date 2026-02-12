@@ -297,14 +297,14 @@ export function createMockModuleInstance(
  */
 export function createMockScene(overrides?: Partial<Scene>): Scene {
   return {
-    eventId: 'test-event-123',
     organizationId: 'test-org-123',
+    brandId: 'test-brand-123',
+    eventId: 'test-event-123',
     name: 'Welcome Screen',
     description: 'Opening scene for the event',
     modules: [
       createMockModuleInstance(),
     ],
-    isTemplate: false,
     createdAt: new Date('2026-02-01T10:00:00Z'),
     updatedAt: new Date('2026-02-01T10:00:00Z'),
     createdBy: 'test-user-123',
@@ -319,8 +319,9 @@ export function createMockCreateSceneData(
   overrides?: Partial<CreateSceneData>
 ): CreateSceneData {
   return {
-    eventId: 'test-event-123',
     organizationId: 'test-org-123',
+    brandId: 'test-brand-123',
+    eventId: 'test-event-123',
     name: 'Welcome Screen',
     modules: [],
     createdBy: 'test-user-123',

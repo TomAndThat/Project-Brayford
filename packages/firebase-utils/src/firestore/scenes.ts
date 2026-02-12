@@ -5,6 +5,11 @@
  * CRUD operations for the scenes collection.
  * Scenes define what content appears on audience devices.
  * 
+ * Three-tier hierarchy:
+ * - Org-wide: brandId = null, eventId = null
+ * - Brand-specific: brandId set, eventId = null
+ * - Event-specific: brandId set, eventId set
+ * 
  * @see docs/briefs/SCENE_SYSTEM.md
  */
 
@@ -33,6 +38,7 @@ import {
   toBranded,
   fromBranded,
   type SceneId,
+  type BrandId,
   type EventId,
   type OrganizationId,
   type UserId,
@@ -76,8 +82,9 @@ export async function getScene(sceneId: SceneId): Promise<SceneDocument | null> 
   return {
     id: sceneId,
     ...data,
-    eventId: data.eventId ? toBranded<EventId>(data.eventId) : null,
     organizationId: toBranded<OrganizationId>(data.organizationId),
+    brandId: data.brandId ? toBranded<BrandId>(data.brandId) : null,
+    eventId: data.eventId ? toBranded<EventId>(data.eventId) : null,
     createdBy: toBranded<UserId>(data.createdBy),
   };
 }
@@ -196,8 +203,9 @@ export async function getEventScenes(eventId: EventId): Promise<SceneDocument[]>
     scenes.push({
       id: toBranded<SceneId>(docSnap.id),
       ...data,
-      eventId: data.eventId ? toBranded<EventId>(data.eventId) : null,
       organizationId: toBranded<OrganizationId>(data.organizationId),
+      brandId: data.brandId ? toBranded<BrandId>(data.brandId) : null,
+      eventId: data.eventId ? toBranded<EventId>(data.eventId) : null,
       createdBy: toBranded<UserId>(data.createdBy),
     });
   }
@@ -206,24 +214,24 @@ export async function getEventScenes(eventId: EventId): Promise<SceneDocument[]>
 }
 
 /**
- * Get all template scenes for an organization
+ * Get all scenes for a brand (brand-scoped scenes only, not event-specific)
  * 
- * @param organizationId - Organization ID
- * @returns Array of template scene documents
+ * @param brandId - Brand ID
+ * @returns Array of brand-scoped scene documents
  * 
  * @example
  * ```ts
- * const templates = await getOrganizationTemplateScenes(orgId);
+ * const brandScenes = await getBrandScenes(brandId);
  * ```
  */
-export async function getOrganizationTemplateScenes(
-  organizationId: OrganizationId
+export async function getBrandScenes(
+  brandId: BrandId
 ): Promise<SceneDocument[]> {
   const scenesRef = collection(db, 'scenes');
   const q = query(
     scenesRef,
-    where('organizationId', '==', fromBranded(organizationId)),
-    where('isTemplate', '==', true),
+    where('brandId', '==', fromBranded(brandId)),
+    where('eventId', '==', null),
     orderBy('createdAt', 'asc')
   );
   
@@ -240,8 +248,9 @@ export async function getOrganizationTemplateScenes(
     scenes.push({
       id: toBranded<SceneId>(docSnap.id),
       ...data,
-      eventId: null,
       organizationId: toBranded<OrganizationId>(data.organizationId),
+      brandId: toBranded<BrandId>(data.brandId!),
+      eventId: null,
       createdBy: toBranded<UserId>(data.createdBy),
     });
   }
@@ -250,28 +259,79 @@ export async function getOrganizationTemplateScenes(
 }
 
 /**
- * Duplicate a scene (for templates or copying between events)
+ * Get all org-wide scenes (no brand or event assigned)
+ * 
+ * @param organizationId - Organization ID
+ * @returns Array of org-wide scene documents
+ * 
+ * @example
+ * ```ts
+ * const orgScenes = await getOrganizationScenes(orgId);
+ * ```
+ */
+export async function getOrganizationScenes(
+  organizationId: OrganizationId
+): Promise<SceneDocument[]> {
+  const scenesRef = collection(db, 'scenes');
+  const q = query(
+    scenesRef,
+    where('organizationId', '==', fromBranded(organizationId)),
+    where('brandId', '==', null),
+    where('eventId', '==', null),
+    orderBy('createdAt', 'asc')
+  );
+  
+  const querySnap = await getDocs(q);
+  
+  const scenes: SceneDocument[] = [];
+  for (const docSnap of querySnap.docs) {
+    const data = validateSceneData({
+      ...docSnap.data(),
+      createdAt: docSnap.data().createdAt?.toDate(),
+      updatedAt: docSnap.data().updatedAt?.toDate(),
+    });
+    
+    scenes.push({
+      id: toBranded<SceneId>(docSnap.id),
+      ...data,
+      organizationId: toBranded<OrganizationId>(data.organizationId),
+      brandId: null,
+      eventId: null,
+      createdBy: toBranded<UserId>(data.createdBy),
+    });
+  }
+  
+  return scenes;
+}
+
+/**
+ * Duplicate a scene to a new scope
  * 
  * Creates a new scene with the same modules and config as the source,
- * but with a new ID and optionally a new eventId.
+ * but with a new ID and optionally a different scope (org/brand/event).
  * 
  * @param sceneId - Source scene ID to duplicate
- * @param newEventId - Event to attach the copy to (null for templates)
+ * @param target - Target scope for the duplicate
+ * @param target.brandId - Brand to attach the copy to (null for org-wide)
+ * @param target.eventId - Event to attach the copy to (null for brand-wide or org-wide)
  * @param createdBy - User performing the duplication
  * @returns ID of the new duplicated scene
  * 
  * @example
  * ```ts
- * // Copy a template to an event
- * const newSceneId = await duplicateScene(templateSceneId, eventId, userId);
+ * // Copy a scene to a different brand
+ * const newSceneId = await duplicateScene(sceneId, { brandId: newBrandId, eventId: null }, userId);
  * 
- * // Copy a scene as a new template
- * const templateId = await duplicateScene(sceneId, null, userId);
+ * // Copy a scene to a specific event
+ * const eventSceneId = await duplicateScene(sceneId, { brandId, eventId }, userId);
+ * 
+ * // Copy a scene to org-wide
+ * const orgSceneId = await duplicateScene(sceneId, { brandId: null, eventId: null }, userId);
  * ```
  */
 export async function duplicateScene(
   sceneId: SceneId,
-  newEventId: EventId | null,
+  target: { brandId: BrandId | null; eventId: EventId | null },
   createdBy: UserId
 ): Promise<SceneId> {
   const source = await getScene(sceneId);
@@ -280,12 +340,12 @@ export async function duplicateScene(
   }
   
   return createScene({
-    eventId: newEventId ? fromBranded(newEventId) : null,
     organizationId: fromBranded(source.organizationId),
+    brandId: target.brandId ? fromBranded(target.brandId) : null,
+    eventId: target.eventId ? fromBranded(target.eventId) : null,
     name: source.name,
     description: source.description,
     modules: source.modules,
-    isTemplate: newEventId === null,
     createdBy: fromBranded(createdBy),
   });
 }

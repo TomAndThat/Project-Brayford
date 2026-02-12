@@ -59,7 +59,8 @@ import {
   updateScene,
   deleteScene,
   getEventScenes,
-  getOrganizationTemplateScenes,
+  getOrganizationScenes,
+  getBrandScenes,
   duplicateScene,
 } from '../scenes';
 import { db } from '../../config';
@@ -67,6 +68,7 @@ import {
   toBranded,
   fromBranded,
   type SceneId,
+  type BrandId,
   type EventId,
   type OrganizationId,
   type UserId,
@@ -74,19 +76,20 @@ import {
 
 describe('Scene Firestore Operations', () => {
   const mockSceneId = toBranded<SceneId>('scene123');
+  const mockBrandId = toBranded<BrandId>('brand123');
   const mockEventId = toBranded<EventId>('event123');
   const mockOrgId = toBranded<OrganizationId>('org123');
   const mockUserId = toBranded<UserId>('user123');
 
   const mockSceneData = {
-    eventId: fromBranded(mockEventId),
     organizationId: fromBranded(mockOrgId),
+    brandId: fromBranded(mockBrandId),
+    eventId: fromBranded(mockEventId),
     name: 'Welcome Screen',
     description: 'Opening scene',
     modules: [
       { id: 'mod-1', moduleType: 'welcome', order: 0, config: { title: 'Hello' } },
     ],
-    isTemplate: false,
     createdAt: new Date('2026-02-01T10:00:00Z'),
     updatedAt: new Date('2026-02-01T10:00:00Z'),
     createdBy: fromBranded(mockUserId),
@@ -142,11 +145,11 @@ describe('Scene Firestore Operations', () => {
       expect(result).toBeNull();
     });
 
-    it('sets eventId to null for template scenes', async () => {
-      const templateData = { ...mockSceneData, eventId: null, isTemplate: true };
+    it('sets eventId and brandId to null for org-wide scenes', async () => {
+      const orgWideData = { ...mockSceneData, brandId: null, eventId: null };
       const mockDocSnap = {
         exists: () => true,
-        data: () => templateData,
+        data: () => orgWideData,
       };
       vi.mocked(getDoc).mockResolvedValue(mockDocSnap as any);
       const mockDocRef = { withConverter: vi.fn().mockReturnThis() };
@@ -154,8 +157,8 @@ describe('Scene Firestore Operations', () => {
 
       const result = await getScene(mockSceneId);
 
+      expect(result?.brandId).toBeNull();
       expect(result?.eventId).toBeNull();
-      expect(result?.isTemplate).toBe(true);
     });
   });
 
@@ -318,22 +321,37 @@ describe('Scene Firestore Operations', () => {
     });
   });
 
-  describe('getOrganizationTemplateScenes', () => {
-    it('queries for template scenes in the organization', async () => {
+  describe('getOrganizationScenes', () => {
+    it('queries for org-wide scenes (brandId and eventId null)', async () => {
       const mockQuerySnapshot = { docs: [] };
       vi.mocked(collection).mockReturnValue({} as any);
       vi.mocked(query).mockReturnValue({} as any);
       vi.mocked(getDocs).mockResolvedValue(mockQuerySnapshot as any);
 
-      await getOrganizationTemplateScenes(mockOrgId);
+      await getOrganizationScenes(mockOrgId);
 
       expect(where).toHaveBeenCalledWith('organizationId', '==', 'org123');
-      expect(where).toHaveBeenCalledWith('isTemplate', '==', true);
+      expect(where).toHaveBeenCalledWith('brandId', '==', null);
+      expect(where).toHaveBeenCalledWith('eventId', '==', null);
+    });
+  });
+
+  describe('getBrandScenes', () => {
+    it('queries for brand-scoped scenes (eventId null)', async () => {
+      const mockQuerySnapshot = { docs: [] };
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(query).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue(mockQuerySnapshot as any);
+
+      await getBrandScenes(mockBrandId);
+
+      expect(where).toHaveBeenCalledWith('brandId', '==', 'brand123');
+      expect(where).toHaveBeenCalledWith('eventId', '==', null);
     });
   });
 
   describe('duplicateScene', () => {
-    it('creates a copy of an existing scene', async () => {
+    it('creates a copy of an existing scene to a new scope', async () => {
       // Mock getScene (source)
       const mockDocSnap = {
         exists: () => true,
@@ -350,14 +368,20 @@ describe('Scene Firestore Operations', () => {
       vi.mocked(collection).mockReturnValue({} as any);
       vi.mocked(setDoc).mockResolvedValue(undefined);
 
+      const newBrandId = toBranded<BrandId>('new-brand-456');
       const newEventId = toBranded<EventId>('new-event-456');
-      const newSceneId = await duplicateScene(mockSceneId, newEventId, mockUserId);
+      const newSceneId = await duplicateScene(
+        mockSceneId,
+        { brandId: newBrandId, eventId: newEventId },
+        mockUserId,
+      );
 
       expect(newSceneId).toBe('duplicated123');
       expect(setDoc).toHaveBeenCalledWith(
         mockNewRef,
         expect.objectContaining({
           name: 'Welcome Screen',
+          brandId: 'new-brand-456',
           eventId: 'new-event-456',
         }),
       );
@@ -372,11 +396,11 @@ describe('Scene Firestore Operations', () => {
       vi.mocked(doc).mockReturnValue(mockDocRef as any);
 
       await expect(
-        duplicateScene(mockSceneId, mockEventId, mockUserId)
+        duplicateScene(mockSceneId, { brandId: null, eventId: null }, mockUserId)
       ).rejects.toThrow('Scene not found');
     });
 
-    it('creates a template when newEventId is null', async () => {
+    it('creates an org-wide scene when brandId and eventId are null', async () => {
       const mockDocSnap = {
         exists: () => true,
         data: () => mockSceneData,
@@ -384,21 +408,25 @@ describe('Scene Firestore Operations', () => {
       vi.mocked(getDoc).mockResolvedValue(mockDocSnap as any);
       
       const mockGetRef = { withConverter: vi.fn().mockReturnThis() };
-      const mockNewRef = { id: 'template123' };
+      const mockNewRef = { id: 'orgwide123' };
       vi.mocked(doc)
         .mockReturnValueOnce(mockGetRef as any)
         .mockReturnValueOnce(mockNewRef as any);
       vi.mocked(collection).mockReturnValue({} as any);
       vi.mocked(setDoc).mockResolvedValue(undefined);
 
-      const newSceneId = await duplicateScene(mockSceneId, null, mockUserId);
+      const newSceneId = await duplicateScene(
+        mockSceneId,
+        { brandId: null, eventId: null },
+        mockUserId,
+      );
 
-      expect(newSceneId).toBe('template123');
+      expect(newSceneId).toBe('orgwide123');
       expect(setDoc).toHaveBeenCalledWith(
         mockNewRef,
         expect.objectContaining({
+          brandId: null,
           eventId: null,
-          isTemplate: true,
         }),
       );
     });

@@ -1,6 +1,6 @@
 # Project Brayford - Roadmap
 
-**Last Updated:** February 11, 2026
+**Last Updated:** February 12, 2026
 
 ---
 
@@ -86,11 +86,15 @@
 
 **Scene System** (see [Scene System Architecture](./briefs/SCENE_SYSTEM.md)):
 
-- [ ] Scene schema and Firestore collections
-- [ ] Event live state subcollection for real-time sync
-- [ ] Scene CRUD API routes
-- [ ] Module type registry and config validation
-- [ ] Creator UI: Scene builder with drag-and-drop
+- [x] Scene schema and Firestore collections (branded types, Zod schemas, constants)
+- [x] Event live state subcollection for real-time sync (`useEventLiveState` hook)
+- [x] Scene CRUD API routes (POST/GET/PATCH/DELETE + live-state endpoints)
+- [x] Module type registry and config validation (5 module types: welcome, Q&A, poll, countdown, sponsor)
+- [x] Firestore security rules for scenes and live state
+- [x] 85+ tests passing across core schemas, Firebase operations, and API routes
+- [x] Scenes page in Creator dashboard (`/dashboard/scenes`) with navigation card
+- [ ] Creator UI: Scene list with create/edit/delete
+- [ ] Creator UI: Scene builder with module palette and configuration
 - [ ] Creator UI: Live scene switcher panel
 - [ ] Audience: Real-time scene renderer with onSnapshot
 - [ ] Scene templates and reusability

@@ -12,7 +12,8 @@
  *   name: string,
  *   description?: string,
  *   modules?: ModuleInstance[],
- *   isTemplate?: boolean
+ *   brandId?: string | null,
+ *   eventId?: string | null
  * }
  * POST Response:
  * 201: { sceneId: string }
@@ -191,6 +192,7 @@ export async function POST(
       ...(body && typeof body === "object" ? body : {}),
       eventId,
       organizationId: eventData.organizationId,
+      brandId: eventData.brandId,
       createdBy: uid,
     };
 
@@ -204,17 +206,17 @@ export async function POST(
       );
     }
 
-    // Enforce per-event scene limit
+    // Enforce per-organisation scene limit
     const existingCount = await adminDb
       .collection("scenes")
-      .where("eventId", "==", eventId)
+      .where("organizationId", "==", eventData.organizationId)
       .count()
       .get();
 
     if (existingCount.data().count >= MAX_SCENES_PER_EVENT) {
       return NextResponse.json(
         {
-          error: `Scene limit reached. An event can have a maximum of ${MAX_SCENES_PER_EVENT} scenes.`,
+          error: `Scene limit reached. An organisation can have a maximum of ${MAX_SCENES_PER_EVENT} scenes.`,
         },
         { status: 409 },
       );

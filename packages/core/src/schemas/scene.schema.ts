@@ -5,9 +5,12 @@
  * Each scene contains an ordered array of module instances.
  * Event organisers switch between scenes to control the audience experience.
  * 
- * Scenes can be:
- * - Event-specific: Belong to a single event (eventId is set)
- * - Templates: Reusable across events (isTemplate = true, eventId is null)
+ * Scenes follow a three-tier hierarchy:
+ * - Organisation-wide: brandId = null, eventId = null (available to all events)
+ * - Brand-specific: brandId set, eventId = null (available to all events under that brand)
+ * - Event-specific: brandId set, eventId set (only for one event)
+ * 
+ * Users can duplicate scenes across scopes rather than using templates.
  * 
  * Firestore Collection: /scenes/{sceneId}
  * 
@@ -15,7 +18,7 @@
  */
 
 import { z } from 'zod';
-import type { SceneId, ModuleInstanceId, EventId, OrganizationId, UserId } from '../types/branded';
+import type { SceneId, ModuleInstanceId, EventId, BrandId, OrganizationId, UserId } from '../types/branded';
 import { MODULE_TYPES } from '../types/module';
 import { MAX_MODULES_PER_SCENE } from '../constants/scene';
 
@@ -51,39 +54,44 @@ export type ModuleInstance = z.infer<typeof ModuleInstanceSchema>;
 /**
  * Scene document schema
  * 
- * @property eventId - Parent event (null for templates)
- * @property organizationId - Owning organization (for both event scenes and templates)
+ * Three-tier hierarchy:
+ * - Org-wide: brandId = null, eventId = null
+ * - Brand-specific: brandId set, eventId = null
+ * - Event-specific: brandId set, eventId set
+ * 
+ * @property organizationId - Owning organization
+ * @property brandId - Parent brand (null for org-wide scenes)
+ * @property eventId - Parent event (null for brand-wide or org-wide scenes)
  * @property name - Display name for the scene
  * @property description - Optional notes for the creator
  * @property modules - Ordered array of module instances
- * @property isTemplate - Whether this scene can be reused across events
  * @property createdAt - When the scene was created
  * @property updatedAt - When the scene was last modified
  * @property createdBy - User who created this scene
  */
 export const SceneSchema = z.object({
-  eventId: z.string().nullable().describe('Parent event (null for templates)'),
   organizationId: z.string().describe('Owning organization'),
+  brandId: z.string().nullable().describe('Parent brand (null for org-wide scenes)'),
+  eventId: z.string().nullable().describe('Parent event (null for brand-wide or org-wide scenes)'),
   name: z.string().min(1).max(100).describe('Scene display name'),
   description: z.string().max(500).optional().describe('Optional notes for the creator'),
   modules: z.array(ModuleInstanceSchema)
     .max(MAX_MODULES_PER_SCENE, `A scene can contain a maximum of ${MAX_MODULES_PER_SCENE} modules`)
     .describe('Ordered array of module instances'),
-  isTemplate: z.boolean().default(false).describe('Whether this scene is a reusable template'),
   createdAt: z.date().describe('Scene creation timestamp'),
   updatedAt: z.date().describe('Last modification timestamp'),
   createdBy: z.string().describe('User who created this scene'),
 }).refine(
   (data) => {
-    // Template scenes must not have an eventId
-    if (data.isTemplate && data.eventId !== null) {
+    // If eventId is set, brandId must also be set (events belong to brands)
+    if (data.eventId !== null && data.brandId === null) {
       return false;
     }
     return true;
   },
   {
-    message: 'Template scenes must not be associated with a specific event',
-    path: ['eventId'],
+    message: 'Event-specific scenes must have a brandId set (events belong to brands)',
+    path: ['brandId'],
   }
 ).refine(
   (data) => {
@@ -112,40 +120,41 @@ export type Scene = z.infer<typeof SceneSchema>;
 /**
  * Scene document with typed ID
  */
-export interface SceneDocument extends Omit<Scene, 'eventId' | 'organizationId' | 'createdBy'> {
+export interface SceneDocument extends Omit<Scene, 'eventId' | 'brandId' | 'organizationId' | 'createdBy'> {
   id: SceneId;
-  eventId: EventId | null;
   organizationId: OrganizationId;
+  brandId: BrandId | null;
+  eventId: EventId | null;
   createdBy: UserId;
 }
 
 /**
  * Data required to create a new scene
  * 
- * Omits auto-generated fields (createdAt, updatedAt, isTemplate defaults to false).
+ * Omits auto-generated fields (createdAt, updatedAt).
  * Modules array can be empty for a blank scene.
  */
 export const CreateSceneSchema = z.object({
-  eventId: z.string().nullable().describe('Parent event (null for templates)'),
   organizationId: z.string().describe('Owning organization'),
+  brandId: z.string().nullable().default(null).describe('Parent brand (null for org-wide)'),
+  eventId: z.string().nullable().default(null).describe('Parent event (null for brand-wide or org-wide)'),
   name: z.string().min(1).max(100).describe('Scene display name'),
   description: z.string().max(500).optional().describe('Optional notes'),
   modules: z.array(ModuleInstanceSchema)
     .max(MAX_MODULES_PER_SCENE, `A scene can contain a maximum of ${MAX_MODULES_PER_SCENE} modules`)
     .default([])
     .describe('Ordered array of module instances'),
-  isTemplate: z.boolean().default(false).describe('Whether this is a template'),
   createdBy: z.string().describe('User creating the scene'),
 }).refine(
   (data) => {
-    if (data.isTemplate && data.eventId !== null) {
+    if (data.eventId !== null && data.brandId === null) {
       return false;
     }
     return true;
   },
   {
-    message: 'Template scenes must not be associated with a specific event',
-    path: ['eventId'],
+    message: 'Event-specific scenes must have a brandId set (events belong to brands)',
+    path: ['brandId'],
   }
 ).refine(
   (data) => {
@@ -173,16 +182,16 @@ export type CreateSceneData = z.infer<typeof CreateSceneSchema>;
  * Data for updating a scene
  * 
  * Cannot change ownership (organizationId) or creator after creation.
- * Can update name, description, modules, and template status.
+ * Can update scope (brandId, eventId), name, description, and modules.
  */
 export const UpdateSceneSchema = z.object({
+  brandId: z.string().nullable().optional(),
   eventId: z.string().nullable().optional(),
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),
   modules: z.array(ModuleInstanceSchema)
     .max(MAX_MODULES_PER_SCENE, `A scene can contain a maximum of ${MAX_MODULES_PER_SCENE} modules`)
     .optional(),
-  isTemplate: z.boolean().optional(),
 }).refine(
   (data) => {
     if (!data.modules) return true;
