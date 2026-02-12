@@ -150,3 +150,8 @@ export function validateBackgroundColor(
  * Default background color for audience app (dark, theatre-friendly)
  */
 export const DEFAULT_AUDIENCE_BACKGROUND = '#0A0A0A';
+
+/**
+ * Default text color for audience app
+ */
+export const DEFAULT_AUDIENCE_TEXT = '#FFFFFF';

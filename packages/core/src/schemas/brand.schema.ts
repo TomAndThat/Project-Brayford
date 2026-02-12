@@ -16,11 +16,16 @@ import type { BrandId, OrganizationId } from '../types/branded';
  * Brand styling configuration
  * 
  * @property backgroundColor - Background color as hex code (e.g., #0A0A0A)
+ * @property textColor - Text color as hex code (e.g., #FFFFFF)
  */
 export const BrandStylingSchema = z.object({
   backgroundColor: z.string()
     .regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color (e.g., #0A0A0A)')
     .describe('Background color as hex code')
+    .optional(),
+  textColor: z.string()
+    .regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color (e.g., #FFFFFF)')
+    .describe('Text color as hex code')
     .optional(),
 }).optional();
 

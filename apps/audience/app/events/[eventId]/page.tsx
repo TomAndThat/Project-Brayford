@@ -9,6 +9,7 @@ import {
   type BrandDocument,
   type BrandId,
   DEFAULT_AUDIENCE_BACKGROUND,
+  DEFAULT_AUDIENCE_TEXT,
 } from "@brayford/core";
 import { getEvent, getBrand } from "@brayford/firebase-utils";
 
@@ -121,12 +122,30 @@ export default function EventPage() {
   // Regular event placeholder
   const backgroundColor =
     brand?.styling?.backgroundColor || DEFAULT_AUDIENCE_BACKGROUND;
+  const textColor = brand?.styling?.textColor || DEFAULT_AUDIENCE_TEXT;
 
   return (
-    // Style this div with the background color
-    <div className="min-h-screen w-full" style={{ backgroundColor }}>
+    // Background div
+    <div
+      className="min-h-screen w-full"
+      style={{ backgroundColor, color: textColor }}
+    >
+      {/* Container */}
       <div className="w-full max-w-[500px] mx-auto">
-        <h1>Placeholder content</h1>
+        {/* Header 1 - profile img against background */}
+        {/* NOTE: User can set background color OR background img (or both?) */}
+        <div className="w-full px-30 py-15 bg-red-500 bg-cover bg-center bg-no-repeat">
+          {/* Profile img */}
+          <div className="w-full">
+            <img className="rounded" src={"https://placehold.co/400x400"} />
+          </div>
+        </div>
+
+        {/* Header 2 - full size image */}
+        {/* NOTE: Users can *still* set bg color/image, because they may wish to use a in image with transparency for the profile image */}
+        <div className="w-full bg-red-500 bg-cover bg-center bg-no-repeat">
+          <img className="w-full h-auto" src={"https://placehold.co/600x400"} />
+        </div>
       </div>
     </div>
   );

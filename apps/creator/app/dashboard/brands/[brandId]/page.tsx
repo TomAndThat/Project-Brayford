@@ -53,6 +53,8 @@ export default function BrandSettingsPage() {
   const [backgroundColor, setBackgroundColor] = useState(
     DEFAULT_AUDIENCE_BACKGROUND,
   );
+  const [textColor, setTextColor] = useState('#FFFFFF');
+  const [activeColorPicker, setActiveColorPicker] = useState<'background' | 'text' | null>(null);
 
   const loadBrandData = useCallback(async () => {
     if (!user || !brandId) return;
@@ -95,6 +97,7 @@ export default function BrandSettingsPage() {
       setBackgroundColor(
         brandData.styling?.backgroundColor || DEFAULT_AUDIENCE_BACKGROUND,
       );
+      setTextColor(brandData.styling?.textColor || '#FFFFFF');
     } catch (error) {
       console.error("Error loading brand data:", error);
       alert("Failed to load brand");
@@ -151,9 +154,6 @@ export default function BrandSettingsPage() {
 
       const updateData = {
         name: trimmedName,
-        styling: {
-          backgroundColor,
-        },
       };
 
       const response = await fetch(`/api/brands/${brandId}`, {
@@ -183,6 +183,56 @@ export default function BrandSettingsPage() {
       setNotification({
         type: "error",
         message: err instanceof Error ? err.message : "Failed to update brand",
+      });
+      setTimeout(() => setNotification(null), 7000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleStylingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    setIsSubmitting(true);
+
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error("Not authenticated");
+
+      const updateData = {
+        styling: {
+          backgroundColor,
+          textColor,
+        },
+      };
+
+      const response = await fetch(`/api/brands/${brandId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update brand styling");
+      }
+
+      // Reload brand data
+      await loadBrandData();
+
+      setNotification({
+        type: "success",
+        message: "Brand styling updated successfully",
+      });
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err) {
+      console.error("Error updating brand styling:", err);
+      setNotification({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to update brand styling",
       });
       setTimeout(() => setNotification(null), 7000);
     } finally {
@@ -329,174 +379,38 @@ export default function BrandSettingsPage() {
       )}
 
       {/* Main Content */}
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            Brand Settings
-          </h2>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="space-y-8">
+          {/* Brand Name Card */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              Brand Name
+            </h2>
 
-          <form onSubmit={handleSubmit}>
-            {/* Brand Name */}
-            <div className="mb-6">
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Brand Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={100}
-                className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                disabled={!canUpdate || isSubmitting}
-                data-testid="brand-name-input"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                {name.length}/100 characters
-              </p>
-            </div>
-
-            {/* Brand Styling */}
-            <div className="mb-6 border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Brand Styling
-              </h3>
-
-              <div className="space-y-4">
-                {/* Background Color */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Background Colour
-                  </label>
-                  <p className="text-xs text-gray-500 mb-3">
-                    This colour will be applied as the background in the
-                    audience app.
-                  </p>
-
-                  <div className="flex gap-4 items-start">
-                    {/* Color Picker */}
-                    <div className="flex-shrink-0">
-                      <HexColorPicker
-                        color={backgroundColor}
-                        onChange={setBackgroundColor}
-                        style={{
-                          width: "200px",
-                          height: "150px",
-                        }}
-                      />
-                    </div>
-
-                    {/* Color Info & Preview */}
-                    <div className="flex-1 space-y-3">
-                      {/* Color Preview with Hex Value */}
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-16 h-16 rounded-md border-2 border-gray-300 shadow-sm"
-                          style={{ backgroundColor }}
-                        />
-                        <div className="flex-1">
-                          <label
-                            htmlFor="hex-input"
-                            className="block text-sm font-medium text-gray-700 mb-1"
-                          >
-                            Hex Colour Code
-                          </label>
-                          <input
-                            type="text"
-                            id="hex-input"
-                            value={backgroundColor}
-                            onChange={(e) => {
-                              const value = e.target.value.trim();
-                              // Allow typing, validate on blur or when complete
-                              if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
-                                setBackgroundColor(value.toUpperCase());
-                              }
-                            }}
-                            onBlur={(e) => {
-                              const value = e.target.value.trim().toUpperCase();
-                              // If incomplete or invalid, revert to previous valid value
-                              if (!value.match(/^#[0-9A-Fa-f]{6}$/)) {
-                                setBackgroundColor(backgroundColor);
-                              }
-                            }}
-                            maxLength={7}
-                            placeholder="#0A0A0A"
-                            className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 font-mono text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase"
-                            disabled={!canUpdate || isSubmitting}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Warnings */}
-                      {(() => {
-                        const validation =
-                          validateBackgroundColor(backgroundColor);
-                        if (validation.warnings.length === 0) {
-                          return null;
-                        }
-
-                        return (
-                          <div className="space-y-2">
-                            {validation.brightness.toobrightForTheatre && (
-                              <div className="rounded-md bg-amber-50 p-3 border border-amber-200">
-                                <div className="flex">
-                                  <svg
-                                    className="h-5 w-5 text-amber-400 flex-shrink-0"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                  <p className="ml-3 text-sm text-amber-800">
-                                    This colour is quite bright. For
-                                    theatre/auditorium use, consider a darker
-                                    colour to minimise light pollution.
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                            {!validation.contrast.meetsStandard && (
-                              <div className="rounded-md bg-red-50 p-3 border border-red-200">
-                                <div className="flex">
-                                  <svg
-                                    className="h-5 w-5 text-red-400 flex-shrink-0"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                  <p className="ml-3 text-sm text-red-800">
-                                    Low contrast (
-                                    {validation.contrast.ratio.toFixed(2)}:1).
-                                    White text may be hard to read. WCAG AA
-                                    requires 4.5:1.
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </div>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-4">
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Brand Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={100}
+                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  disabled={!canUpdate || isSubmitting}
+                  data-testid="brand-name-input"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  {name.length}/100 characters
+                </p>
               </div>
-            </div>
 
-            {/* Save Button */}
-            {canUpdate && (
-              <div className="flex justify-between items-center pt-4">
+              {canUpdate && (
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -505,16 +419,289 @@ export default function BrandSettingsPage() {
                 >
                   {isSubmitting ? "Saving..." : "Save Changes"}
                 </button>
-              </div>
-            )}
-          </form>
+              )}
+            </form>
+          </div>
 
-          {/* Danger Zone */}
+          {/* Brand Styling Card with Preview */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              Brand Styling
+            </h2>
+
+            <form onSubmit={handleStylingSubmit}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Column - Controls */}
+                <div className="space-y-6">
+                  {/* Background Color */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Background Colour
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      This colour will be applied as the background in the
+                      audience app.
+                    </p>
+
+                    <div className="flex gap-3 items-start">
+                      {/* Clickable Color Preview */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveColorPicker('background')}
+                        className="flex-shrink-0 w-16 h-16 rounded-md border-2 border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 group relative"
+                        style={{ backgroundColor }}
+                        disabled={!canUpdate || isSubmitting}
+                        title="Click to open colour picker"
+                      >
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {/* Hex Input */}
+                      <div className="flex-1">
+                        <label
+                          htmlFor="hex-input"
+                          className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                          Hex Colour Code
+                        </label>
+                        <input
+                          type="text"
+                          id="hex-input"
+                          value={backgroundColor}
+                          onChange={(e) => {
+                            const value = e.target.value.trim();
+                            // Allow typing, validate on blur or when complete
+                            if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                              setBackgroundColor(value.toUpperCase());
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value.trim().toUpperCase();
+                            // If incomplete or invalid, revert to previous valid value
+                            if (!value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                              setBackgroundColor(backgroundColor);
+                            }
+                          }}
+                          maxLength={7}
+                          placeholder="#0A0A0A"
+                          className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 font-mono text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase"
+                          disabled={!canUpdate || isSubmitting}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Warnings */}
+                    {(() => {
+                      // Only validate if both colors are complete hex codes
+                      const isBackgroundComplete = /^#[0-9A-Fa-f]{6}$/.test(backgroundColor);
+                      const isTextComplete = /^#[0-9A-Fa-f]{6}$/.test(textColor);
+                      
+                      if (!isBackgroundComplete || !isTextComplete) {
+                        return null;
+                      }
+
+                      const validation =
+                        validateBackgroundColor(backgroundColor, textColor);
+                      if (validation.warnings.length === 0) {
+                        return null;
+                      }
+
+                      return (
+                        <div className="space-y-2 mt-3">
+                          {validation.brightness.toobrightForTheatre && (
+                            <div className="rounded-md bg-amber-50 p-3 border border-amber-200">
+                              <div className="flex">
+                                <svg
+                                  className="h-5 w-5 text-amber-400 flex-shrink-0"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                <p className="ml-3 text-sm text-amber-800">
+                                  This colour is quite bright. For
+                                  theatre/auditorium use, consider a darker
+                                  colour to minimise light pollution.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          {!validation.contrast.meetsStandard && (
+                            <div className="rounded-md bg-red-50 p-3 border border-red-200">
+                              <div className="flex">
+                                <svg
+                                  className="h-5 w-5 text-red-400 flex-shrink-0"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                <p className="ml-3 text-sm text-red-800">
+                                  Low contrast (
+                                  {validation.contrast.ratio.toFixed(2)}:1).
+                                  White text may be hard to read. WCAG AA
+                                  requires 4.5:1.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Text Color */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Text Colour
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      This colour will be applied to text in the audience app.
+                    </p>
+
+                    <div className="flex gap-3 items-start">
+                      {/* Clickable Color Preview */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveColorPicker('text')}
+                        className="flex-shrink-0 w-16 h-16 rounded-md border-2 border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 group relative"
+                        style={{ backgroundColor: textColor }}
+                        disabled={!canUpdate || isSubmitting}
+                        title="Click to open colour picker"
+                      >
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {/* Hex Input */}
+                      <div className="flex-1">
+                        <label
+                          htmlFor="text-hex-input"
+                          className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                          Hex Colour Code
+                        </label>
+                        <input
+                          type="text"
+                          id="text-hex-input"
+                          value={textColor}
+                          onChange={(e) => {
+                            const value = e.target.value.trim();
+                            // Allow typing, validate on blur or when complete
+                            if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                              setTextColor(value.toUpperCase());
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value.trim().toUpperCase();
+                            // If incomplete or invalid, revert to previous valid value
+                            if (!value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                              setTextColor(textColor);
+                            }
+                          }}
+                          maxLength={7}
+                          placeholder="#FFFFFF"
+                          className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 font-mono text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase"
+                          disabled={!canUpdate || isSubmitting}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  {canUpdate && (
+                    <div className="pt-2">
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSubmitting ? "Saving..." : "Save Styling"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column - Preview */}
+                <div className="flex items-start justify-center">
+                  <div className="sticky top-8">
+                    <p className="text-sm font-medium text-gray-700 mb-3 text-center">
+                      Preview
+                    </p>
+                    {/* iPhone-sized preview frame */}
+                    <div className="relative">
+                      {/* Device Frame */}
+                      <div className="w-[375px] h-[667px] bg-gray-900 rounded-[3rem] p-3 shadow-2xl">
+                        {/* Screen */}
+                        <div 
+                          className="w-full h-full rounded-[2.5rem] overflow-hidden"
+                          style={{ backgroundColor, color: textColor }}
+                        >
+                          {/* Mock audience app content */}
+                          <div className="h-full flex flex-col">
+                            {/* Header */}
+                            <div className="p-6 border-b" style={{ borderColor: textColor + '20' }}>
+                              <h1 className="text-2xl font-bold mb-2">Event Name</h1>
+                              <p className="text-sm opacity-75">Live Q&A Session</p>
+                            </div>
+                            
+                            {/* Content Area */}
+                            <div className="flex-1 p-6 space-y-4">
+                              <div className="p-4 rounded-lg" style={{ backgroundColor: textColor + '10' }}>
+                                <p className="text-sm font-medium mb-1">Question from audience</p>
+                                <p className="text-xs opacity-75">What's your favorite feature?</p>
+                              </div>
+                              <div className="p-4 rounded-lg" style={{ backgroundColor: textColor + '10' }}>
+                                <p className="text-sm font-medium mb-1">Question from audience</p>
+                                <p className="text-xs opacity-75">How did you get started?</p>
+                              </div>
+                              <div className="p-4 rounded-lg" style={{ backgroundColor: textColor + '10' }}>
+                                <p className="text-sm font-medium mb-1">Question from audience</p>
+                                <p className="text-xs opacity-75">What's next for the platform?</p>
+                              </div>
+                            </div>
+
+                            {/* Bottom Input */}
+                            <div className="p-6 border-t" style={{ borderColor: textColor + '20' }}>
+                              <div className="flex gap-2">
+                                <div className="flex-1 p-3 rounded-lg border" style={{ borderColor: textColor + '30' }}>
+                                  <p className="text-sm opacity-50">Ask a question...</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Notch */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-gray-900 rounded-b-3xl"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* Danger Zone Card */}
           {canDelete && brand.isActive && (
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <h3 className="text-lg font-medium text-red-900 mb-4">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold text-red-900 mb-6">
                 Danger Zone
-              </h3>
+              </h2>
               <div className="bg-red-50 border border-red-200 rounded-md p-4">
                 <div className="flex justify-between items-start">
                   <div>
@@ -540,7 +727,7 @@ export default function BrandSettingsPage() {
 
           {/* Archived Notice */}
           {!brand.isActive && (
-            <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="bg-white rounded-lg shadow p-6">
               <div className="bg-gray-100 border border-gray-300 rounded-md p-4">
                 <p className="text-sm font-medium text-gray-900">
                   This brand is archived
@@ -554,6 +741,51 @@ export default function BrandSettingsPage() {
           )}
         </div>
       </main>
+
+      {/* Color Picker Popover */}
+      {activeColorPicker && (
+        <>
+          {/* Backdrop to close on click outside */}
+          <div 
+            className="fixed inset-0 z-40"
+            onClick={() => setActiveColorPicker(null)}
+          />
+          {/* Popover */}
+          <div className="fixed left-1/4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-lg shadow-2xl p-4 border border-gray-200 max-w-xs">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-gray-900">
+                {activeColorPicker === 'background' ? 'Background Colour' : 'Text Colour'}
+              </h3>
+              <button
+                onClick={() => setActiveColorPicker(null)}
+                className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex justify-center mb-3">
+              <HexColorPicker
+                color={activeColorPicker === 'background' ? backgroundColor : textColor}
+                onChange={activeColorPicker === 'background' ? setBackgroundColor : setTextColor}
+                style={{
+                  width: "220px",
+                  height: "160px",
+                }}
+              />
+            </div>
+
+            <div className="text-center">
+              <p className="text-xs font-medium text-gray-700 mb-1">Selected Colour</p>
+              <p className="text-sm font-mono text-gray-900">
+                {activeColorPicker === 'background' ? backgroundColor : textColor}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Archive Brand Dialog */}
       {brand && organization && (
