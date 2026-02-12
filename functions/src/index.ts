@@ -23,6 +23,7 @@ import {
   logEmailConfig,
   logBatchSummary,
 } from "./email/index.js";
+import {onBrandStylingChange} from "./storage/brand-image-cleanup.js";
 
 // Initialize Firebase Admin
 initializeApp();
@@ -727,3 +728,8 @@ export const onInvitationCreated = onDocumentCreated(
     }
   }
 );
+
+// ===== Storage Cleanup =====
+
+// Re-export the brand image cleanup trigger
+export { onBrandStylingChange };

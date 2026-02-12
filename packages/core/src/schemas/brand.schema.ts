@@ -13,10 +13,27 @@ import { z } from 'zod';
 import type { BrandId, OrganizationId } from '../types/branded';
 
 /**
+ * Header type for brand styling.
+ *
+ * - none: No header image
+ * - profile: Square profile image against a background (with border + rounded)
+ * - logo: Any-aspect-ratio logo against a background (no border, no rounding)
+ * - banner: Full-width image, edge-to-edge
+ */
+export const HeaderTypeSchema = z.enum(['none', 'profile', 'logo', 'banner']);
+export type HeaderType = z.infer<typeof HeaderTypeSchema>;
+
+/**
  * Brand styling configuration
- * 
+ *
  * @property backgroundColor - Background color as hex code (e.g., #0A0A0A)
  * @property textColor - Text color as hex code (e.g., #FFFFFF)
+ * @property headerType - Which header layout to use (default: 'none')
+ * @property profileImageUrl - Square cropped profile image URL (profile mode)
+ * @property logoImageUrl - Any-aspect-ratio logo URL (logo mode)
+ * @property bannerImageUrl - Full-width banner image URL (banner mode)
+ * @property headerBackgroundColor - Background color behind profile/logo image
+ * @property headerBackgroundImageUrl - Optional background image behind profile/logo/banner
  */
 export const BrandStylingSchema = z.object({
   backgroundColor: z.string()
@@ -26,6 +43,30 @@ export const BrandStylingSchema = z.object({
   textColor: z.string()
     .regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color (e.g., #FFFFFF)')
     .describe('Text color as hex code')
+    .optional(),
+  headerType: HeaderTypeSchema
+    .describe('Header layout type')
+    .optional(),
+  profileImageUrl: z.string().url()
+    .describe('Square cropped profile image URL')
+    .nullable()
+    .optional(),
+  logoImageUrl: z.string().url()
+    .describe('Any-aspect-ratio logo image URL')
+    .nullable()
+    .optional(),
+  bannerImageUrl: z.string().url()
+    .describe('Full-width banner image URL')
+    .nullable()
+    .optional(),
+  headerBackgroundColor: z.string()
+    .regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color')
+    .describe('Background color behind profile/logo image')
+    .nullable()
+    .optional(),
+  headerBackgroundImageUrl: z.string().url()
+    .describe('Background image behind profile/logo/banner')
+    .nullable()
     .optional(),
 }).optional();
 

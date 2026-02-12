@@ -21,6 +21,7 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator, signInWithCustomToken, type Auth } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
 
 /** Whether running against Firebase emulators */
 const isEmulatorMode = process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === 'true';
@@ -97,6 +98,12 @@ export const auth: Auth = getAuth(app);
 export const db: Firestore = getFirestore(app);
 
 /**
+ * Firebase Storage instance
+ * Used for file upload/download operations (brand images, etc.)
+ */
+export const storage: FirebaseStorage = getStorage(app);
+
+/**
  * Firebase app instance
  * Exposed for advanced use cases
  */
@@ -120,6 +127,7 @@ export { firebaseConfig };
 if (isEmulatorMode) {
   connectAuthEmulator(auth, 'http://localhost:9099');
   connectFirestoreEmulator(db, 'localhost', 8080);
+  connectStorageEmulator(storage, 'localhost', 9199);
 
   if (typeof window !== 'undefined') {
     (window as Record<string, unknown>).__FIREBASE_TEST__ = {

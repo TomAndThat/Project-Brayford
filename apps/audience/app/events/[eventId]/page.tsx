@@ -8,6 +8,7 @@ import {
   type EventDocument,
   type BrandDocument,
   type BrandId,
+  type HeaderType,
   DEFAULT_AUDIENCE_BACKGROUND,
   DEFAULT_AUDIENCE_TEXT,
 } from "@brayford/core";
@@ -123,6 +124,80 @@ export default function EventPage() {
   const backgroundColor =
     brand?.styling?.backgroundColor || DEFAULT_AUDIENCE_BACKGROUND;
   const textColor = brand?.styling?.textColor || DEFAULT_AUDIENCE_TEXT;
+  const headerType: HeaderType = brand?.styling?.headerType || "none";
+  const headerBackgroundColor = brand?.styling?.headerBackgroundColor;
+  const headerBackgroundImageUrl = brand?.styling?.headerBackgroundImageUrl;
+
+  // Build header background styles (shared by profile, logo, and banner)
+  const headerBgStyle: React.CSSProperties = {
+    backgroundColor: headerBackgroundColor || "transparent",
+    ...(headerBackgroundImageUrl
+      ? {
+          backgroundImage: `url(${headerBackgroundImageUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }
+      : {}),
+  };
+
+  const renderHeader = () => {
+    switch (headerType) {
+      case "profile":
+        return brand?.styling?.profileImageUrl ? (
+          <div
+            className="w-full py-15 px-30 bg-cover bg-center bg-no-repeat"
+            style={headerBgStyle}
+          >
+            <div className="w-full">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className="rounded border-2 w-full"
+                style={{ borderColor: textColor + "40" }}
+                src={brand.styling.profileImageUrl}
+                alt={brand.name ?? "Profile"}
+              />
+            </div>
+          </div>
+        ) : null;
+
+      case "logo":
+        return brand?.styling?.logoImageUrl ? (
+          <div
+            className="w-full py-15 px-30 bg-cover bg-center bg-no-repeat"
+            style={headerBgStyle}
+          >
+            <div className="w-full flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className="max-w-full max-h-48 object-contain"
+                src={brand.styling.logoImageUrl}
+                alt={brand.name ?? "Logo"}
+              />
+            </div>
+          </div>
+        ) : null;
+
+      case "banner":
+        return brand?.styling?.bannerImageUrl ? (
+          <div
+            className="w-full bg-cover bg-center bg-no-repeat"
+            style={headerBgStyle}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="w-full h-auto"
+              src={brand.styling.bannerImageUrl}
+              alt={brand.name ?? "Banner"}
+            />
+          </div>
+        ) : null;
+
+      case "none":
+      default:
+        return null;
+    }
+  };
 
   return (
     // Background div
@@ -132,20 +207,8 @@ export default function EventPage() {
     >
       {/* Container */}
       <div className="w-full max-w-[500px] mx-auto">
-        {/* Header 1 - profile img against background */}
-        {/* NOTE: User can set background color OR background img (or both?) */}
-        <div className="w-full px-30 py-15 bg-red-500 bg-cover bg-center bg-no-repeat">
-          {/* Profile img */}
-          <div className="w-full">
-            <img className="rounded" src={"https://placehold.co/400x400"} />
-          </div>
-        </div>
-
-        {/* Header 2 - full size image */}
-        {/* NOTE: Users can *still* set bg color/image, because they may wish to use a in image with transparency for the profile image */}
-        <div className="w-full bg-red-500 bg-cover bg-center bg-no-repeat">
-          <img className="w-full h-auto" src={"https://placehold.co/600x400"} />
-        </div>
+        {/* Brand Header */}
+        {renderHeader()}
       </div>
     </div>
   );

@@ -54,6 +54,7 @@ export {
 export {
   BrandSchema,
   BrandStylingSchema,
+  HeaderTypeSchema,
   CreateBrandSchema,
   UpdateBrandSchema,
   validateBrandData,
@@ -62,6 +63,7 @@ export {
   type Brand,
   type BrandDocument,
   type BrandStyling,
+  type HeaderType,
   type CreateBrandData,
   type UpdateBrandData,
 } from './brand.schema';

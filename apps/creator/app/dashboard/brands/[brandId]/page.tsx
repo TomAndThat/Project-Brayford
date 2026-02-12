@@ -9,6 +9,8 @@ import {
   getBrand,
   getOrganization,
   auth,
+  uploadBrandImage,
+  deleteBrandImage,
 } from "@brayford/firebase-utils";
 import {
   toBranded,
@@ -18,6 +20,7 @@ import {
   type BrandDocument,
   type OrganizationDocument,
   type OrganizationMemberDocument,
+  type HeaderType,
   hasPermission,
   BRANDS_UPDATE,
   BRANDS_DELETE,
@@ -26,6 +29,10 @@ import {
 } from "@brayford/core";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ArchiveBrandDialog from "@/components/brands/ArchiveBrandDialog";
+import HeaderTypeSelector from "@/components/brands/HeaderTypeSelector";
+import ImageUploader from "@/components/brands/ImageUploader";
+import CropModal from "@/components/brands/CropModal";
+import BrandPreview from "@/components/brands/BrandPreview";
 
 export default function BrandSettingsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -53,8 +60,27 @@ export default function BrandSettingsPage() {
   const [backgroundColor, setBackgroundColor] = useState(
     DEFAULT_AUDIENCE_BACKGROUND,
   );
-  const [textColor, setTextColor] = useState('#FFFFFF');
-  const [activeColorPicker, setActiveColorPicker] = useState<'background' | 'text' | null>(null);
+  const [textColor, setTextColor] = useState("#FFFFFF");
+  const [activeColorPicker, setActiveColorPicker] = useState<
+    "background" | "text" | "headerBackground" | null
+  >(null);
+
+  // Header styling state
+  const [headerType, setHeaderType] = useState<HeaderType>("none");
+  const [profileImageUrl, setProfileImageUrl] = useState<string | undefined>();
+  const [logoImageUrl, setLogoImageUrl] = useState<string | undefined>();
+  const [bannerImageUrl, setBannerImageUrl] = useState<string | undefined>();
+  const [headerBackgroundColor, setHeaderBackgroundColor] = useState("#000000");
+  const [headerBackgroundImageUrl, setHeaderBackgroundImageUrl] = useState<
+    string | undefined
+  >();
+
+  // Upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Crop modal state
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   const loadBrandData = useCallback(async () => {
     if (!user || !brandId) return;
@@ -97,7 +123,15 @@ export default function BrandSettingsPage() {
       setBackgroundColor(
         brandData.styling?.backgroundColor || DEFAULT_AUDIENCE_BACKGROUND,
       );
-      setTextColor(brandData.styling?.textColor || '#FFFFFF');
+      setTextColor(brandData.styling?.textColor || "#FFFFFF");
+      setHeaderType(brandData.styling?.headerType || "none");
+      setProfileImageUrl(brandData.styling?.profileImageUrl);
+      setLogoImageUrl(brandData.styling?.logoImageUrl);
+      setBannerImageUrl(brandData.styling?.bannerImageUrl);
+      setHeaderBackgroundColor(
+        brandData.styling?.headerBackgroundColor || "#000000",
+      );
+      setHeaderBackgroundImageUrl(brandData.styling?.headerBackgroundImageUrl);
     } catch (error) {
       console.error("Error loading brand data:", error);
       alert("Failed to load brand");
@@ -203,6 +237,12 @@ export default function BrandSettingsPage() {
         styling: {
           backgroundColor,
           textColor,
+          headerType,
+          profileImageUrl: profileImageUrl || null,
+          logoImageUrl: logoImageUrl || null,
+          bannerImageUrl: bannerImageUrl || null,
+          headerBackgroundColor,
+          headerBackgroundImageUrl: headerBackgroundImageUrl || null,
         },
       };
 
@@ -232,12 +272,89 @@ export default function BrandSettingsPage() {
       console.error("Error updating brand styling:", err);
       setNotification({
         type: "error",
-        message: err instanceof Error ? err.message : "Failed to update brand styling",
+        message:
+          err instanceof Error ? err.message : "Failed to update brand styling",
       });
       setTimeout(() => setNotification(null), 7000);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // === Image upload handlers ===
+
+  const handleImageUpload = async (
+    file: File | Blob,
+    imageType: "profile" | "logo" | "banner" | "header-background",
+  ) => {
+    if (!brandId) return;
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      const result = await uploadBrandImage(brandId, file, imageType);
+
+      switch (imageType) {
+        case "profile":
+          setProfileImageUrl(result.url);
+          break;
+        case "logo":
+          setLogoImageUrl(result.url);
+          break;
+        case "banner":
+          setBannerImageUrl(result.url);
+          break;
+        case "header-background":
+          setHeaderBackgroundImageUrl(result.url);
+          break;
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleProfileFileSelected = (file: File) => {
+    // Open crop modal for profile images (enforce square)
+    setCropFile(file);
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropFile(null);
+    // Attach the original file's type to the blob
+    const blobWithType = new Blob([croppedBlob], {
+      type: cropFile?.type || "image/png",
+    });
+    await handleImageUpload(blobWithType as File, "profile");
+  };
+
+  const handleLogoFileSelected = async (file: File) => {
+    await handleImageUpload(file, "logo");
+  };
+
+  const handleBannerFileSelected = async (file: File) => {
+    await handleImageUpload(file, "banner");
+  };
+
+  const handleHeaderBackgroundFileSelected = async (file: File) => {
+    await handleImageUpload(file, "header-background");
+  };
+
+  const handleRemoveImage = async (
+    currentUrl: string | undefined,
+    setter: (url: string | undefined) => void,
+  ) => {
+    if (currentUrl) {
+      try {
+        await deleteBrandImage(currentUrl);
+      } catch (err) {
+        console.error("Failed to delete image:", err);
+        // Continue with removal from state even if storage delete fails
+      }
+    }
+    setter(undefined);
   };
 
   const handleArchive = async () => {
@@ -383,9 +500,7 @@ export default function BrandSettingsPage() {
         <div className="space-y-8">
           {/* Brand Name Card */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">
-              Brand Name
-            </h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Brand Name</h2>
 
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
@@ -447,15 +562,25 @@ export default function BrandSettingsPage() {
                       {/* Clickable Color Preview */}
                       <button
                         type="button"
-                        onClick={() => setActiveColorPicker('background')}
+                        onClick={() => setActiveColorPicker("background")}
                         className="flex-shrink-0 w-16 h-16 rounded-md border-2 border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 group relative"
                         style={{ backgroundColor }}
                         disabled={!canUpdate || isSubmitting}
                         title="Click to open colour picker"
                       >
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded">
-                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          <svg
+                            className="w-6 h-6 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                            />
                           </svg>
                         </div>
                       </button>
@@ -497,15 +622,21 @@ export default function BrandSettingsPage() {
                     {/* Warnings */}
                     {(() => {
                       // Only validate if both colors are complete hex codes
-                      const isBackgroundComplete = /^#[0-9A-Fa-f]{6}$/.test(backgroundColor);
-                      const isTextComplete = /^#[0-9A-Fa-f]{6}$/.test(textColor);
-                      
+                      const isBackgroundComplete = /^#[0-9A-Fa-f]{6}$/.test(
+                        backgroundColor,
+                      );
+                      const isTextComplete = /^#[0-9A-Fa-f]{6}$/.test(
+                        textColor,
+                      );
+
                       if (!isBackgroundComplete || !isTextComplete) {
                         return null;
                       }
 
-                      const validation =
-                        validateBackgroundColor(backgroundColor, textColor);
+                      const validation = validateBackgroundColor(
+                        backgroundColor,
+                        textColor,
+                      );
                       if (validation.warnings.length === 0) {
                         return null;
                       }
@@ -575,15 +706,25 @@ export default function BrandSettingsPage() {
                       {/* Clickable Color Preview */}
                       <button
                         type="button"
-                        onClick={() => setActiveColorPicker('text')}
+                        onClick={() => setActiveColorPicker("text")}
                         className="flex-shrink-0 w-16 h-16 rounded-md border-2 border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 group relative"
                         style={{ backgroundColor: textColor }}
                         disabled={!canUpdate || isSubmitting}
                         title="Click to open colour picker"
                       >
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded">
-                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          <svg
+                            className="w-6 h-6 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                            />
                           </svg>
                         </div>
                       </button>
@@ -623,12 +764,181 @@ export default function BrandSettingsPage() {
                     </div>
                   </div>
 
+                  {/* Divider */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Header Image
+                    </h3>
+                  </div>
+
+                  {/* Header Type Selector */}
+                  <HeaderTypeSelector
+                    value={headerType}
+                    onChange={setHeaderType}
+                    disabled={!canUpdate || isSubmitting}
+                  />
+
+                  {/* Conditional header inputs based on selected type */}
+                  {headerType !== "none" && (
+                    <div className="space-y-6 border-t border-gray-100 pt-6">
+                      {/* Profile image upload (profile mode) */}
+                      {headerType === "profile" && (
+                        <ImageUploader
+                          label="Profile Image"
+                          helperText="Upload a square image. You'll be able to crop it after selecting."
+                          currentImageUrl={profileImageUrl}
+                          onFileSelected={handleProfileFileSelected}
+                          onRemove={() =>
+                            handleRemoveImage(
+                              profileImageUrl,
+                              setProfileImageUrl,
+                            )
+                          }
+                          disabled={!canUpdate || isSubmitting}
+                          uploading={uploading}
+                          error={uploadError}
+                        />
+                      )}
+
+                      {/* Logo image upload (logo mode) */}
+                      {headerType === "logo" && (
+                        <ImageUploader
+                          label="Logo Image"
+                          helperText="Upload your logo in any aspect ratio. It will be centred against the background."
+                          currentImageUrl={logoImageUrl}
+                          onFileSelected={handleLogoFileSelected}
+                          onRemove={() =>
+                            handleRemoveImage(logoImageUrl, setLogoImageUrl)
+                          }
+                          disabled={!canUpdate || isSubmitting}
+                          uploading={uploading}
+                          error={uploadError}
+                        />
+                      )}
+
+                      {/* Banner image upload (banner mode) */}
+                      {headerType === "banner" && (
+                        <ImageUploader
+                          label="Banner Image"
+                          helperText="Upload a wide image. It will span the full width of the audience view."
+                          currentImageUrl={bannerImageUrl}
+                          onFileSelected={handleBannerFileSelected}
+                          onRemove={() =>
+                            handleRemoveImage(bannerImageUrl, setBannerImageUrl)
+                          }
+                          disabled={!canUpdate || isSubmitting}
+                          uploading={uploading}
+                          error={uploadError}
+                        />
+                      )}
+
+                      {/* Header background colour (all modes) */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Header Background Colour
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3">
+                          {headerType === "banner"
+                            ? "Visible if your banner has transparency."
+                            : "The colour behind your image. Also visible if your image has transparency."}
+                        </p>
+
+                        <div className="flex gap-3 items-start">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActiveColorPicker("headerBackground")
+                            }
+                            className="flex-shrink-0 w-16 h-16 rounded-md border-2 border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 group relative"
+                            style={{ backgroundColor: headerBackgroundColor }}
+                            disabled={!canUpdate || isSubmitting}
+                            title="Click to open colour picker"
+                          >
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded">
+                              <svg
+                                className="w-6 h-6 text-white"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                />
+                              </svg>
+                            </div>
+                          </button>
+                          <div className="flex-1">
+                            <label
+                              htmlFor="header-bg-hex-input"
+                              className="block text-sm font-medium text-gray-700 mb-1"
+                            >
+                              Hex Colour Code
+                            </label>
+                            <input
+                              type="text"
+                              id="header-bg-hex-input"
+                              value={headerBackgroundColor}
+                              onChange={(e) => {
+                                const value = e.target.value.trim();
+                                if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                                  setHeaderBackgroundColor(value.toUpperCase());
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const value = e.target.value
+                                  .trim()
+                                  .toUpperCase();
+                                if (!value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                                  setHeaderBackgroundColor(
+                                    headerBackgroundColor,
+                                  );
+                                }
+                              }}
+                              maxLength={7}
+                              placeholder="#000000"
+                              className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 font-mono text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase"
+                              disabled={!canUpdate || isSubmitting}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Header background image (all header modes) */}
+                      {(headerType === "profile" ||
+                        headerType === "logo" ||
+                        headerType === "banner") && (
+                        <ImageUploader
+                          label="Header Background Image (optional)"
+                          helperText={
+                            headerType === "banner"
+                              ? "An image behind your banner. Visible if the banner has transparency or as a backdrop."
+                              : "An image behind your profile/logo. The background colour will show through any transparency."
+                          }
+                          currentImageUrl={headerBackgroundImageUrl}
+                          onFileSelected={handleHeaderBackgroundFileSelected}
+                          onRemove={() =>
+                            handleRemoveImage(
+                              headerBackgroundImageUrl,
+                              setHeaderBackgroundImageUrl,
+                            )
+                          }
+                          disabled={!canUpdate || isSubmitting}
+                          uploading={uploading}
+                          error={uploadError}
+                        />
+                      )}
+                    </div>
+                  )}
+
                   {/* Save Button */}
                   {canUpdate && (
-                    <div className="pt-2">
+                    <div className="pt-4 border-t border-gray-200">
                       <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || uploading}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isSubmitting ? "Saving..." : "Save Styling"}
@@ -639,58 +949,16 @@ export default function BrandSettingsPage() {
 
                 {/* Right Column - Preview */}
                 <div className="flex items-start justify-center">
-                  <div className="sticky top-8">
-                    <p className="text-sm font-medium text-gray-700 mb-3 text-center">
-                      Preview
-                    </p>
-                    {/* iPhone-sized preview frame */}
-                    <div className="relative">
-                      {/* Device Frame */}
-                      <div className="w-[375px] h-[667px] bg-gray-900 rounded-[3rem] p-3 shadow-2xl">
-                        {/* Screen */}
-                        <div 
-                          className="w-full h-full rounded-[2.5rem] overflow-hidden"
-                          style={{ backgroundColor, color: textColor }}
-                        >
-                          {/* Mock audience app content */}
-                          <div className="h-full flex flex-col">
-                            {/* Header */}
-                            <div className="p-6 border-b" style={{ borderColor: textColor + '20' }}>
-                              <h1 className="text-2xl font-bold mb-2">Event Name</h1>
-                              <p className="text-sm opacity-75">Live Q&A Session</p>
-                            </div>
-                            
-                            {/* Content Area */}
-                            <div className="flex-1 p-6 space-y-4">
-                              <div className="p-4 rounded-lg" style={{ backgroundColor: textColor + '10' }}>
-                                <p className="text-sm font-medium mb-1">Question from audience</p>
-                                <p className="text-xs opacity-75">What's your favorite feature?</p>
-                              </div>
-                              <div className="p-4 rounded-lg" style={{ backgroundColor: textColor + '10' }}>
-                                <p className="text-sm font-medium mb-1">Question from audience</p>
-                                <p className="text-xs opacity-75">How did you get started?</p>
-                              </div>
-                              <div className="p-4 rounded-lg" style={{ backgroundColor: textColor + '10' }}>
-                                <p className="text-sm font-medium mb-1">Question from audience</p>
-                                <p className="text-xs opacity-75">What's next for the platform?</p>
-                              </div>
-                            </div>
-
-                            {/* Bottom Input */}
-                            <div className="p-6 border-t" style={{ borderColor: textColor + '20' }}>
-                              <div className="flex gap-2">
-                                <div className="flex-1 p-3 rounded-lg border" style={{ borderColor: textColor + '30' }}>
-                                  <p className="text-sm opacity-50">Ask a question...</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Notch */}
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-gray-900 rounded-b-3xl"></div>
-                    </div>
-                  </div>
+                  <BrandPreview
+                    backgroundColor={backgroundColor}
+                    textColor={textColor}
+                    headerType={headerType}
+                    profileImageUrl={profileImageUrl}
+                    logoImageUrl={logoImageUrl}
+                    bannerImageUrl={bannerImageUrl}
+                    headerBackgroundColor={headerBackgroundColor}
+                    headerBackgroundImageUrl={headerBackgroundImageUrl}
+                  />
                 </div>
               </div>
             </form>
@@ -746,7 +1014,7 @@ export default function BrandSettingsPage() {
       {activeColorPicker && (
         <>
           {/* Backdrop to close on click outside */}
-          <div 
+          <div
             className="fixed inset-0 z-40"
             onClick={() => setActiveColorPicker(null)}
           />
@@ -754,22 +1022,48 @@ export default function BrandSettingsPage() {
           <div className="fixed left-1/4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-lg shadow-2xl p-4 border border-gray-200 max-w-xs">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium text-gray-900">
-                {activeColorPicker === 'background' ? 'Background Colour' : 'Text Colour'}
+                {activeColorPicker === "background"
+                  ? "Background Colour"
+                  : activeColorPicker === "text"
+                    ? "Text Colour"
+                    : "Header Background Colour"}
               </h3>
               <button
                 onClick={() => setActiveColorPicker(null)}
                 className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
-            
+
             <div className="flex justify-center mb-3">
               <HexColorPicker
-                color={activeColorPicker === 'background' ? backgroundColor : textColor}
-                onChange={activeColorPicker === 'background' ? setBackgroundColor : setTextColor}
+                color={
+                  activeColorPicker === "background"
+                    ? backgroundColor
+                    : activeColorPicker === "text"
+                      ? textColor
+                      : headerBackgroundColor
+                }
+                onChange={
+                  activeColorPicker === "background"
+                    ? setBackgroundColor
+                    : activeColorPicker === "text"
+                      ? setTextColor
+                      : setHeaderBackgroundColor
+                }
                 style={{
                   width: "220px",
                   height: "160px",
@@ -778,13 +1072,28 @@ export default function BrandSettingsPage() {
             </div>
 
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-700 mb-1">Selected Colour</p>
+              <p className="text-xs font-medium text-gray-700 mb-1">
+                Selected Colour
+              </p>
               <p className="text-sm font-mono text-gray-900">
-                {activeColorPicker === 'background' ? backgroundColor : textColor}
+                {activeColorPicker === "background"
+                  ? backgroundColor
+                  : activeColorPicker === "text"
+                    ? textColor
+                    : headerBackgroundColor}
               </p>
             </div>
           </div>
         </>
+      )}
+
+      {/* Crop Modal (for profile images) */}
+      {cropFile && (
+        <CropModal
+          imageFile={cropFile}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropFile(null)}
+        />
       )}
 
       {/* Archive Brand Dialog */}

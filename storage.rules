@@ -1,10 +1,23 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // Brand header images: brands/{brandId}/header/{filename}
+    // Public read so audience app can display images without authentication.
+    // Write requires authentication. Org-level permission checks happen in
+    // the application layer (API route) before the upload URL is used.
+    match /brands/{brandId}/header/{fileName} {
+      // Anyone can read brand images (audience needs them)
+      allow read: if true;
+
+      // Only authenticated users can write (app layer checks org permissions)
+      allow write: if request.auth != null
+                   && request.resource.size <= 5 * 1024 * 1024  // 5 MB
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Deny everything else
     match /{allPaths=**} {
       allow read, write: if false;
     }
