@@ -19,6 +19,11 @@ interface DashboardHeaderProps {
   orgSwitcher?: ReactNode;
   /** Optional current member for permission checks */
   currentMember?: OrganizationMemberDocument;
+  /** Optional breadcrumb back link */
+  breadcrumb?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 /**
@@ -32,6 +37,7 @@ export default function DashboardHeader({
   pageTitle,
   orgSwitcher,
   currentMember,
+  breadcrumb,
 }: DashboardHeaderProps) {
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -105,6 +111,27 @@ export default function DashboardHeader({
 
           {/* Title Area */}
           <div>
+            {breadcrumb && (
+              <button
+                onClick={breadcrumb.onClick}
+                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 mb-1 transition-colors"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                {breadcrumb.label}
+              </button>
+            )}
             <h1
               data-testid="header-org-name"
               className="text-2xl font-bold text-gray-900"
