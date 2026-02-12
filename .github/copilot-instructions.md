@@ -194,6 +194,11 @@ pnpm lint       # Lint all packages
 - ❌ Using `const store = useStore()` (causes unnecessary re-renders)
 - ❌ Adding `'use client'` to components that could be Server Components
 - ❌ Type assertions without validation (`as Event` without Zod parse)
+- ❌ Taking shortcuts in development - this isn't an mvp, it's a production-ready codebase from day one
+
+## AOB
+
+- As the app is currently in development, you do not need to worry about backwards compatibility or breaking changes
 
 ## Questions?
 

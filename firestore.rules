@@ -72,11 +72,13 @@ service cloud.firestore {
     }
 
     // ===== Brands Collection =====
-    // Only org members can read brands in their organisation.
-    // Client queries MUST include .where('organizationId', '==', orgId).
+    // Get (single doc): Org members OR anyone if brand is active (for audience app styling)
+    // List (queries): Org members only (for creator app brand management)
     // All writes go through server-side API routes (Firebase Admin SDK).
     match /brands/{brandId} {
-      allow read: if isOrgMember(resource.data.organizationId);
+      allow get: if isOrgMember(resource.data.organizationId)
+                 || resource.data.isActive == true;
+      allow list: if isOrgMember(resource.data.organizationId);
       allow write: if false;
     }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { HexColorPicker } from "react-colorful";
 import { useAuth } from "@/hooks/use-auth";
 import {
   getUserOrganizations,
@@ -20,6 +21,8 @@ import {
   hasPermission,
   BRANDS_UPDATE,
   BRANDS_DELETE,
+  validateBackgroundColor,
+  DEFAULT_AUDIENCE_BACKGROUND,
 } from "@brayford/core";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ArchiveBrandDialog from "@/components/brands/ArchiveBrandDialog";
@@ -47,6 +50,9 @@ export default function BrandSettingsPage() {
 
   // Form state
   const [name, setName] = useState("");
+  const [backgroundColor, setBackgroundColor] = useState(
+    DEFAULT_AUDIENCE_BACKGROUND,
+  );
 
   const loadBrandData = useCallback(async () => {
     if (!user || !brandId) return;
@@ -86,6 +92,9 @@ export default function BrandSettingsPage() {
 
       setBrand(brandData);
       setName(brandData.name);
+      setBackgroundColor(
+        brandData.styling?.backgroundColor || DEFAULT_AUDIENCE_BACKGROUND,
+      );
     } catch (error) {
       console.error("Error loading brand data:", error);
       alert("Failed to load brand");
@@ -142,6 +151,9 @@ export default function BrandSettingsPage() {
 
       const updateData = {
         name: trimmedName,
+        styling: {
+          backgroundColor,
+        },
       };
 
       const response = await fetch(`/api/brands/${brandId}`, {
@@ -347,9 +359,144 @@ export default function BrandSettingsPage() {
               </p>
             </div>
 
+            {/* Brand Styling */}
+            <div className="mb-6 border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Brand Styling
+              </h3>
+
+              <div className="space-y-4">
+                {/* Background Color */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Background Colour
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    This colour will be applied as the background in the
+                    audience app.
+                  </p>
+
+                  <div className="flex gap-4 items-start">
+                    {/* Color Picker */}
+                    <div className="flex-shrink-0">
+                      <HexColorPicker
+                        color={backgroundColor}
+                        onChange={setBackgroundColor}
+                        style={{
+                          width: "200px",
+                          height: "150px",
+                        }}
+                      />
+                    </div>
+
+                    {/* Color Info & Preview */}
+                    <div className="flex-1 space-y-3">
+                      {/* Color Preview with Hex Value */}
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-16 h-16 rounded-md border-2 border-gray-300 shadow-sm"
+                          style={{ backgroundColor }}
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor="hex-input"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                          >
+                            Hex Colour Code
+                          </label>
+                          <input
+                            type="text"
+                            id="hex-input"
+                            value={backgroundColor}
+                            onChange={(e) => {
+                              const value = e.target.value.trim();
+                              // Allow typing, validate on blur or when complete
+                              if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                                setBackgroundColor(value.toUpperCase());
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const value = e.target.value.trim().toUpperCase();
+                              // If incomplete or invalid, revert to previous valid value
+                              if (!value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                                setBackgroundColor(backgroundColor);
+                              }
+                            }}
+                            maxLength={7}
+                            placeholder="#0A0A0A"
+                            className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 font-mono text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase"
+                            disabled={!canUpdate || isSubmitting}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Warnings */}
+                      {(() => {
+                        const validation =
+                          validateBackgroundColor(backgroundColor);
+                        if (validation.warnings.length === 0) {
+                          return null;
+                        }
+
+                        return (
+                          <div className="space-y-2">
+                            {validation.brightness.toobrightForTheatre && (
+                              <div className="rounded-md bg-amber-50 p-3 border border-amber-200">
+                                <div className="flex">
+                                  <svg
+                                    className="h-5 w-5 text-amber-400 flex-shrink-0"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                  <p className="ml-3 text-sm text-amber-800">
+                                    This colour is quite bright. For
+                                    theatre/auditorium use, consider a darker
+                                    colour to minimise light pollution.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {!validation.contrast.meetsStandard && (
+                              <div className="rounded-md bg-red-50 p-3 border border-red-200">
+                                <div className="flex">
+                                  <svg
+                                    className="h-5 w-5 text-red-400 flex-shrink-0"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                  <p className="ml-3 text-sm text-red-800">
+                                    Low contrast (
+                                    {validation.contrast.ratio.toFixed(2)}:1).
+                                    White text may be hard to read. WCAG AA
+                                    requires 4.5:1.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Save Button */}
             {canUpdate && (
-              <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+              <div className="flex justify-between items-center pt-4">
                 <button
                   type="submit"
                   disabled={isSubmitting}

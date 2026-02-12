@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Brand Styling System** (Phase 1 - Background Colour): Per-brand visual customisation for audience app
+  - **Creator App - Brand Settings**
+    - Visual colour picker in brand settings page
+    - Real-time preview swatch with hex value display
+    - Smart validation warnings:
+      - **Theatre Light Pollution Warning**: Alerts when background colour is too bright for auditorium use
+      - **Contrast Warning**: Flags colours with insufficient text contrast (WCAG AA standards)
+    - Validates hex colour format with helpful error messages
+  - **Audience App - Automatic Styling**
+    - Background colour automatically applied per brand
+    - Default dark colour (#0A0A0A) optimised for theatre/auditorium environments
+    - Single Firestore read per page load (no persistent listeners for cost efficiency)
+    - Graceful fallback to default if brand styling not set
+  - **Core Package Updates**
+    - New `BrandStylingSchema` with hex colour validation
+    - Colour utility functions:
+      - `validateBackgroundColor()`: Checks contrast ratio and brightness
+      - `getPerceivedBrightness()`: HSP colour model for accurate perception
+      - `meetsContrastStandard()`: WCAG AA compliance checking
+      - `isToobrightForTheatre()`: Theatre-specific brightness threshold
+    - Comprehensive test coverage for styling schema and colour utilities
+  - **API Integration**
+    - Brand update endpoint automatically validates styling data
+    - Existing permission system enforced (`brands:update`)
+  - **Future Foundation**: Architecture ready for additional styling properties (fonts, accent colours, etc.)
+
 - **Super Admin System** (Creator App - Phase 1): Internal support access infrastructure
   - **Custom Claims Utilities** (`@brayford/core`)
     - `isSuperAdmin(user)`: Check if user has super admin custom claim

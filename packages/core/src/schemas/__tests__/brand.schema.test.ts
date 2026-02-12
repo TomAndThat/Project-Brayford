@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   BrandSchema,
+  BrandStylingSchema,
   CreateBrandSchema,
   UpdateBrandSchema,
   validateBrandData,
@@ -243,5 +244,116 @@ describe('validateUpdateBrandData', () => {
     
     // Invalid isActive update
     expect(() => validateUpdateBrandData({ isActive: 'not a boolean' })).toThrow(ZodError);
+  });
+});
+
+describe('BrandStylingSchema', () => {
+  describe('backgroundColor validation', () => {
+    it('accepts valid hex colors (uppercase)', () => {
+      const styling = { backgroundColor: '#0A0A0A' };
+      const result = BrandStylingSchema.parse(styling);
+      expect(result?.backgroundColor).toBe('#0A0A0A');
+    });
+
+    it('accepts valid hex colors (lowercase)', () => {
+      const styling = { backgroundColor: '#ffffff' };
+      const result = BrandStylingSchema.parse(styling);
+      expect(result?.backgroundColor).toBe('#ffffff');
+    });
+
+    it('accepts valid hex colors (mixed case)', () => {
+      const styling = { backgroundColor: '#FfAa00' };
+      const result = BrandStylingSchema.parse(styling);
+      expect(result?.backgroundColor).toBe('#FfAa00');
+    });
+
+    it('rejects hex colors without # prefix', () => {
+      const styling = { backgroundColor: 'FFFFFF' };
+      expect(() => BrandStylingSchema.parse(styling)).toThrow(ZodError);
+    });
+
+    it('rejects short hex colors', () => {
+      const styling = { backgroundColor: '#FFF' };
+      expect(() => BrandStylingSchema.parse(styling)).toThrow(ZodError);
+    });
+
+    it('rejects invalid characters in hex colors', () => {
+      const styling = { backgroundColor: '#GGGGGG' };
+      expect(() => BrandStylingSchema.parse(styling)).toThrow(ZodError);
+    });
+
+    it('rejects named colors', () => {
+      const styling = { backgroundColor: 'red' };
+      expect(() => BrandStylingSchema.parse(styling)).toThrow(ZodError);
+    });
+
+    it('rejects rgb/rgba colors', () => {
+      const styling = { backgroundColor: 'rgb(255, 255, 255)' };
+      expect(() => BrandStylingSchema.parse(styling)).toThrow(ZodError);
+    });
+  });
+
+  it('accepts undefined/null styling', () => {
+    expect(BrandStylingSchema.parse(undefined)).toBeUndefined();
+  });
+
+  it('accepts empty styling object', () => {
+    const result = BrandStylingSchema.parse({});
+    expect(result).toEqual({});
+  });
+});
+
+describe('BrandSchema with styling', () => {
+  it('accepts brand without styling', () => {
+    const brand = createMockBrand();
+    delete (brand as any).styling;
+    
+    const result = BrandSchema.parse(brand);
+    expect(result).not.toHaveProperty('styling');
+  });
+
+  it('accepts brand with valid styling', () => {
+    const brand = createMockBrand();
+    (brand as any).styling = { backgroundColor: '#0A0A0A' };
+    
+    const result = BrandSchema.parse(brand);
+    expect(result.styling?.backgroundColor).toBe('#0A0A0A');
+  });
+
+  it('rejects brand with invalid styling', () => {
+    const brand = createMockBrand();
+    (brand as any).styling = { backgroundColor: 'invalid' };
+    
+    expect(() => BrandSchema.parse(brand)).toThrow(ZodError);
+  });
+});
+
+describe('UpdateBrandSchema with styling', () => {
+  it('allows updating styling backgroundColor', () => {
+    const updates = {
+      styling: { backgroundColor: '#121212' },
+    };
+
+    const result = UpdateBrandSchema.parse(updates);
+    expect(result.styling?.backgroundColor).toBe('#121212');
+  });
+
+  it('allows updating name and styling together', () => {
+    const updates = {
+      name: 'Updated Brand',
+      styling: { backgroundColor: '#0A0A0A' },
+    };
+
+    const result = UpdateBrandSchema.parse(updates);
+    expect(result.name).toBe('Updated Brand');
+    expect(result.styling?.backgroundColor).toBe('#0A0A0A');
+  });
+
+  it('rejects invalid styling in update', () => {
+    const updates = {
+      styling: { backgroundColor: 'not-a-hex' },
+    };
+
+    expect(() => UpdateBrandSchema.parse(updates)).toThrow(ZodError);
   });
 });

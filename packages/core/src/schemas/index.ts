@@ -53,6 +53,7 @@ export {
 // Brand Schema (Organization Domain)
 export {
   BrandSchema,
+  BrandStylingSchema,
   CreateBrandSchema,
   UpdateBrandSchema,
   validateBrandData,
@@ -60,6 +61,7 @@ export {
   validateUpdateBrandData,
   type Brand,
   type BrandDocument,
+  type BrandStyling,
   type CreateBrandData,
   type UpdateBrandData,
 } from './brand.schema';
