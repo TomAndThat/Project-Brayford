@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Studio Scene Cards**: Scene descriptions now displayed in studio scene list
+  - Shows description below scene name when present (up to 2 lines)
+  - Helps users understand scene purpose and content before switching
+  - Styled appropriately for both active and inactive scenes
+
 - **Text Module Content Format**: Changed from plain text to structured JSON (Tiptap JSONContent)
   - New text modules support rich formatting (headings, lists, links, colours, etc.)
   - Legacy plain text content will still render correctly in audience app
@@ -60,6 +65,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Trade-off: Performance and real-time sync over security-by-authentication for low-risk data
 
 ### Fixed
+
+- **Scene Three-Tier Inheritance**: Fixed scene filtering to properly display inherited scenes
+  - **Scenes Dashboard**: When filtering by brand, now shows org-wide + brand-specific scenes
+  - **Scenes Dashboard**: When filtering by event, now shows org-wide + brand-specific + event-specific scenes
+  - **Studio Scene Selection**: Studio now shows all available scenes for an event (not just event-specific ones)
+  - Implements proper three-tier hierarchy where org-wide scenes are available everywhere, brand-specific scenes are available to all events in that brand, and event-specific scenes are only for that event
+  - Fixed both client-side filtering in scenes page and server-side queries in `/api/events/[eventId]/scenes` endpoint
 
 - **Event Data Loading**: Fixed Zod validation error for nested timestamps in `sceneHistory`
   - Added `convertEventTimestamps` helper function to properly convert Firestore Timestamps in nested arrays

@@ -128,19 +128,37 @@ export default function ScenesPage() {
   const filteredScenes = useMemo(() => {
     let filtered = scenes;
 
-    // Apply scope filter
+    // Apply scope filter with inheritance
     if (scopeFilter === "org") {
+      // Show only org-wide scenes
       filtered = filtered.filter(
         (s) => s.brandId === null && s.eventId === null,
       );
     } else if (scopeFilter.startsWith("brand:")) {
       const brandId = scopeFilter.slice(6);
+      // Show org-wide scenes + brand-specific scenes
       filtered = filtered.filter(
-        (s) => fromBranded(s.brandId) === brandId && s.eventId === null,
+        (s) =>
+          (s.brandId === null && s.eventId === null) || // Org-wide
+          (fromBranded(s.brandId) === brandId && s.eventId === null), // Brand-specific
       );
     } else if (scopeFilter.startsWith("event:")) {
       const eventId = scopeFilter.slice(6);
-      filtered = filtered.filter((s) => fromBranded(s.eventId) === eventId);
+      // Find the event to get its brandId
+      const event = events.find((e) => fromBranded(e.id) === eventId);
+      if (event) {
+        const eventBrandId = fromBranded(event.brandId);
+        // Show org-wide + brand-specific + event-specific scenes
+        filtered = filtered.filter(
+          (s) =>
+            (s.brandId === null && s.eventId === null) || // Org-wide
+            (fromBranded(s.brandId) === eventBrandId && s.eventId === null) || // Brand-specific
+            fromBranded(s.eventId) === eventId, // Event-specific
+        );
+      } else {
+        // If event not found, just show event-specific scenes
+        filtered = filtered.filter((s) => fromBranded(s.eventId) === eventId);
+      }
     }
 
     // Apply search filter

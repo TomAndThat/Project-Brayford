@@ -89,6 +89,17 @@ export default function SceneCard({
             )}
           </div>
 
+          {/* Scene description */}
+          {scene.description && (
+            <p
+              className={`mt-1 text-sm line-clamp-2 ${
+                isActive ? "text-green-200/80" : "text-gray-400"
+              }`}
+            >
+              {scene.description}
+            </p>
+          )}
+
           {/* Module type indicators */}
           {scene.modules.length > 0 ? (
             <div className="mt-1 flex flex-wrap items-center gap-1.5">

@@ -136,14 +136,49 @@ export async function GET(
 
     const verification = await verifyEventSceneAccess(request, eventId);
     if (verification.error) return verification.error;
+    const { eventData } = verification;
 
-    const scenesQuery = await adminDb
-      .collection("scenes")
-      .where("eventId", "==", eventId)
-      .orderBy("createdAt", "asc")
-      .get();
+    const organizationId = eventData.organizationId;
+    const brandId = eventData.brandId;
 
-    const scenes = scenesQuery.docs.map((doc) => ({
+    // Fetch scenes with three-tier inheritance:
+    // 1. Event-specific scenes
+    // 2. Brand-specific scenes (for this event's brand)
+    // 3. Organization-wide scenes
+
+    const [eventScenesSnap, brandScenesSnap, orgScenesSnap] =
+      await Promise.all([
+        // Event-specific scenes
+        adminDb
+          .collection("scenes")
+          .where("eventId", "==", eventId)
+          .orderBy("createdAt", "asc")
+          .get(),
+        // Brand-specific scenes
+        adminDb
+          .collection("scenes")
+          .where("brandId", "==", brandId)
+          .where("eventId", "==", null)
+          .orderBy("createdAt", "asc")
+          .get(),
+        // Organization-wide scenes
+        adminDb
+          .collection("scenes")
+          .where("organizationId", "==", organizationId)
+          .where("brandId", "==", null)
+          .where("eventId", "==", null)
+          .orderBy("createdAt", "asc")
+          .get(),
+      ]);
+
+    // Combine and transform all scenes
+    const allScenesDocs = [
+      ...orgScenesSnap.docs,
+      ...brandScenesSnap.docs,
+      ...eventScenesSnap.docs,
+    ];
+
+    const scenes = allScenesDocs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString() ?? null,

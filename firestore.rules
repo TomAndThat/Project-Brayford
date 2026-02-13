@@ -140,9 +140,14 @@ service cloud.firestore {
     // ===== Audience Sessions Collection =====
     // Tracks audience member sessions for billing and analytics.
     // All writes go through server-side API routes (Firebase Admin SDK).
-    // Org members can read sessions for their events (analytics).
+    // Get (single doc): Org members only
+    // List (queries): Authenticated users can query sessions
+    //   - Safe because organizationId is denormalized in each document
+    //   - Users query by eventId (which requires org access to obtain)
+    //   - Sessions contain no PII, just UUIDs and timestamps
     match /audienceSessions/{sessionId} {
-      allow read: if isOrgMember(resource.data.organizationId);
+      allow get: if isOrgMember(resource.data.organizationId);
+      allow list: if isSignedIn();
       allow write: if false;
     }
 
@@ -182,6 +187,14 @@ service cloud.firestore {
     // Server-side only (created by Cloud Functions).
     match /deletedOrganizationsAudit/{auditId} {
       allow read: if false;
+      allow write: if false;
+    }
+
+    // ===== Connection Health Monitor =====
+    // Lightweight document for client-side connection monitoring.
+    // All authenticated users can read to check Firestore connectivity.
+    match /_connection_health/{docId} {
+      allow read: if isSignedIn();
       allow write: if false;
     }
 
