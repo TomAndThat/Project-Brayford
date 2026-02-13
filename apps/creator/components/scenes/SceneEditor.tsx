@@ -37,6 +37,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ModuleInstance, ModuleType } from "@brayford/core";
 import { v4 as uuidv4 } from "uuid";
+import type { JSONContent } from "@tiptap/react";
+import RichTextEditor from "../shared/RichTextEditor";
 
 // Available module types with metadata
 interface ModuleTypeDefinition {
@@ -197,7 +199,9 @@ function SortableModuleItem({
             <span className="text-xs text-gray-500">Order: {module.order}</span>
           </div>
           <p className="text-sm text-gray-900 truncate">
-            {(module.config as { content?: string }).content || "(No content)"}
+            {(module.config as { content?: JSONContent }).content
+              ? "Rich text content"
+              : "(No content)"}
           </p>
         </div>
 
@@ -267,7 +271,10 @@ export default function SceneEditor({
   const [editingModule, setEditingModule] = useState<ModuleInstance | null>(
     null,
   );
-  const [textContent, setTextContent] = useState("");
+  const [textContent, setTextContent] = useState<JSONContent>({
+    type: "doc",
+    content: [],
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   // Fetch brands for the organisation
@@ -342,18 +349,19 @@ export default function SceneEditor({
         id: uuidv4(),
         moduleType,
         order: modules.length * 10,
-        config: { content: "" },
+        config: { content: { type: "doc", content: [] } },
       };
       // Immediately open editor for the new module
       setEditingModule(newModule);
-      setTextContent("");
+      setTextContent({ type: "doc", content: [] });
     },
     [modules.length],
   );
 
   const handleEditModule = useCallback((module: ModuleInstance) => {
     setEditingModule(module);
-    setTextContent((module.config as { content?: string }).content || "");
+    const content = (module.config as { content?: JSONContent }).content;
+    setTextContent(content || { type: "doc", content: [] });
   }, []);
 
   const handleSaveModule = useCallback(() => {
@@ -374,7 +382,7 @@ export default function SceneEditor({
     });
 
     setEditingModule(null);
-    setTextContent("");
+    setTextContent({ type: "doc", content: [] });
   }, [editingModule, textContent]);
 
   const handleDeleteModule = useCallback((moduleId: string) => {
@@ -633,20 +641,13 @@ export default function SceneEditor({
                 : "Edit Module"}
             </h3>
             <div className="mb-6">
-              <label
-                htmlFor="module-content"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Content
               </label>
-              <textarea
-                id="module-content"
-                value={textContent}
-                onChange={(e) => setTextContent(e.target.value)}
-                rows={8}
-                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-3"
-                placeholder="Enter your text content here..."
-                autoFocus
+              <RichTextEditor
+                content={textContent}
+                onChange={setTextContent}
+                placeholder="Start typing your content here..."
               />
             </div>
             <div className="flex items-center justify-end gap-3">
@@ -654,7 +655,7 @@ export default function SceneEditor({
                 type="button"
                 onClick={() => {
                   setEditingModule(null);
-                  setTextContent("");
+                  setTextContent({ type: "doc", content: [] });
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >

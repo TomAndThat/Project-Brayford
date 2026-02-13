@@ -82,6 +82,7 @@ export {
   updateSessionHeartbeat,
   endAudienceSession,
   getEventActiveSessions,
+  useEventAudienceSessions,
 } from './audience-sessions';
 
 // Invitation operations

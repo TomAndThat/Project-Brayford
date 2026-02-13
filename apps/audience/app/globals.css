@@ -24,3 +24,104 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Prose styles for rich text content - inherits colour from brand styling */
+.prose {
+  @apply leading-relaxed;
+  color: inherit;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  @apply font-bold mt-6 mb-4 leading-tight;
+  color: inherit;
+}
+
+.prose h1 {
+  @apply text-3xl mt-0;
+}
+
+.prose h2 {
+  @apply text-2xl pb-2;
+  border-bottom: 1px solid currentColor;
+  border-opacity: 0.2;
+}
+
+.prose h3 {
+  @apply text-xl;
+}
+
+.prose h4 {
+  @apply text-lg;
+}
+
+.prose p {
+  @apply my-4;
+}
+
+.prose ul,
+.prose ol {
+  @apply my-4 pl-6 space-y-2;
+}
+
+.prose ul {
+  @apply list-disc;
+}
+
+.prose ol {
+  @apply list-decimal;
+}
+
+.prose li {
+  @apply my-1;
+}
+
+.prose strong {
+  @apply font-semibold;
+  color: inherit;
+}
+
+.prose em {
+  @apply italic;
+}
+
+.prose a {
+  @apply underline;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.prose a:hover {
+  opacity: 1;
+}
+
+.prose blockquote {
+  @apply border-l-4 pl-4 italic my-4;
+  border-color: currentColor;
+  opacity: 0.8;
+}
+
+.prose table {
+  @apply w-full border-collapse my-4;
+}
+
+.prose th,
+.prose td {
+  @apply px-3 py-2 text-left;
+  border: 1px solid currentColor;
+  border-opacity: 0.3;
+}
+
+.prose th {
+  @apply font-semibold;
+}
+
+.prose hr {
+  @apply my-6;
+  border-color: currentColor;
+  opacity: 0.3;
+}

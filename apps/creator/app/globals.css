@@ -121,6 +121,19 @@ body {
   @apply border-gray-300 my-6;
 }
 
+/* Tiptap editor styles */
+.ProseMirror {
+  @apply min-h-[200px] outline-none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  @apply text-gray-400;
+  content: attr(data-placeholder);
+  float: left;
+  pointer-events: none;
+  height: 0;
+}
+
 /* Line clamp utilities */
 .line-clamp-1 {
   overflow: hidden;

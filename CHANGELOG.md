@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Scene Builder**: Rich text editor for text modules using Tiptap
+  - Full WYSIWYG editing with formatting toolbar (bold, italic, underline, strikethrough)
+  - Heading support (H1-H6)
+  - Lists (ordered and unordered)
+  - Links with URL management
+  - Text colour customisation
+  - Code blocks and inline code formatting
+  - Undo/redo functionality
+  - Content stored as structured JSON for security and flexibility
+  - **RichTextEditor Component**: Editable rich text component for creator app
+  - **RichTextRenderer Component**: Read-only rich text display for audience app
+  - Prose styling with Tailwind CSS for consistent text formatting
+
 - **Audience App Scene Rendering**: Real-time scene display on audience devices
   - **SceneRenderer Component**: Fetches and renders active scenes with module ordering
     - Direct Firestore reads for low latency
@@ -32,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Scene Builder Functionality**: Complete scene creation and editing workflow
 
 ### Changed
+
+- **Text Module Content Format**: Changed from plain text to structured JSON (Tiptap JSONContent)
+  - New text modules support rich formatting (headings, lists, links, colours, etc.)
+  - Legacy plain text content will still render correctly in audience app
+  - Module config now stores `content` as `Record<string, unknown>` instead of `string`
+  - Backwards compatible with existing text modules
 
 - **Scene Firestore Rules**: Enabled public read access to scenes collection
   - Scene IDs are cryptographically random UUIDs (not guessable)

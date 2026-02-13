@@ -4,6 +4,7 @@
  * CRUD operations for audience sessions
  */
 
+import { useEffect, useState } from 'react';
 import {
   collection,
   doc,
@@ -11,6 +12,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  onSnapshot,
   query,
   where,
   type DocumentReference,
@@ -189,4 +191,98 @@ export async function getEventActiveSessions(
       qrCodeId: toBranded<QRCodeId>(data.qrCodeId),
     };
   });
+}
+
+// ===== Real-Time Hook =====
+
+/**
+ * React hook for real-time audience session count
+ * 
+ * Uses Firestore onSnapshot to subscribe to active audience sessions
+ * for an event. Returns the count of currently connected audience members.
+ * Automatically handles cleanup when the component unmounts.
+ * 
+ * Used by:
+ * - Creator Studio: Display real-time audience count in the top bar
+ * - Analytics dashboards: Monitor live attendance
+ * 
+ * @param eventId - Event ID to monitor
+ * @returns Object with count, loading state, and error
+ * 
+ * @example
+ * ```tsx
+ * function StudioTopBar({ event }: { event: EventDocument }) {
+ *   const { count, loading, error } = useEventAudienceSessions(event.id);
+ *   
+ *   if (loading) return <Skeleton />;
+ *   if (error) return <ErrorBadge />;
+ *   
+ *   return <div>Audience: {count.toLocaleString()}</div>;
+ * }
+ * ```
+ */
+export function useEventAudienceSessions(eventId: EventId): {
+  count: number;
+  sessions: AudienceSessionDocument[];
+  loading: boolean;
+  error: Error | null;
+} {
+  const [sessions, setSessions] = useState<AudienceSessionDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+
+    const sessionsRef = getAudienceSessionsCollection();
+    const q = query(
+      sessionsRef,
+      where('eventId', '==', eventId),
+      where('isActive', '==', true)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        try {
+          const activeSessions = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              eventId: toBranded<EventId>(data.eventId),
+              organizationId: toBranded<OrganizationId>(data.organizationId),
+              qrCodeId: toBranded<QRCodeId>(data.qrCodeId),
+            };
+          });
+          
+          setSessions(activeSessions);
+          setError(null);
+        } catch (err) {
+          setError(
+            err instanceof Error
+              ? err
+              : new Error('Failed to parse audience session data')
+          );
+        }
+        
+        setLoading(false);
+      },
+      (err) => {
+        setError(err);
+        setLoading(false);
+      }
+    );
+
+    // Cleanup: unsubscribe from onSnapshot listener when component unmounts
+    return unsubscribe;
+  }, [eventId]);
+
+  return { 
+    count: sessions.length,
+    sessions,
+    loading,
+    error,
+  };
 }

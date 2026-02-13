@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { EventDocument } from "@brayford/core";
+import { useEventAudienceSessions } from "@brayford/firebase-utils";
 import { useFirebaseConnection } from "@/hooks/use-firebase-connection";
 
 interface StudioTopBarProps {
@@ -10,7 +11,7 @@ interface StudioTopBarProps {
 
 export default function StudioTopBar({ event }: StudioTopBarProps) {
   const [elapsedTime, setElapsedTime] = useState<string>("00:00:00");
-  const [audienceCount] = useState<number>(0); // TODO: Real-time audience count
+  const { count: audienceCount } = useEventAudienceSessions(event.id);
   const connectionStatus = useFirebaseConnection();
 
   useEffect(() => {

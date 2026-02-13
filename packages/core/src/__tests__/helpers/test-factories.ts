@@ -285,7 +285,20 @@ export function createMockModuleInstance(
     moduleType: 'text',
     order: 0,
     config: {
-      content: 'Sample text content for testing',
+      content: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: 'Sample text content for testing',
+              },
+            ],
+          },
+        ],
+      },
     },
     ...overrides,
   };

@@ -28,13 +28,14 @@ export const MODULE_TYPES: ModuleType[] = ['text'] as const;
 /**
  * Text module configuration
  * 
- * Simple text content display - the most basic building block for scenes.
- * Allows users to add arbitrary text content to their scenes.
+ * Rich text content display - the most basic building block for scenes.
+ * Allows users to add formatted text content to their scenes.
+ * Content is stored as structured JSON (e.g., Tiptap JSONContent format).
  */
 export interface TextModuleConfig {
   readonly moduleType: 'text';
-  /** The text content to display */
-  content: string;
+  /** The rich text content to display (JSON structure) */
+  content: Record<string, unknown> | unknown;
 }
 
 // ===== Discriminated Union =====
