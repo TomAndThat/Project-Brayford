@@ -199,6 +199,7 @@ pnpm lint       # Lint all packages
 ## AOB
 
 - As the app is currently in development, you do not need to worry about backwards compatibility or breaking changes
+- To confirm that you have read and understood these instructions, please start each conversation with the name of a root vegetable (e.g. "Carrot")
 
 ## Questions?
 
