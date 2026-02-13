@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState, type DragEvent, type ChangeEvent } from "react";
-import {
-  validateUploadFile,
-} from "@brayford/core";
+import { validateImageFile } from "@brayford/firebase-utils";
+
+/** Accepted MIME types for image uploads (matches image library schema) */
+const ACCEPTED_FILE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
 
 export interface ImageUploaderProps {
   /** Current image URL (if already uploaded) */
@@ -16,6 +17,8 @@ export interface ImageUploaderProps {
   onFileSelected: (file: File) => void;
   /** Called when user removes the current image */
   onRemove?: () => void;
+  /** Called when user wants to choose from the image library */
+  onChooseFromLibrary?: () => void;
   /** Whether the uploader is disabled */
   disabled?: boolean;
   /** Whether an upload is in progress */
@@ -39,6 +42,7 @@ export default function ImageUploader({
   helperText,
   onFileSelected,
   onRemove,
+  onChooseFromLibrary,
   disabled = false,
   uploading = false,
   progress,
@@ -54,7 +58,7 @@ export default function ImageUploader({
     (file: File) => {
       setValidationError(null);
 
-      const validationResult = validateUploadFile(file);
+      const validationResult = validateImageFile(file);
       if (validationResult) {
         setValidationError(validationResult);
         return;
@@ -134,8 +138,8 @@ export default function ImageUploader({
             className="max-w-full max-h-48 rounded-lg border border-gray-200 object-contain"
           />
 
-          <div className="mt-3 flex gap-2">
-            {/* Replace */}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {/* Replace (upload new) */}
             <button
               type="button"
               onClick={handleClick}
@@ -147,6 +151,21 @@ export default function ImageUploader({
               </svg>
               Replace
             </button>
+
+            {/* Choose from library */}
+            {onChooseFromLibrary && (
+              <button
+                type="button"
+                onClick={onChooseFromLibrary}
+                disabled={disabled}
+                className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-blue-700 bg-white border border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                Choose from Library
+              </button>
+            )}
 
             {/* Remove */}
             {onRemove && (
@@ -169,7 +188,7 @@ export default function ImageUploader({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          accept={ACCEPTED_FILE_TYPES}
           onChange={handleInputChange}
           className="hidden"
         />
@@ -249,8 +268,20 @@ export default function ImageUploader({
               {isDragOver ? "Drop image here" : "Drag and drop an image, or click to browse"}
             </p>
             <p className="text-xs text-gray-500">
-              PNG, JPEG, WebP or SVG · Max 5 MB · Up to 1024×1024px
+              JPEG, PNG, WebP or GIF · Max 10 MB
             </p>
+            {onChooseFromLibrary && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChooseFromLibrary();
+                }}
+                className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700 underline"
+              >
+                or choose from your image library
+              </button>
+            )}
           </>
         )}
       </div>
@@ -259,7 +290,7 @@ export default function ImageUploader({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        accept={ACCEPTED_FILE_TYPES}
         onChange={handleInputChange}
         className="hidden"
       />

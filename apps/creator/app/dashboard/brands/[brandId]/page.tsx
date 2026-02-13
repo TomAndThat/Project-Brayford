@@ -9,8 +9,8 @@ import {
   getBrand,
   getOrganization,
   auth,
-  uploadBrandImage,
-  deleteBrandImage,
+  uploadImageFile,
+  extractImageDimensions,
 } from "@brayford/firebase-utils";
 import {
   toBranded,
@@ -33,6 +33,8 @@ import HeaderTypeSelector from "@/components/brands/HeaderTypeSelector";
 import ImageUploader from "@/components/brands/ImageUploader";
 import CropModal from "@/components/brands/CropModal";
 import BrandPreview from "@/components/brands/BrandPreview";
+import ImagePickerDialog from "@/components/images/ImagePickerDialog";
+import type { ImagePickerSelection } from "@/components/images/ImagePickerDialog";
 
 export default function BrandSettingsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -68,12 +70,24 @@ export default function BrandSettingsPage() {
   // Header styling state
   const [headerType, setHeaderType] = useState<HeaderType>("none");
   const [profileImageUrl, setProfileImageUrl] = useState<string | undefined>();
+  const [profileImageId, setProfileImageId] = useState<string | undefined>();
   const [logoImageUrl, setLogoImageUrl] = useState<string | undefined>();
+  const [logoImageId, setLogoImageId] = useState<string | undefined>();
   const [bannerImageUrl, setBannerImageUrl] = useState<string | undefined>();
+  const [bannerImageId, setBannerImageId] = useState<string | undefined>();
   const [headerBackgroundColor, setHeaderBackgroundColor] = useState("#000000");
   const [headerBackgroundImageUrl, setHeaderBackgroundImageUrl] = useState<
     string | undefined
   >();
+  const [headerBackgroundImageId, setHeaderBackgroundImageId] = useState<
+    string | undefined
+  >();
+
+  // Image picker dialog state
+  type ImageSlot = "profile" | "logo" | "banner" | "header-background";
+  const [imagePickerSlot, setImagePickerSlot] = useState<ImageSlot | null>(
+    null,
+  );
 
   // Upload state
   const [uploading, setUploading] = useState(false);
@@ -125,13 +139,21 @@ export default function BrandSettingsPage() {
       );
       setTextColor(brandData.styling?.textColor || "#FFFFFF");
       setHeaderType(brandData.styling?.headerType || "none");
-      setProfileImageUrl(brandData.styling?.profileImageUrl);
-      setLogoImageUrl(brandData.styling?.logoImageUrl);
-      setBannerImageUrl(brandData.styling?.bannerImageUrl);
+      setProfileImageUrl(brandData.styling?.profileImageUrl ?? undefined);
+      setProfileImageId(brandData.styling?.profileImageId ?? undefined);
+      setLogoImageUrl(brandData.styling?.logoImageUrl ?? undefined);
+      setLogoImageId(brandData.styling?.logoImageId ?? undefined);
+      setBannerImageUrl(brandData.styling?.bannerImageUrl ?? undefined);
+      setBannerImageId(brandData.styling?.bannerImageId ?? undefined);
       setHeaderBackgroundColor(
         brandData.styling?.headerBackgroundColor || "#000000",
       );
-      setHeaderBackgroundImageUrl(brandData.styling?.headerBackgroundImageUrl);
+      setHeaderBackgroundImageUrl(
+        brandData.styling?.headerBackgroundImageUrl ?? undefined,
+      );
+      setHeaderBackgroundImageId(
+        brandData.styling?.headerBackgroundImageId ?? undefined,
+      );
     } catch (error) {
       console.error("Error loading brand data:", error);
       alert("Failed to load brand");
@@ -238,10 +260,14 @@ export default function BrandSettingsPage() {
           backgroundColor,
           textColor,
           headerType,
+          profileImageId: profileImageId || null,
           profileImageUrl: profileImageUrl || null,
+          logoImageId: logoImageId || null,
           logoImageUrl: logoImageUrl || null,
+          bannerImageId: bannerImageId || null,
           bannerImageUrl: bannerImageUrl || null,
           headerBackgroundColor,
+          headerBackgroundImageId: headerBackgroundImageId || null,
           headerBackgroundImageUrl: headerBackgroundImageUrl || null,
         },
       };
@@ -281,33 +307,108 @@ export default function BrandSettingsPage() {
     }
   };
 
-  // === Image upload handlers ===
+  // === Image upload handlers (via image library) ===
 
-  const handleImageUpload = async (
-    file: File | Blob,
-    imageType: "profile" | "logo" | "banner" | "header-background",
-  ) => {
-    if (!brandId) return;
+  /**
+   * Helper to get state setters for a given image slot.
+   */
+  const getImageSetters = (imageType: ImageSlot) => {
+    switch (imageType) {
+      case "profile":
+        return { setUrl: setProfileImageUrl, setId: setProfileImageId };
+      case "logo":
+        return { setUrl: setLogoImageUrl, setId: setLogoImageId };
+      case "banner":
+        return { setUrl: setBannerImageUrl, setId: setBannerImageId };
+      case "header-background":
+        return {
+          setUrl: setHeaderBackgroundImageUrl,
+          setId: setHeaderBackgroundImageId,
+        };
+    }
+  };
+
+  /**
+   * Upload an image via the image library three-step flow:
+   * 1. POST /api/images/upload → creates Firestore doc, returns imageId + storagePath
+   * 2. Upload file to Storage via client SDK
+   * 3. POST /api/images/{imageId}/confirm → marks status 'ready'
+   */
+  const handleImageUpload = async (file: File | Blob, imageType: ImageSlot) => {
+    if (!brandId || !organization) return;
     setUploading(true);
     setUploadError(null);
 
     try {
-      const result = await uploadBrandImage(brandId, file, imageType);
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Not authenticated");
 
-      switch (imageType) {
-        case "profile":
-          setProfileImageUrl(result.url);
-          break;
-        case "logo":
-          setLogoImageUrl(result.url);
-          break;
-        case "banner":
-          setBannerImageUrl(result.url);
-          break;
-        case "header-background":
-          setHeaderBackgroundImageUrl(result.url);
-          break;
+      // Determine filename and content type
+      const filename =
+        file instanceof File ? file.name : `${imageType}-${Date.now()}.png`;
+      const contentType = file.type || "image/png";
+
+      // Extract dimensions
+      let dimensions = { width: 0, height: 0 };
+      try {
+        dimensions = await extractImageDimensions(file as File);
+      } catch {
+        // Fall through with 0,0 for blobs that fail dimension extraction
       }
+
+      // Generate a readable name for the library entry
+      const imageTypeName = imageType
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+      const imageName = `${brand?.name || "Brand"} ${imageTypeName}`;
+
+      // Step 1: Initiate upload via API
+      const initiateResponse = await fetch("/api/images/upload", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          organizationId: fromBranded(organization.id),
+          name: imageName,
+          filename,
+          contentType,
+          sizeBytes: file.size,
+          dimensions,
+        }),
+      });
+
+      if (!initiateResponse.ok) {
+        const errorData = await initiateResponse.json();
+        throw new Error(errorData.error || "Failed to initiate upload");
+      }
+
+      const { imageId, storagePath } = await initiateResponse.json();
+
+      // Step 2: Upload file to Storage via client SDK
+      const uploadResult = await uploadImageFile(storagePath, file as File);
+
+      // Step 3: Confirm upload
+      const confirmResponse = await fetch(`/api/images/${imageId}/confirm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ url: uploadResult.url }),
+      });
+
+      if (!confirmResponse.ok) {
+        const errorData = await confirmResponse.json();
+        throw new Error(errorData.error || "Failed to confirm upload");
+      }
+
+      // Update state with both ID and URL
+      const { setUrl, setId } = getImageSetters(imageType);
+      setUrl(uploadResult.url);
+      setId(imageId);
     } catch (err) {
       console.error("Upload failed:", err);
       setUploadError(err instanceof Error ? err.message : "Upload failed");
@@ -342,19 +443,23 @@ export default function BrandSettingsPage() {
     await handleImageUpload(file, "header-background");
   };
 
-  const handleRemoveImage = async (
-    currentUrl: string | undefined,
-    setter: (url: string | undefined) => void,
-  ) => {
-    if (currentUrl) {
-      try {
-        await deleteBrandImage(currentUrl);
-      } catch (err) {
-        console.error("Failed to delete image:", err);
-        // Continue with removal from state even if storage delete fails
-      }
-    }
-    setter(undefined);
+  const handleRemoveImage = async (imageType: ImageSlot) => {
+    // Clear both URL and ID — the image remains in the library
+    const { setUrl, setId } = getImageSetters(imageType);
+    setUrl(undefined);
+    setId(undefined);
+  };
+
+  /**
+   * Handle selection from the image picker dialog.
+   * Sets both imageId and URL for the active slot.
+   */
+  const handleImagePickerSelection = (selection: ImagePickerSelection) => {
+    if (!imagePickerSlot) return;
+    const { setUrl, setId } = getImageSetters(imagePickerSlot);
+    setUrl(selection.url);
+    setId(selection.id);
+    setImagePickerSlot(null);
   };
 
   const handleArchive = async () => {
@@ -788,12 +893,10 @@ export default function BrandSettingsPage() {
                           helperText="Upload a square image. You'll be able to crop it after selecting."
                           currentImageUrl={profileImageUrl}
                           onFileSelected={handleProfileFileSelected}
-                          onRemove={() =>
-                            handleRemoveImage(
-                              profileImageUrl,
-                              setProfileImageUrl,
-                            )
+                          onChooseFromLibrary={() =>
+                            setImagePickerSlot("profile")
                           }
+                          onRemove={() => handleRemoveImage("profile")}
                           disabled={!canUpdate || isSubmitting}
                           uploading={uploading}
                           error={uploadError}
@@ -807,9 +910,8 @@ export default function BrandSettingsPage() {
                           helperText="Upload your logo in any aspect ratio. It will be centred against the background."
                           currentImageUrl={logoImageUrl}
                           onFileSelected={handleLogoFileSelected}
-                          onRemove={() =>
-                            handleRemoveImage(logoImageUrl, setLogoImageUrl)
-                          }
+                          onChooseFromLibrary={() => setImagePickerSlot("logo")}
+                          onRemove={() => handleRemoveImage("logo")}
                           disabled={!canUpdate || isSubmitting}
                           uploading={uploading}
                           error={uploadError}
@@ -823,9 +925,10 @@ export default function BrandSettingsPage() {
                           helperText="Upload a wide image. It will span the full width of the audience view."
                           currentImageUrl={bannerImageUrl}
                           onFileSelected={handleBannerFileSelected}
-                          onRemove={() =>
-                            handleRemoveImage(bannerImageUrl, setBannerImageUrl)
+                          onChooseFromLibrary={() =>
+                            setImagePickerSlot("banner")
                           }
+                          onRemove={() => handleRemoveImage("banner")}
                           disabled={!canUpdate || isSubmitting}
                           uploading={uploading}
                           error={uploadError}
@@ -919,11 +1022,11 @@ export default function BrandSettingsPage() {
                           }
                           currentImageUrl={headerBackgroundImageUrl}
                           onFileSelected={handleHeaderBackgroundFileSelected}
+                          onChooseFromLibrary={() =>
+                            setImagePickerSlot("header-background")
+                          }
                           onRemove={() =>
-                            handleRemoveImage(
-                              headerBackgroundImageUrl,
-                              setHeaderBackgroundImageUrl,
-                            )
+                            handleRemoveImage("header-background")
                           }
                           disabled={!canUpdate || isSubmitting}
                           uploading={uploading}
@@ -1105,6 +1208,15 @@ export default function BrandSettingsPage() {
           brandName={brand.name}
           organizationName={organization.name}
           isArchiving={isArchiving}
+        />
+      )}
+
+      {/* Image Picker Dialog (choose from library) */}
+      {imagePickerSlot && organization && (
+        <ImagePickerDialog
+          organizationId={fromBranded(organization.id)}
+          onSelect={handleImagePickerSelection}
+          onClose={() => setImagePickerSlot(null)}
         />
       )}
     </div>

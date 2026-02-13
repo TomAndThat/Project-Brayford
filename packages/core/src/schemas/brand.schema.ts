@@ -47,16 +47,36 @@ export const BrandStylingSchema = z.object({
   headerType: HeaderTypeSchema
     .describe('Header layout type')
     .optional(),
+
+  // Image library references (IDs from /images collection)
+  profileImageId: z.string()
+    .describe('Image library ID for profile image')
+    .nullable()
+    .optional(),
+  logoImageId: z.string()
+    .describe('Image library ID for logo image')
+    .nullable()
+    .optional(),
+  bannerImageId: z.string()
+    .describe('Image library ID for banner image')
+    .nullable()
+    .optional(),
+  headerBackgroundImageId: z.string()
+    .describe('Image library ID for header background image')
+    .nullable()
+    .optional(),
+
+  // Image download URLs (populated from image library, used for direct rendering)
   profileImageUrl: z.string().url()
-    .describe('Square cropped profile image URL')
+    .describe('Profile image download URL from image library')
     .nullable()
     .optional(),
   logoImageUrl: z.string().url()
-    .describe('Any-aspect-ratio logo image URL')
+    .describe('Logo image download URL from image library')
     .nullable()
     .optional(),
   bannerImageUrl: z.string().url()
-    .describe('Full-width banner image URL')
+    .describe('Banner image download URL from image library')
     .nullable()
     .optional(),
   headerBackgroundColor: z.string()
@@ -65,7 +85,7 @@ export const BrandStylingSchema = z.object({
     .nullable()
     .optional(),
   headerBackgroundImageUrl: z.string().url()
-    .describe('Background image behind profile/logo/banner')
+    .describe('Header background image download URL from image library')
     .nullable()
     .optional(),
 }).optional();

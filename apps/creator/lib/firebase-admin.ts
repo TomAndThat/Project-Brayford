@@ -10,9 +10,10 @@
  * - Supports batch writes and transactions
  * 
  * Environment variables:
- * - NEXT_PUBLIC_FIREBASE_PROJECT_ID (already set)
- * - FIREBASE_CLIENT_EMAIL (service account email)
- * - FIREBASE_PRIVATE_KEY (service account private key)
+ * - NEXT_PUBLIC_FIREBASE_PROJECT_ID (required)
+ * - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET (required)
+ * - FIREBASE_CLIENT_EMAIL (service account email, production only)
+ * - FIREBASE_PRIVATE_KEY (service account private key, production only)
  * 
  * In development/emulator mode, initializes without credentials.
  */
@@ -38,6 +39,7 @@ function getAdminApp(): App {
   }
 
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
   // If service account credentials are available, use them
   if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
@@ -48,11 +50,12 @@ function getAdminApp(): App {
         // Private key comes as an escaped string from env, need to unescape newlines
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       }),
+      storageBucket,
     });
   }
 
   // Emulator/development mode — no credentials needed
-  return initializeApp({ projectId });
+  return initializeApp({ projectId, storageBucket });
 }
 
 const adminApp = getAdminApp();

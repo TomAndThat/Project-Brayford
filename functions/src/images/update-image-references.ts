@@ -80,8 +80,18 @@ const BRAND_IMAGE_URL_FIELDS = [
   "headerBackgroundImageUrl",
 ] as const;
 
+const BRAND_IMAGE_ID_FIELDS = [
+  "profileImageId",
+  "logoImageId",
+  "bannerImageId",
+  "headerBackgroundImageId",
+] as const;
+
 /**
  * Extract image IDs from a brand document's styling section.
+ *
+ * Prefers explicit imageId fields when present, falls back to
+ * extracting IDs from download URLs for backwards compatibility.
  */
 function extractBrandImageIds(data: Record<string, unknown> | undefined): Set<string> {
   const ids = new Set<string>();
@@ -89,6 +99,15 @@ function extractBrandImageIds(data: Record<string, unknown> | undefined): Set<st
 
   const styling = (data.styling ?? {}) as Record<string, unknown>;
 
+  // Check explicit imageId fields first
+  for (const field of BRAND_IMAGE_ID_FIELDS) {
+    const id = styling[field];
+    if (typeof id === "string" && id.length > 0) {
+      ids.add(id);
+    }
+  }
+
+  // Fall back to URL parsing (for any references not covered by ID fields)
   for (const field of BRAND_IMAGE_URL_FIELDS) {
     const url = styling[field];
     if (typeof url === "string" && url.length > 0) {

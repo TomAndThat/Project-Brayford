@@ -14,15 +14,6 @@ export * from './auth';
 // Firestore operations
 export * from './firestore';
 
-// Firebase Storage operations (brand images)
-export {
-  uploadBrandImage,
-  deleteBrandImage,
-  validateBrandImage,
-  type BrandImageType,
-  type UploadResult,
-} from './storage';
-
 // Firebase Storage operations (image library)
 export {
   buildImageStoragePath,
