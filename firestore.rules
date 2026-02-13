@@ -117,12 +117,12 @@ service cloud.firestore {
 
     // ===== Scenes Collection =====
     // Stores scene definitions (modules + config) for events.
-    // Read: Org members (creator app) — audience app fetches scenes via
-    //        the scene ID from the live state document using server-side rendering
-    //        or an API route, not direct Firestore reads.
+    // Read: Public access - scene IDs are cryptographically random UUIDs (hard to guess).
+    //        Audience devices with a scene ID (from live state) can fetch directly.
+    //        Security: QR code at venue + UUID obscurity + non-sensitive content.
     // Write: Server-side only (API routes → Admin SDK).
     match /scenes/{sceneId} {
-      allow read: if isOrgMember(resource.data.organizationId);
+      allow read: if true;
       allow write: if false;
     }
 

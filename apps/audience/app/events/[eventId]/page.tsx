@@ -12,14 +12,25 @@ import {
   DEFAULT_AUDIENCE_BACKGROUND,
   DEFAULT_AUDIENCE_TEXT,
 } from "@brayford/core";
-import { getEvent, getBrand } from "@brayford/firebase-utils";
+import {
+  getEvent,
+  getBrand,
+  useEventLiveState,
+} from "@brayford/firebase-utils";
+import SceneRenderer from "@/components/SceneRenderer";
+import WaitingScreen from "@/components/WaitingScreen";
 
 export default function EventPage() {
   const params = useParams<{ eventId: string }>();
+  const eventId = toBranded<EventId>(params.eventId);
+
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<EventDocument | null>(null);
   const [brand, setBrand] = useState<BrandDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Subscribe to live state for real-time scene updates
+  const { liveState } = useEventLiveState(eventId);
 
   useEffect(() => {
     const loadEvent = async () => {
@@ -27,7 +38,7 @@ export default function EventPage() {
         setLoading(true);
         setError(null);
 
-        const eventData = await getEvent(toBranded<EventId>(params.eventId));
+        const eventData = await getEvent(eventId);
         if (!eventData) {
           setError("Event not found");
           return;
@@ -49,7 +60,7 @@ export default function EventPage() {
     };
 
     loadEvent();
-  }, [params.eventId]);
+  }, [eventId]);
 
   if (loading) {
     return (
@@ -209,6 +220,22 @@ export default function EventPage() {
       <div className="w-full max-w-[500px] mx-auto">
         {/* Brand Header */}
         {renderHeader()}
+
+        {/* Scene Content Area */}
+        <div
+          className="transition-opacity duration-300"
+          style={{ opacity: liveState?.activeSceneId ? 1 : 0.8 }}
+        >
+          {liveState?.activeSceneId ? (
+            <SceneRenderer
+              key="scene-renderer"
+              sceneId={liveState.activeSceneId}
+              eventName={event.name}
+            />
+          ) : (
+            <WaitingScreen eventName={event.name} />
+          )}
+        </div>
       </div>
     </div>
   );

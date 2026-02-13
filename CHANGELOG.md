@@ -9,7 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Audience App Scene Rendering**: Real-time scene display on audience devices
+  - **SceneRenderer Component**: Fetches and renders active scenes with module ordering
+    - Direct Firestore reads for low latency
+    - Automatic re-fetch when scene content is updated during live events
+    - Silent fallback to waiting state on errors
+    - Loading spinner during scene fetch
+  - **TextModule Component**: Displays text module content with brand styling
+    - Respects brand text colour and formatting
+    - Responsive padding and line wrapping
+    - Pre-wrap for multi-line content support
+  - **WaitingScreen Component**: Shown when no scene is active
+    - Clean, centred layout with eye icon
+    - Event name display
+    - "Waiting for the show to start" message
+  - **Live State Integration**: Real-time scene updates via Firestore listeners
+    - Subscribes to `/events/{eventId}/live/state` document
+    - Automatic scene switching when creators activate new scenes in studio
+    - Smooth fade transition between states (300ms opacity)
+    - Respects existing brand header and styling system
+
 - **Scene Builder Functionality**: Complete scene creation and editing workflow
+
+### Changed
+
+- **Scene Firestore Rules**: Enabled public read access to scenes collection
+  - Scene IDs are cryptographically random UUIDs (not guessable)
+  - Enables direct Firestore reads from audience devices for real-time performance
+  - Primary security: QR code venue access + UUID obscurity
+  - Scene content is non-sensitive (public-facing display content)
+  - Trade-off: Performance and real-time sync over security-by-authentication for low-risk data
+
+### Fixed
+
+- **Event Data Loading**: Fixed Zod validation error for nested timestamps in `sceneHistory`
+  - Added `convertEventTimestamps` helper function to properly convert Firestore Timestamps in nested arrays
+  - Updated `getEvent`, `getBrandEvents`, `getOrganizationEvents`, and `getChildEvents` to handle `sceneHistory[].switchedAt` timestamps
+  - Prevents "Expected date, received object" errors when loading events with scene switch history
   - **Scenes List Page** (`/dashboard/scenes`):
     - Display all scenes for the organisation with name, description, module count, and scope
     - Filter by scope: All Scenes, Organisation-wide, by Brand, or by Event

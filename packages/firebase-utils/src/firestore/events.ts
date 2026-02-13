@@ -16,6 +16,7 @@ import {
   getDocs,
   orderBy,
   serverTimestamp,
+  Timestamp,
   type DocumentReference,
 } from 'firebase/firestore';
 import { db } from '../config';
@@ -39,6 +40,29 @@ import {
 const eventConverter = createConverter(validateEventData, ['createdAt', 'scheduledDate', 'scheduledEndDate']);
 
 /**
+ * Helper function to convert all Firestore Timestamps in event data to Dates
+ * Handles both top-level and nested fields (like sceneHistory)
+ */
+function convertEventTimestamps(rawData: any): any {
+  const converted = {
+    ...rawData,
+    createdAt: rawData.createdAt instanceof Timestamp ? rawData.createdAt.toDate() : rawData.createdAt,
+    scheduledDate: rawData.scheduledDate instanceof Timestamp ? rawData.scheduledDate.toDate() : rawData.scheduledDate,
+    scheduledEndDate: rawData.scheduledEndDate instanceof Timestamp ? rawData.scheduledEndDate.toDate() : rawData.scheduledEndDate,
+  };
+  
+  // Convert nested sceneHistory timestamps
+  if (converted.sceneHistory && Array.isArray(converted.sceneHistory)) {
+    converted.sceneHistory = converted.sceneHistory.map((entry: any) => ({
+      ...entry,
+      switchedAt: entry.switchedAt instanceof Timestamp ? entry.switchedAt.toDate() : entry.switchedAt,
+    }));
+  }
+  
+  return converted;
+}
+
+/**
  * Get reference to an event document
  */
 export function getEventRef(eventId: EventId): DocumentReference<Event> {
@@ -60,14 +84,17 @@ export function getEventRef(eventId: EventId): DocumentReference<Event> {
  * ```
  */
 export async function getEvent(eventId: EventId): Promise<EventDocument | null> {
-  const eventRef = getEventRef(eventId);
+  // Fetch raw data without converter to handle nested timestamps
+  const eventRef = doc(db, 'events', fromBranded(eventId));
   const eventSnap = await getDoc(eventRef);
   
   if (!eventSnap.exists()) {
     return null;
   }
   
-  const data = eventSnap.data();
+  // Convert all timestamps (including nested ones) and validate
+  const data = validateEventData(convertEventTimestamps(eventSnap.data()));
+  
   return {
     id: eventId,
     ...data,
@@ -170,12 +197,7 @@ export async function getBrandEvents(
   
   const events: EventDocument[] = [];
   for (const docSnap of querySnap.docs) {
-    const data = validateEventData({
-      ...docSnap.data(),
-      createdAt: docSnap.data().createdAt?.toDate(),
-      scheduledDate: docSnap.data().scheduledDate?.toDate(),
-      scheduledEndDate: docSnap.data().scheduledEndDate?.toDate(),
-    });
+    const data = validateEventData(convertEventTimestamps(docSnap.data()));
     
     // Filter by isActive if needed
     if (activeOnly && !data.isActive) continue;
@@ -219,12 +241,7 @@ export async function getOrganizationEvents(
   
   const events: EventDocument[] = [];
   for (const docSnap of querySnap.docs) {
-    const data = validateEventData({
-      ...docSnap.data(),
-      createdAt: docSnap.data().createdAt?.toDate(),
-      scheduledDate: docSnap.data().scheduledDate?.toDate(),
-      scheduledEndDate: docSnap.data().scheduledEndDate?.toDate(),
-    });
+    const data = validateEventData(convertEventTimestamps(docSnap.data()));
     
     // Filter by isActive if needed
     if (activeOnly && !data.isActive) continue;
@@ -268,12 +285,7 @@ export async function getChildEvents(
   
   const events: EventDocument[] = [];
   for (const docSnap of querySnap.docs) {
-    const data = validateEventData({
-      ...docSnap.data(),
-      createdAt: docSnap.data().createdAt?.toDate(),
-      scheduledDate: docSnap.data().scheduledDate?.toDate(),
-      scheduledEndDate: docSnap.data().scheduledEndDate?.toDate(),
-    });
+    const data = validateEventData(convertEventTimestamps(docSnap.data()));
     
     // Filter by isActive if needed
     if (activeOnly && !data.isActive) continue;
