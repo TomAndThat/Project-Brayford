@@ -22,6 +22,7 @@ import {
   BRANDS_VIEW,
   EVENTS_VIEW,
   EVENTS_MANAGE_MODULES,
+  IMAGES_VIEW,
 } from "@brayford/core";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import DashboardLayoutWrapper from "@/components/dashboard/DashboardLayoutWrapper";
@@ -355,6 +356,38 @@ export default function DashboardPage() {
                   </div>
                 </button>
               )}
+
+            {currentMember && hasPermission(currentMember, IMAGES_VIEW) && (
+              <button
+                onClick={() => router.push("/dashboard/images")}
+                data-testid="images-card"
+                className="bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition-shadow"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Images
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Manage your image library
+                    </p>
+                  </div>
+                  <svg
+                    className="w-8 h-8 text-emerald-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+              </button>
+            )}
           </div>
 
           {/* Events Section */}

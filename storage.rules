@@ -17,6 +17,21 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');
     }
 
+    // Organization image library: images/{organizationId}/{imageId}/{filename}
+    // Centralised image storage for the Asset Management domain.
+    // Public read so audience app and stage view can display images.
+    // Write requires authentication; permission checks (images:upload etc.)
+    // happen in the application layer (API route) before the upload URL is used.
+    match /images/{organizationId}/{imageId}/{fileName} {
+      // Anyone can read (audience/stage apps need to display images)
+      allow read: if true;
+
+      // Only authenticated users can write (app layer checks org permissions)
+      allow write: if request.auth != null
+                   && request.resource.size <= 10 * 1024 * 1024  // 10 MB
+                   && request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
+    }
+
     // Deny everything else
     match /{allPaths=**} {
       allow read, write: if false;

@@ -23,6 +23,17 @@ export {
   type UploadResult,
 } from './storage';
 
+// Firebase Storage operations (image library)
+export {
+  buildImageStoragePath,
+  validateImageFile,
+  extractImageDimensions,
+  uploadImageFile,
+  deleteImageFile,
+  type ImageUploadResult,
+  type UploadProgressCallback,
+} from './image-storage';
+
 // Jitter utility for concurrent write protection
 export {
   withJitter,

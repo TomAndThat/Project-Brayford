@@ -44,7 +44,7 @@ body {
 }
 
 .prose h2 {
-  @apply text-2xl border-b border-gray-200 pb-2;
+  @apply text-2xl;
 }
 
 .prose h3 {

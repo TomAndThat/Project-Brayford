@@ -1,8 +1,8 @@
 # Scene System Architecture
 
 **Domain:** Interaction Domain  
-**Status:** Approved - Implementation Pending  
-**Last Updated:** 12 February 2026
+**Status:** MVP In Progress - Text Module Complete  
+**Last Updated:** 13 February 2026
 
 ---
 
@@ -73,31 +73,23 @@ We've chosen a **scene-based approach** (similar to slides in a presentation or 
 // Not a separate collection - embedded in scene.modules array
 {
   id: string                     // Unique within scene (UUID)
-  moduleType: ModuleType         // "welcome" | "qna" | "poll" | "countdown" | "sponsor"
+  moduleType: ModuleType         // Type of module to render
   order: number                  // Stack order (0 = bottom, higher = top)
   config: Record<string, any>    // Module-specific configuration
 }
 
-// Example module configs:
-// Welcome module
+// Example module config:
+// Text module (rich text content display)
 config: {
-  title: "Welcome to the Show!",
-  message: "We're glad you're here. Questions coming soon.",
-  backgroundColor: "#1a1a1a"
-}
-
-// Q&A module
-config: {
-  sessionId: QASessionId,  // Links to separate Q&A session
-  displayMode: "submit" | "viewing" | "closed"
-}
-
-// Poll module
-config: {
-  pollId: PollId,         // Links to separate poll
-  question: "What topic should we cover next?",
-  options: ["AI", "Web3", "Climate"],
-  allowMultiple: false
+  content: {                     // Tiptap JSONContent format
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "Welcome to the Q&A session!" }]
+      }
+    ]
+  }
 }
 ```
 
@@ -256,12 +248,10 @@ Creating Event from Template:
 
 ### Phase 2: Module System Foundation
 
-- [ ] Module type registry
-- [ ] Three starter modules:
-  - Welcome screen (static content)
-  - Q&A integration (links to future Q&A module)
-  - Poll integration (links to future poll module)
-- [ ] Module config validation schemas (Zod)
+- [x] Module type registry and core infrastructure
+- [x] Text module (rich text content display)
+- [ ] Additional modules (image, video, interactive)
+- [x] Module config validation schemas (Zod)
 
 ### Phase 3: Creator UI
 
@@ -337,19 +327,14 @@ match /events/{eventId}/live/state {
 ### Branded Types
 
 ```typescript
-// Add to packages/core/src/types/branded.ts
+// Already added to packages/core/src/types/branded.ts
 export type SceneId = Brand<string, "SceneId">;
 export type ModuleInstanceId = Brand<string, "ModuleInstanceId">;
 
-// Module types
-export type ModuleType =
-  | "welcome"
-  | "qna"
-  | "poll"
-  | "countdown"
-  | "sponsor"
-  | "video"
-  | "image";
+// Current module types
+export type ModuleType = "text";
+
+// New module types will be added as they are implemented
 ```
 
 ---

@@ -84,6 +84,11 @@ const PERMISSION_ABBREVIATIONS: Record<string, string> = {
   "analytics:view_brand": "avb",
   "analytics:view_event": "ave",
   "analytics:export": "ae",
+  // Images
+  "images:upload": "iu",
+  "images:view": "iv",
+  "images:update": "iup",
+  "images:delete": "id",
 };
 
 /**

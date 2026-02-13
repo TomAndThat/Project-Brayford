@@ -92,6 +92,20 @@ export const ANALYTICS_PERMISSIONS: Permission[] = [
   ANALYTICS_EXPORT,
 ];
 
+// ===== Image Management =====
+
+export const IMAGES_UPLOAD = createPermission('images', 'upload');
+export const IMAGES_VIEW = createPermission('images', 'view');
+export const IMAGES_UPDATE = createPermission('images', 'update');
+export const IMAGES_DELETE = createPermission('images', 'delete');
+
+export const IMAGE_MANAGEMENT_PERMISSIONS: Permission[] = [
+  IMAGES_UPLOAD,
+  IMAGES_VIEW,
+  IMAGES_UPDATE,
+  IMAGES_DELETE,
+];
+
 // ===== All Permissions =====
 
 /**
@@ -103,6 +117,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   ...BRAND_MANAGEMENT_PERMISSIONS,
   ...EVENT_MANAGEMENT_PERMISSIONS,
   ...ANALYTICS_PERMISSIONS,
+  ...IMAGE_MANAGEMENT_PERMISSIONS,
 ];
 
 /**

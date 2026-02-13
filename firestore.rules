@@ -126,6 +126,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ===== Images Collection =====
+    // Organization-level image library (Asset Management Domain).
+    // Read: Org members only (images may include unreleased branding, sponsors, etc.).
+    // Write: Server-side only (API routes handle permission checks + Storage coordination).
+    match /images/{imageId} {
+      allow read: if isOrgMember(resource.data.organizationId);
+      allow write: if false;
+    }
+
     // ===== QR Codes Collection =====
     // Get (single doc): Org members OR anyone if QR code is active  
     // List (queries): Org members only (creator app needs to list QR codes for management)

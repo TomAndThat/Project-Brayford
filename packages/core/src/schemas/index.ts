@@ -227,3 +227,29 @@ export {
   type EventLiveStateDocument,
   type UpdateEventLiveStateData,
 } from './event-live-state.schema';
+
+// Image Schema (Asset Management Domain)
+export {
+  ImageSchema,
+  ImageDimensionsSchema,
+  ImageUsedBySchema,
+  ImageUploadStatusSchema,
+  CreateImageSchema,
+  UpdateImageMetadataSchema,
+  validateImageData,
+  validateCreateImageData,
+  validateUpdateImageMetadataData,
+  deduplicateImageName,
+  ACCEPTED_IMAGE_TYPES,
+  MAX_IMAGE_SIZE_BYTES,
+  MAX_TAGS_PER_IMAGE,
+  MAX_TAG_LENGTH,
+  type Image,
+  type ImageDocument,
+  type ImageDimensions,
+  type ImageUsedBy,
+  type ImageUploadStatus,
+  type AcceptedImageType,
+  type CreateImageData,
+  type UpdateImageMetadataData,
+} from './image.schema';

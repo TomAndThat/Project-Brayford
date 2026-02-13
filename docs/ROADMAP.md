@@ -89,7 +89,8 @@
 - [x] Scene schema and Firestore collections (branded types, Zod schemas, constants)
 - [x] Event live state subcollection for real-time sync (`useEventLiveState` hook)
 - [x] Scene CRUD API routes (POST/GET/PATCH/DELETE + live-state endpoints)
-- [x] Module type registry and config validation (5 module types: welcome, Q&A, poll, countdown, sponsor)
+- [x] Module type registry and config validation
+- [x] Text module (rich text content display)
 - [x] Firestore security rules for scenes and live state
 - [x] 85+ tests passing across core schemas, Firebase operations, and API routes
 - [x] Scenes page in Creator dashboard (`/dashboard/scenes`) with navigation card
@@ -101,10 +102,12 @@
 
 **Interactive Modules:**
 
-- [ ] Welcome/static content module
+- [x] Text module (serves as foundation for other modules)
+- [ ] Image module (upload, store, configure per-scene)
+- [ ] Image management library (org-level assets, billing limits)
 - [ ] Q&A module MVP (submit questions, moderation)
 - [ ] Polling module MVP (create polls, vote, view results)
-- [ ] Module integration with scene system
+- [ ] Additional modules (video, reactions, voting, trivia, etc.)
 - [ ] Real-time module state management
 - [ ] Moderation tools for Q&A
 

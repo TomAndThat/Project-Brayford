@@ -54,6 +54,7 @@
 
 - All code must be production-ready quality, even in early stages
 - It is _never_ acceptable to use alert() style messaging. All user-facing messages must be presented in proper components with appropriate styling and UX patterns.
+- It is _never_ acceptable to think of or describe the project as an "MVP" or "prototype" in code comments, documentation, or communication. We are building a production-ready codebase from day one.
 
 ## Project Overview
 

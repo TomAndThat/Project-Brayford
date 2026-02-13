@@ -36,6 +36,11 @@ import {
   ANALYTICS_VIEW_BRAND,
   ANALYTICS_VIEW_EVENT,
   ANALYTICS_EXPORT,
+  // Images
+  IMAGES_UPLOAD,
+  IMAGES_VIEW,
+  IMAGES_UPDATE,
+  IMAGES_DELETE,
 } from './constants';
 
 /**
@@ -76,6 +81,11 @@ const ADMIN_PERMISSIONS: Permission[] = [
   ANALYTICS_VIEW_BRAND,
   ANALYTICS_VIEW_EVENT,
   ANALYTICS_EXPORT,
+  // Images
+  IMAGES_UPLOAD,
+  IMAGES_VIEW,
+  IMAGES_UPDATE,
+  IMAGES_DELETE,
 ];
 
 /**
@@ -98,6 +108,11 @@ const MEMBER_PERMISSIONS: Permission[] = [
   ANALYTICS_VIEW_BRAND,
   ANALYTICS_VIEW_EVENT,
   ANALYTICS_EXPORT,
+  // Images (full access — members frequently need to manage images)
+  IMAGES_UPLOAD,
+  IMAGES_VIEW,
+  IMAGES_UPDATE,
+  IMAGES_DELETE,
 ];
 
 /**

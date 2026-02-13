@@ -24,6 +24,10 @@ import {
   logBatchSummary,
 } from "./email/index.js";
 import {onBrandStylingChange} from "./storage/brand-image-cleanup.js";
+import {
+  onBrandImageReferencesChange,
+  onSceneImageReferencesChange,
+} from "./images/update-image-references.js";
 
 // Initialize Firebase Admin
 initializeApp();
@@ -733,3 +737,8 @@ export const onInvitationCreated = onDocumentCreated(
 
 // Re-export the brand image cleanup trigger
 export { onBrandStylingChange };
+
+// ===== Image Reference Tracking =====
+
+// Re-export image reference tracking triggers
+export { onBrandImageReferencesChange, onSceneImageReferencesChange };

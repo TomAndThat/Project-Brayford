@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Image Library**: Organisation-level image management (Asset Management Domain)
+  - Zod schema with validation for image documents (`packages/core/src/schemas/image.schema.ts`)
+  - Branded `ImageId` type for type-safe references
+  - Free-form tagging system for filtering and discovery
+  - Reference tracking (`usedBy` / `usageCount`) for deletion protection
+  - Upload lifecycle management (pending → ready → failed)
+  - Automatic name deduplication for duplicate uploads
+  - New permissions: `images:upload`, `images:view`, `images:update`, `images:delete` — granted to all roles
+  - Firestore security rules for `/images/{imageId}` collection
+  - Firebase Storage rules for `/images/{organizationId}/{imageId}/{filename}` path
+  - Firestore composite indexes for image queries (by org + date, org + name)
+  - Claims abbreviations for image permissions (`iu`, `iv`, `iup`, `id`)
+- **Image Library — Full-stack implementation**
+  - Firestore CRUD operations in `packages/firebase-utils` (create, read, update, delete, list, deduplicate names)
+  - Client-side upload utilities with progress tracking (`uploadBytesResumable`)
+  - API routes: upload initiation, upload confirmation, list (with tag/status filters), update metadata, delete (with usage-count protection)
+  - Real-time `useImageLibrary` hook with `onSnapshot` subscription and client-side tag filtering
+  - Dashboard library page: searchable, filterable grid of image cards with sort options
+  - Image detail/edit page: large preview, metadata form (name, description, tags), file information, usage list, danger-zone deletion
+  - Images card on creator dashboard (permission-gated via `IMAGES_VIEW`)
+  - **ImageUploadModal**: Multi-file drag-and-drop upload with per-file progress, editable names, and tag assignment
+  - **ImagePickerDialog**: Reusable image selector dialog with search, tag filtering, and inline upload
+  - **ImageUsageList**: Resolves and displays brands/scenes referencing an image with links to detail pages
+  - Cloud Function triggers (`onBrandImageReferencesChange`, `onSceneImageReferencesChange`) for automatic `usedBy`/`usageCount` tracking
+
 - **Scene Builder**: Rich text editor for text modules using Tiptap
   - Full WYSIWYG editing with formatting toolbar (bold, italic, underline, strikethrough)
   - Heading support (H1-H6)

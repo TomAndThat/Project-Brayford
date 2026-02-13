@@ -177,6 +177,17 @@ _\*\* Members only for events under brands in their `brandAccess` array_
 
 _\*\* Members only for brands/events they have access to_
 
+### Image Management
+
+| Permission       | Description                      | Owner | Admin | Member |
+| ---------------- | -------------------------------- | ----- | ----- | ------ |
+| `images:upload`  | Upload new images to library     | ✅    | ✅    | ✅     |
+| `images:view`    | View organisation's image library| ✅    | ✅    | ✅     |
+| `images:update`  | Edit image metadata (name, tags) | ✅    | ✅    | ✅     |
+| `images:delete`  | Delete images (if not in use)    | ✅    | ✅    | ✅     |
+
+_All roles have full image management access. Members frequently need to upload and manage images for scenes and events._
+
 ---
 
 ## Role Definitions
@@ -254,6 +265,10 @@ analytics:view_org
 analytics:view_brand
 analytics:view_event
 analytics:export
+images:upload
+images:view
+images:update
+images:delete
 ```
 
 **Restrictions:**
@@ -289,6 +304,10 @@ events:moderate (restricted)
 analytics:view_brand (restricted)
 analytics:view_event (restricted)
 analytics:export (restricted)
+images:upload
+images:view
+images:update
+images:delete
 ```
 
 **Restrictions:**

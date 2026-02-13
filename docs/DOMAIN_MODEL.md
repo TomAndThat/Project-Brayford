@@ -30,7 +30,7 @@ Each domain should be as independent as possible to enable parallel development 
 
 ## Core Domains
 
-Our application features seven core domains:
+Our application features eight core domains:
 
 ### 1. **Identity & Access Domain**
 
@@ -149,6 +149,22 @@ Our application features seven core domains:
 
 ---
 
+### 8. **Asset Management Domain**
+
+**Responsibility:** Organization-level image library, upload management, reference tracking
+
+**Key Concepts:**
+
+- Images (logos, backgrounds, scene content, sponsor assets)
+- Free-form tagging for discovery and filtering
+- Reference tracking (which brands/scenes use which images)
+- Deletion protection (prevent removing in-use assets)
+- Centralised storage per organisation (Firebase Storage)
+
+**Why separate?** Images are shared resources used across multiple domains (brands, events, scenes). Centralising them prevents duplication, provides a consistent management UX, and enables usage tracking across the platform.
+
+---
+
 ## Domain Relationships
 
 > **Note:** For detailed Firestore schemas, field types, and validation rules, see the TypeScript schema definitions in `packages/core/src/schemas/`. The schemas are the single source of truth for data structure.
@@ -159,6 +175,7 @@ Our application features seven core domains:
 Organization (the paying customer: BBC, MrBeast LLC, Jane Smith Productions)
   ├── Users (team members: Sarah, Jimmy, Jane)
   │    └── Roles (owner, admin, member)
+  ├── Images (org-wide image library: logos, backgrounds, sponsor assets)
   ├── Subscription (how they pay)
   │    └── Usage Records (what they consume)
   └── Brands (public brands: Goal Hanger, MrBeast Gaming)
@@ -224,6 +241,7 @@ Organization (the paying customer: BBC, MrBeast LLC, Jane Smith Productions)
 | Domain           | Depends On       | Why                                                          |
 | ---------------- | ---------------- | ------------------------------------------------------------ |
 | Organization     | Identity         | Users must exist before they can create/join organizations   |
+| Asset Management | Organization     | Images belong to organizations                               |
 | Event Management | Organization     | Events belong to brands, which belong to organizations       |
 | Interaction      | Event Management | Modules live within events                                   |
 | Audience         | Event Management | Participants join events                                     |

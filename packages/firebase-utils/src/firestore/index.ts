@@ -123,3 +123,16 @@ export {
   markSceneContentUpdated,
   useEventLiveState,
 } from './event-live-state';
+
+// Image operations (Asset Management Domain)
+export {
+  getImageRef,
+  getImage,
+  createImage,
+  updateImageMetadata,
+  confirmImageUpload,
+  deleteImage,
+  getOrganizationImages,
+  getOrganizationImageNames,
+  imageExists,
+} from './images';

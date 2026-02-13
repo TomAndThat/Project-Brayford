@@ -22,7 +22,8 @@ export type PermissionCategory =
   | 'users'
   | 'brands'
   | 'events'
-  | 'analytics';
+  | 'analytics'
+  | 'images';
 
 /**
  * Permission action types
@@ -35,6 +36,7 @@ export type PermissionAction =
   | 'invite'
   | 'remove'
   | 'publish'
+  | 'upload'
   | 'manage_billing'
   | 'view_billing'
   | 'view_settings'

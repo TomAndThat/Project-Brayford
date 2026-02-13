@@ -52,6 +52,11 @@ export type ModuleId = Brand<string, 'ModuleId'>;
 export type InteractionId = Brand<string, 'InteractionId'>;
 
 /**
+ * Asset Management Domain
+ */
+export type ImageId = Brand<string, 'ImageId'>;
+
+/**
  * Audience Domain
  */
 export type ParticipantId = Brand<string, 'ParticipantId'>;
