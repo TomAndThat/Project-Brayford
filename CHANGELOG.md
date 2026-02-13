@@ -7,7 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Image Library — Cascade Deletion**: Fixed critical bug where images could be deleted whilst actively in use
+  - Root cause: Original implementation relied on async-cached `usageCount` field updated by Cloud Functions. When the function hadn't fired yet, `usageCount` was 0 even when the image was actively referenced by brands/scenes.
+  - Solution: Replaced with live Firestore queries that directly inspect actual brand styling fields and scene module configs
+  - Brand references detected via 4 parallel queries: `styling.profileImageId`, `styling.logoImageId`, `styling.bannerImageId`, `styling.headerBackgroundImageId`
+  - Scene references detected by querying all scenes and scanning module configs for storage path/imageId matches
+  - Results properly deduplicated when same entity appears in multiple field queries
+  - Fixes deletion protection: Accurate 409 Conflict responses with correct "used by" entities
+  - Fixes cascade detection: Live event warnings now properly account for affected brands in live events
+  - All 15 integration tests rewritten to test live query behaviour, including the exact reported bug scenario
+
 ### Added
+
+- **Image Library — Cascade Deletion**: Hybrid deletion approach for images in use
+  - Enhanced DELETE /api/images/[imageId] endpoint with `?force=true` query parameter
+  - Cascade confirmation modal showing affected brands, scenes, and live event warnings
+  - Permission verification: checks `brands:update` and `events:manage_modules` before cascade deletion
+  - Automatic removal of image references from all affected brands and scenes
+  - Live event warnings in confirmation dialog to prevent production incidents
+  - Summary response showing number of items affected by cascade deletion
+  - Production-ready safeguards against accidental deletion during live events
+  - Comprehensive integration tests covering all deletion scenarios:
+    - Standard deletion with conflict response
+    - Live event warning display
+    - Permission boundary enforcement
+    - Cascade deletion with brand reference cleanup
+    - Scene module config reference cleanup
+    - Edge cases (missing images, deleted brands)
 
 - **Image Library**: Organisation-level image management (Asset Management Domain)
   - Zod schema with validation for image documents (`packages/core/src/schemas/image.schema.ts`)

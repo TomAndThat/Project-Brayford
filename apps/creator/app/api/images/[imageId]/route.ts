@@ -3,7 +3,8 @@
  * DELETE /api/images/[imageId] — Delete image
  *
  * PATCH: Requires images:update permission. Updates name, description, tags.
- * DELETE: Requires images:delete permission. Checks usageCount before deletion.
+ * DELETE: Requires images:delete permission. Performs live Firestore queries to
+ *         find active references before allowing deletion.
  *
  * Authorization: Bearer <Firebase ID Token>
  *
@@ -33,6 +34,8 @@ import {
   hasPermission,
   IMAGES_UPDATE,
   IMAGES_DELETE,
+  BRANDS_UPDATE,
+  EVENTS_MANAGE_MODULES,
   validateUpdateImageMetadataData,
   deduplicateImageName,
 } from '@brayford/core';
@@ -209,10 +212,129 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/images/[imageId]
+ * Perform a live query to find all brand documents that reference the given imageId
+ * in any of their styling image fields.
  *
- * Delete an image. Checks usageCount — if > 0, returns 409 Conflict
- * with the usedBy details so the frontend can show where it's referenced.
+ * Runs 4 parallel Firestore queries (one per image field) and deduplicates results.
+ * This is the source of truth — never rely on the async-cached usedBy/usageCount fields
+ * for destructive operations.
+ */
+async function findBrandReferencesLive(
+  imageId: string,
+  organizationId: string,
+): Promise<string[]> {
+  const stylingFields = [
+    'styling.profileImageId',
+    'styling.logoImageId',
+    'styling.bannerImageId',
+    'styling.headerBackgroundImageId',
+  ] as const;
+
+  const queries = stylingFields.map((field) =>
+    adminDb
+      .collection('brands')
+      .where('organizationId', '==', organizationId)
+      .where(field, '==', imageId)
+      .select() // Only need document IDs
+      .get(),
+  );
+
+  const results = await Promise.all(queries);
+  const brandIds = new Set<string>();
+
+  for (const snapshot of results) {
+    for (const doc of snapshot.docs) {
+      brandIds.add(doc.id);
+    }
+  }
+
+  return Array.from(brandIds);
+}
+
+/**
+ * Recursively collect all string values from a nested object/array structure.
+ * Used to scan scene module configs for image URLs.
+ */
+function collectStringValues(obj: unknown): string[] {
+  if (typeof obj === 'string') return [obj];
+  if (Array.isArray(obj)) return obj.flatMap(collectStringValues);
+  if (obj && typeof obj === 'object') {
+    return Object.values(obj as Record<string, unknown>).flatMap(collectStringValues);
+  }
+  return [];
+}
+
+/**
+ * Perform a live query to find all scene documents that reference the given image
+ * in their module configs.
+ *
+ * Scenes store image references as URLs containing the image's storagePath within
+ * nested module config objects. Firestore cannot query these directly, so we fetch
+ * all scenes for the organisation and scan in code.
+ */
+async function findSceneReferencesLive(
+  imageId: string,
+  storagePath: string,
+  organizationId: string,
+): Promise<string[]> {
+  const scenesSnapshot = await adminDb
+    .collection('scenes')
+    .where('organizationId', '==', organizationId)
+    .get();
+
+  // Firebase Storage URLs encode paths with %2F — check both forms
+  const encodedStoragePath = storagePath
+    .split('/')
+    .map(encodeURIComponent)
+    .join('%2F');
+
+  const sceneIds: string[] = [];
+
+  for (const doc of scenesSnapshot.docs) {
+    const modules = doc.data().modules;
+    if (!Array.isArray(modules)) continue;
+
+    let found = false;
+    for (const mod of modules) {
+      if (!mod?.config) continue;
+
+      const strings = collectStringValues(mod.config);
+      for (const str of strings) {
+        if (
+          str.includes(storagePath) ||
+          str.includes(encodedStoragePath) ||
+          str.includes(imageId)
+        ) {
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    if (found) {
+      sceneIds.push(doc.id);
+    }
+  }
+
+  return sceneIds;
+}
+
+/**
+ * DELETE /api/images/[imageId]?force=true
+ *
+ * Delete an image. Performs live Firestore queries to find all entities that
+ * reference this image. If references exist, either returns 409 Conflict
+ * or performs cascade deletion based on ?force query parameter.
+ *
+ * Without ?force=true:
+ * - Returns 409 with usedBy details and live event warnings
+ *
+ * With ?force=true:
+ * - Verifies user has update permissions for all affected brands/scenes
+ * - Removes image references from all entities
+ * - Deletes the image
+ * - Returns summary of affected entities
  */
 export async function DELETE(
   request: NextRequest,
@@ -220,28 +342,202 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     const { imageId } = await params;
+    const { searchParams } = new URL(request.url);
+    const force = searchParams.get('force') === 'true';
 
     const result = await verifyImagePermission(request, imageId, IMAGES_DELETE);
     if (result.error) return result.error;
 
-    const { imageRef, imageData } = result;
+    const { imageRef, imageData, uid } = result;
 
-    // Check usage count — prevent deletion if image is in use
-    const usageCount = (imageData.usageCount as number) || 0;
-    if (usageCount > 0) {
-      return NextResponse.json(
-        {
-          error: 'This image is currently in use and cannot be deleted.',
-          usedBy: imageData.usedBy || { brands: [], scenes: [] },
-        },
-        { status: 409 },
-      );
+    const organizationId = imageData.organizationId as string;
+    const storagePath = imageData.storagePath as string;
+
+    // Live query: find ALL entities that actually reference this image right now.
+    // Never rely on the async-cached usageCount/usedBy fields for destructive operations.
+    const [affectedBrandIds, affectedSceneIds] = await Promise.all([
+      findBrandReferencesLive(imageId, organizationId),
+      findSceneReferencesLive(imageId, storagePath, organizationId),
+    ]);
+
+    const usedByLive = {
+      brands: affectedBrandIds,
+      scenes: affectedSceneIds,
+    };
+
+    const totalReferences = usedByLive.brands.length + usedByLive.scenes.length;
+
+    if (totalReferences > 0) {
+      // If not forcing, return conflict with details so the frontend can show the cascade modal
+      if (!force) {
+        // Check if any affected brands are in live events
+        const liveEventWarnings: string[] = [];
+
+        if (usedByLive.brands.length > 0) {
+          // Firestore 'in' queries support up to 30 values
+          const brandBatches: string[][] = [];
+          for (let i = 0; i < usedByLive.brands.length; i += 30) {
+            brandBatches.push(usedByLive.brands.slice(i, i + 30));
+          }
+
+          const liveEventQueries = brandBatches.map((batch) =>
+            adminDb
+              .collection('events')
+              .where('brandId', 'in', batch)
+              .where('status', '==', 'live')
+              .get(),
+          );
+
+          const liveEventResults = await Promise.all(liveEventQueries);
+          let liveEventCount = 0;
+          for (const snap of liveEventResults) {
+            liveEventCount += snap.size;
+          }
+
+          if (liveEventCount > 0) {
+            liveEventWarnings.push(
+              `⚠️ ${liveEventCount} ${liveEventCount === 1 ? 'brand is' : 'brands are'} currently in live events`,
+            );
+          }
+        }
+
+        return NextResponse.json(
+          {
+            error: 'This image is currently in use and cannot be deleted.',
+            usedBy: usedByLive,
+            liveEventWarnings,
+          },
+          { status: 409 },
+        );
+      }
+
+      // Force deletion: verify permissions and perform cascade deletion
+
+      // Get user's organization membership for permission checks
+      const memberQuery = await adminDb
+        .collection('organizationMembers')
+        .where('organizationId', '==', organizationId)
+        .where('userId', '==', uid)
+        .limit(1)
+        .get();
+
+      if (memberQuery.empty) {
+        return NextResponse.json(
+          { error: 'You are not a member of this organisation' },
+          { status: 403 },
+        );
+      }
+
+      const memberData = memberQuery.docs[0]!.data();
+      const actorMember = {
+        organizationId: memberData.organizationId,
+        userId: memberData.userId,
+        role: memberData.role,
+        permissions: memberData.permissions || [],
+        brandAccess: memberData.brandAccess || [],
+      } as OrganizationMember;
+
+      // Check if user has brands:update permission for affected brands
+      if (usedByLive.brands.length > 0 && !hasPermission(actorMember, BRANDS_UPDATE)) {
+        return NextResponse.json(
+          { error: 'You do not have permission to update the brands using this image' },
+          { status: 403 },
+        );
+      }
+
+      // Check if user has events:manage_modules permission for affected scenes
+      if (usedByLive.scenes.length > 0 && !hasPermission(actorMember, EVENTS_MANAGE_MODULES)) {
+        return NextResponse.json(
+          { error: 'You do not have permission to update the scenes using this image' },
+          { status: 403 },
+        );
+      }
+
+      // Perform cascade deletion: remove image references from all entities
+      const updatePromises: Promise<void>[] = [];
+
+      // Update brands
+      for (const brandId of usedByLive.brands) {
+        const brandRef = adminDb.collection('brands').doc(brandId);
+        updatePromises.push(
+          brandRef.get().then(async (brandDoc) => {
+            if (!brandDoc.exists) return;
+
+            const brandData = brandDoc.data();
+            const styling = (brandData?.styling || {}) as Record<string, unknown>;
+            const updates: Record<string, null> = {};
+
+            // Check each image field and clear if it matches this imageId
+            if (styling.profileImageId === imageId) {
+              updates['styling.profileImageId'] = null;
+              updates['styling.profileImageUrl'] = null;
+            }
+            if (styling.logoImageId === imageId) {
+              updates['styling.logoImageId'] = null;
+              updates['styling.logoImageUrl'] = null;
+            }
+            if (styling.bannerImageId === imageId) {
+              updates['styling.bannerImageId'] = null;
+              updates['styling.bannerImageUrl'] = null;
+            }
+            if (styling.headerBackgroundImageId === imageId) {
+              updates['styling.headerBackgroundImageId'] = null;
+              updates['styling.headerBackgroundImageUrl'] = null;
+            }
+
+            if (Object.keys(updates).length > 0) {
+              await brandRef.update(updates);
+            }
+          }),
+        );
+      }
+
+      // Update scenes (scan module configs for image references)
+      for (const sceneId of usedByLive.scenes) {
+        const sceneRef = adminDb.collection('scenes').doc(sceneId);
+        updatePromises.push(
+          sceneRef.get().then(async (sceneDoc) => {
+            if (!sceneDoc.exists) return;
+
+            const sceneData = sceneDoc.data();
+            const modules = sceneData?.modules as Array<Record<string, unknown>> | undefined;
+
+            if (!modules || !Array.isArray(modules)) return;
+
+            // Deep scan and replace image URLs in module configs
+            let hasChanges = false;
+            const updatedModules = modules.map((mod) => {
+              const config = mod.config as Record<string, unknown> | undefined;
+              if (!config) return mod;
+
+              const updatedConfig = replaceImageReferencesInConfig(
+                config,
+                storagePath,
+              );
+
+              if (updatedConfig !== config) {
+                hasChanges = true;
+                return { ...mod, config: updatedConfig };
+              }
+
+              return mod;
+            });
+
+            if (hasChanges) {
+              await sceneRef.update({ modules: updatedModules });
+            }
+          }),
+        );
+      }
+
+      // Wait for all updates to complete
+      await Promise.allSettled(updatePromises);
     }
 
     // Delete from Storage
     try {
       const bucket = getStorage().bucket();
-      const file = bucket.file(imageData.storagePath);
+      const file = bucket.file(storagePath);
       await file.delete();
     } catch (storageError: unknown) {
       // Ignore "not found" — file may have already been deleted
@@ -260,6 +556,17 @@ export async function DELETE(
     // Delete Firestore document
     await imageRef.delete();
 
+    // Return success with summary
+    if (totalReferences > 0) {
+      return NextResponse.json({
+        success: true,
+        removed: {
+          brands: usedByLive.brands.length,
+          scenes: usedByLive.scenes.length,
+        },
+      });
+    }
+
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('Image deletion failed:', error);
@@ -268,4 +575,51 @@ export async function DELETE(
       { status: 500 },
     );
   }
+}
+
+/**
+ * Recursively replace image references in scene module configs.
+ * Returns a new config object if changes were made, or the original if unchanged.
+ */
+function replaceImageReferencesInConfig(
+  config: Record<string, unknown>,
+  targetStoragePath: string,
+): Record<string, unknown> {
+  let hasChanges = false;
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(config)) {
+    if (typeof value === 'string' && value.includes(targetStoragePath)) {
+      result[key] = null;
+      hasChanges = true;
+    } else if (Array.isArray(value)) {
+      const updatedArray = value.map((item) => {
+        if (typeof item === 'string' && item.includes(targetStoragePath)) {
+          hasChanges = true;
+          return null;
+        }
+        if (item && typeof item === 'object') {
+          const updated = replaceImageReferencesInConfig(
+            item as Record<string, unknown>,
+            targetStoragePath,
+          );
+          if (updated !== item) hasChanges = true;
+          return updated;
+        }
+        return item;
+      });
+      result[key] = updatedArray;
+    } else if (value && typeof value === 'object') {
+      const updated = replaceImageReferencesInConfig(
+        value as Record<string, unknown>,
+        targetStoragePath,
+      );
+      result[key] = updated;
+      if (updated !== value) hasChanges = true;
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return hasChanges ? result : config;
 }

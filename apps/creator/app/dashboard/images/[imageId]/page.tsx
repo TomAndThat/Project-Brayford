@@ -69,6 +69,11 @@ export default function ImageDetailPage({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCascadeConfirm, setShowCascadeConfirm] = useState(false);
+  const [cascadeData, setCascadeData] = useState<{
+    usedBy: { brands: string[]; scenes: string[] };
+    liveEventWarnings: string[];
+  } | null>(null);
   const [notification, setNotification] = useState<{
     type: "success" | "error";
     message: string;
@@ -223,7 +228,7 @@ export default function ImageDetailPage({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (force = false) => {
     if (!image || !currentMember) return;
 
     setIsDeleting(true);
@@ -231,23 +236,41 @@ export default function ImageDetailPage({
 
     try {
       const token = await auth.currentUser?.getIdToken();
-      const response = await fetch(`/api/images/${image.id}`, {
+      const url = force
+        ? `/api/images/${image.id}?force=true`
+        : `/api/images/${image.id}`;
+
+      const response = await fetch(url, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (response.status === 204) {
-        router.push("/dashboard/images");
+      if (response.status === 204 || response.ok) {
+        // If force deletion, show summary
+        if (force && response.ok) {
+          const data = await response.json();
+          const totalRemoved =
+            (data.removed?.brands || 0) + (data.removed?.scenes || 0);
+          setNotification({
+            type: "success",
+            message: `Image deleted and removed from ${totalRemoved} ${totalRemoved === 1 ? "item" : "items"}.`,
+          });
+          setTimeout(() => router.push("/dashboard/images"), 2000);
+        } else {
+          router.push("/dashboard/images");
+        }
         return;
       }
 
       if (response.status === 409) {
         const data = await response.json();
-        setNotification({
-          type: "error",
-          message: data.error || "This image is in use and cannot be deleted.",
+        // Show cascade confirmation modal
+        setCascadeData({
+          usedBy: data.usedBy || { brands: [], scenes: [] },
+          liveEventWarnings: data.liveEventWarnings || [],
         });
         setShowDeleteConfirm(false);
+        setShowCascadeConfirm(true);
       } else {
         const errorData = await response.json();
         setNotification({
@@ -260,6 +283,11 @@ export default function ImageDetailPage({
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleCascadeConfirm = async () => {
+    setShowCascadeConfirm(false);
+    await handleDelete(true);
   };
 
   const handleAddTag = () => {
@@ -537,13 +565,7 @@ export default function ImageDetailPage({
                     cannot be undone.
                   </p>
 
-                  {image.usageCount > 0 ? (
-                    <div className="p-3 bg-amber-50 rounded-md text-sm text-amber-800">
-                      This image is currently used by {image.usageCount}{" "}
-                      {image.usageCount === 1 ? "item" : "items"} and cannot be
-                      deleted until all references are removed.
-                    </div>
-                  ) : !showDeleteConfirm ? (
+                  {!showDeleteConfirm ? (
                     <button
                       onClick={() => setShowDeleteConfirm(true)}
                       className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100"
@@ -553,7 +575,7 @@ export default function ImageDetailPage({
                   ) : (
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={handleDelete}
+                        onClick={() => handleDelete(false)}
                         disabled={isDeleting}
                         className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-gray-300"
                       >
@@ -573,6 +595,82 @@ export default function ImageDetailPage({
           </div>
         </main>
       </div>
+
+      {/* Cascade Delete Confirmation Modal */}
+      {showCascadeConfirm && cascadeData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Image In Use
+            </h3>
+
+            <div className="mb-4 space-y-3">
+              <p className="text-sm text-gray-700">
+                This image is currently used by:
+              </p>
+
+              {cascadeData.usedBy.brands.length > 0 && (
+                <div className="p-3 bg-blue-50 rounded-md">
+                  <div className="text-sm font-medium text-blue-900">
+                    {cascadeData.usedBy.brands.length}{" "}
+                    {cascadeData.usedBy.brands.length === 1
+                      ? "Brand"
+                      : "Brands"}
+                  </div>
+                </div>
+              )}
+
+              {cascadeData.usedBy.scenes.length > 0 && (
+                <div className="p-3 bg-purple-50 rounded-md">
+                  <div className="text-sm font-medium text-purple-900">
+                    {cascadeData.usedBy.scenes.length}{" "}
+                    {cascadeData.usedBy.scenes.length === 1
+                      ? "Scene"
+                      : "Scenes"}
+                  </div>
+                </div>
+              )}
+
+              {cascadeData.liveEventWarnings.length > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                  {cascadeData.liveEventWarnings.map((warning, idx) => (
+                    <div
+                      key={idx}
+                      className="text-sm font-medium text-amber-900"
+                    >
+                      {warning}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-sm text-gray-600 mt-4">
+                Deleting this image will remove it from all these items and may
+                affect their appearance.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowCascadeConfirm(false);
+                  setCascadeData(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCascadeConfirm}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-gray-300"
+              >
+                {isDeleting ? "Deleting..." : "Remove and Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayoutWrapper>
   );
 }
