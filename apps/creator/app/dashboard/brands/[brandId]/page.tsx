@@ -1017,8 +1017,8 @@ export default function BrandSettingsPage() {
                           label="Header Background Image (optional)"
                           helperText={
                             headerType === "banner"
-                              ? "An image behind your banner. Visible if the banner has transparency or as a backdrop."
-                              : "An image behind your profile/logo. The background colour will show through any transparency."
+                              ? "An image behind your banner. Visible if the banner has transparency or as a backdrop. Recommended: 1600×1200px or 1920×1080px."
+                              : "An image behind your profile/logo. The background colour will show through any transparency. Recommended: 1600×1200px or 1920×1080px."
                           }
                           currentImageUrl={headerBackgroundImageUrl}
                           onFileSelected={handleHeaderBackgroundFileSelected}

@@ -79,7 +79,16 @@ export default function RichTextEditor({
 
   // Update editor content when prop changes (for editing existing content)
   useEffect(() => {
-    if (editor && content !== editor.getJSON()) {
+    if (!editor) return;
+
+    // Don't update if editor is focused (user is actively typing)
+    if (editor.isFocused) return;
+
+    // Deep comparison of content to avoid unnecessary updates from reference changes
+    const currentContent = JSON.stringify(editor.getJSON());
+    const newContent = JSON.stringify(content);
+
+    if (currentContent !== newContent) {
       editor.commands.setContent(content);
     }
   }, [editor, content]);
