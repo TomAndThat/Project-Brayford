@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Postmark test script**: `functions/scripts/test-email.mjs` verifies credentials and sends a test email to `support@brayford.live`. Run with `pnpm email:test` from the repo root. Requires `EMAIL_DEV_MODE=false` and valid credentials in `functions/.env`.
 
+- **Messaging Module — Scene Builder + Audience Submission**: End-to-end audience message submission is now functional
+  - **Scene Builder**: Messaging is now a first-class module type in the creator Scene Builder. Creators add the module to a scene and configure a prompt (e.g. "Got a question for our guest?") which is displayed above the submission form on audience devices
+  - **Audience app — submission form**: `MessagingModule` component renders a name (optional) + message textarea with live character counter. Inline error feedback is shown for validation failures and rate limiting — no intrusive countdown timer
+  - **Audience app — API route** (`POST /api/audience/messages`): Server-side submission handler enforces rate limiting (one message per device per `MESSAGE_RATE_LIMIT_SECONDS`), validates content length, confirms the event is live, and writes the message atomically to `/messages/` with a subcollection entry in the event's default inbox column so it appears immediately on the creator moderation board
+  - `isOpen` is preserved in the `MessagingModuleConfig` data model (defaults `true`) for future use; the toggle is not exposed in the Scene Builder UI yet
+
 - **Messaging Module — Real-Time Hooks**: `@brayford/firebase-utils` now includes the shared Firebase hooks and CRUD functions for the messaging module
   - `useMessages(eventId)` — subscribes to all non-deleted messages for an event, capped at `MAX_INBOX_MESSAGES` (250); returns a `Map<MessageId, MessageDocument>` for O(1) column-entry resolution
   - `useMessageColumns(eventId)` — subscribes to all columns for an event ordered by board position

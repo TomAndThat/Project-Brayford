@@ -136,3 +136,32 @@ export {
   getOrganizationImageNames,
   imageExists,
 } from './images';
+
+// Message operations (Interaction Domain)
+export {
+  getMessageRef,
+  getMessage,
+  getEventMessages,
+  softDeleteMessage,
+  restoreMessage,
+  editMessage,
+  clearMessageEdit,
+  useMessages,
+} from './messages';
+
+// Message Column operations (Interaction Domain)
+export {
+  getMessageColumnRef,
+  getMessageColumn,
+  getEventMessageColumns,
+  createMessageColumn,
+  updateMessageColumn,
+  deleteMessageColumn,
+  addMessageToColumn,
+  removeMessageFromColumn,
+  moveMessage,
+  reorderMessage,
+  useMessageColumns,
+  useColumnMessageEntries,
+  type ColumnMessageEntryDocument,
+} from './message-columns';

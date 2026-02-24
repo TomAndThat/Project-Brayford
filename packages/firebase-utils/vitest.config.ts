@@ -1,7 +1,24 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'url';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Resolve both source files and @testing-library/react to the same React
+      // installation so they share one ReactCurrentDispatcher singleton.
+      // Without this, Vite's CJS→ESM interop and Node.js's native require() each
+      // produce separate instances of the CJS module.exports object, which breaks
+      // hooks when renderHook renders a component from the Vite-processed side.
+      react: fileURLToPath(new URL('../../node_modules/react', import.meta.url)),
+      'react-dom': fileURLToPath(new URL('../../node_modules/react-dom', import.meta.url)),
+    },
+  },
   test: {
+    deps: {
+      // Inline testing-library and react-dom so they go through Vite's transform
+      // and resolve react via the alias above, ensuring one shared module instance.
+      inline: ['@testing-library/react', 'react-dom'],
+    },
     globals: true,
     environment: 'jsdom', // For Firebase SDK
     env: {
