@@ -3,7 +3,7 @@
 > **⚠️ Superseded — 24 February 2026**  
 > The `@brayford/email-utils` package described in this brief has been removed. The Postmark integration, queue processing, dev mode, and Firestore-backed rate limiting now live exclusively in `functions/src/email/`. Email validation utilities (`isValidEmail`, `normalizeEmail`, `isTestEmail`) have been moved to `@brayford/core/utils`. Refer to `docs/briefs/EMAIL_QUEUE_SYSTEM.md` for the current architecture.
 
-**Package:** ~~`@brayford/email-utils`~~ *(removed)*  
+**Package:** ~~`@brayford/email-utils`~~ _(removed)_  
 **Created:** 9 February 2026  
 **Status:** ~~Planning → Implementation → Testing → Complete~~ **Superseded**
 

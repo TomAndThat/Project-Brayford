@@ -41,3 +41,10 @@ export const MAX_INBOX_MESSAGES = 250;
  * Default name for the inbox column, auto-created when the messaging module is activated.
  */
 export const DEFAULT_INBOX_COLUMN_NAME = 'Inbox';
+
+/**
+ * Maximum total number of message columns per event (including the default inbox).
+ * Enforced in the creator app's moderation board to prevent unbounded Firestore
+ * subscription costs (one onSnapshot listener per visible column).
+ */
+export const MAX_COLUMNS_PER_EVENT = 8;

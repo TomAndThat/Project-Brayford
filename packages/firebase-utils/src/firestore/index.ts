@@ -60,6 +60,7 @@ export {
   getBrandEvents,
   getOrganizationEvents,
   getChildEvents,
+  useEventDocument,
 } from './events';
 
 // QR Code operations

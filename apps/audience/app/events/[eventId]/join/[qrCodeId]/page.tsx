@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   toBranded,
@@ -10,7 +10,12 @@ import {
   type EventDocument,
   type QRCodeDocument,
 } from "@brayford/core";
-import { getEvent, getQRCode, getChildEvents } from "@brayford/firebase-utils";
+import {
+  getEvent,
+  getQRCode,
+  getChildEvents,
+  useEventDocument,
+} from "@brayford/firebase-utils";
 import { getOrCreateUUID } from "@/lib/uuid";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import FullScreenMessage from "@/components/FullScreenMessage";
@@ -32,6 +37,17 @@ export default function JoinEventPage() {
   const [childEvents, setChildEvents] = useState<EventDocument[]>([]);
   const [errorType, setErrorType] = useState<JoinErrorType | null>(null);
 
+  // Real-time event subscription — used to detect when the host takes the
+  // event live so we can automatically resume the join flow for waiting audience
+  // members without them needing to refresh.
+  const { event: liveEvent } = useEventDocument(
+    toBranded<EventId>(params.eventId),
+  );
+
+  // Guard against the auto-join callback firing more than once.
+  const autoJoinFired = useRef(false);
+
+  // Initial gate check — one-off fetch to determine whether to proceed or wait.
   useEffect(() => {
     const loadEventAndQRCode = async () => {
       try {
@@ -53,6 +69,8 @@ export default function JoinEventPage() {
         }
 
         if (eventData.status !== "live") {
+          // Show the waiting screen — the real-time subscription below will
+          // detect when the event goes live and resume automatically.
           setErrorType("not-started");
           return;
         }
@@ -93,7 +111,52 @@ export default function JoinEventPage() {
     };
 
     loadEventAndQRCode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.eventId, params.qrCodeId]);
+
+  // Auto-join: when the host takes the event live while an audience member is
+  // sitting on the "Not Started Yet" waiting screen, automatically resume the
+  // join flow so they're taken in without any interaction.
+  useEffect(() => {
+    if (errorType !== "not-started") return;
+    if (!liveEvent || liveEvent.status !== "live") return;
+    if (autoJoinFired.current) return;
+
+    autoJoinFired.current = true;
+
+    const resumeJoin = async () => {
+      try {
+        // Re-validate QR code — it may have been deactivated while waiting.
+        const qrCodeData = await getQRCode(
+          toBranded<QRCodeId>(params.qrCodeId),
+        );
+
+        if (!qrCodeData || !qrCodeData.isActive) {
+          setErrorType("qr-inactive");
+          return;
+        }
+
+        if (liveEvent.eventType === "group") {
+          const children = await getChildEvents(liveEvent.id, true);
+          setEvent(liveEvent);
+          setQRCode(qrCodeData);
+          setChildEvents(children);
+          setErrorType(null);
+          setLoading(false);
+        } else {
+          setLoading(false);
+          await handleEventEntry(liveEvent);
+        }
+      } catch (err) {
+        console.error("Error during auto-join:", err);
+        setErrorType("failed");
+        setLoading(false);
+      }
+    };
+
+    void resumeJoin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [errorType, liveEvent?.status]);
 
   const handleEventEntry = async (eventData: EventDocument) => {
     setJoiningMessage(`Joining ${eventData.name}…`);
@@ -154,11 +217,15 @@ export default function JoinEventPage() {
           />
         }
         title="Not Started Yet"
-        message="This event hasn't started yet. We'll see you soon!"
+        message="This event hasn't started yet. We'll take you straight in when it begins."
       >
         <p className="text-sm font-medium text-zinc-500">
           Scheduled for {formattedDate} at {event.scheduledStartTime}
         </p>
+        <div className="mt-5 flex items-center justify-center gap-2 text-xs text-zinc-400">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          Waiting for the event to begin
+        </div>
       </FullScreenMessage>
     );
   }

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { HexColorPicker } from "react-colorful";
 import {
   getOrganizationBrands,
   getOrganizationEvents,
@@ -12,6 +13,11 @@ import {
   type OrganizationId,
   type BrandDocument,
   type EventDocument,
+  type MessagingModuleConfig,
+  DEFAULT_INPUT_BACKGROUND,
+  DEFAULT_INPUT_TEXT,
+  DEFAULT_BUTTON_BACKGROUND,
+  DEFAULT_BUTTON_TEXT,
 } from "@brayford/core";
 import {
   DndContext,
@@ -88,6 +94,26 @@ const AVAILABLE_MODULE_TYPES: ModuleTypeDefinition[] = [
           strokeLinejoin="round"
           strokeWidth={2}
           d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+        />
+      </svg>
+    ),
+  },
+  {
+    type: "messaging",
+    name: "Messaging",
+    description: "Let the audience send you a message",
+    icon: (
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-4 4-1-4z"
         />
       </svg>
     ),
@@ -217,7 +243,11 @@ function SortableModuleItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
-              {module.moduleType === "text" ? "Text" : "Image"}
+              {module.moduleType === "text"
+                ? "Text"
+                : module.moduleType === "messaging"
+                  ? "Messaging"
+                  : "Image"}
             </span>
             <span className="text-xs text-gray-500">Order: {module.order}</span>
           </div>
@@ -226,6 +256,11 @@ function SortableModuleItem({
               {(module.config as { content?: JSONContent }).content
                 ? "Rich text content"
                 : "(No content)"}
+            </p>
+          ) : module.moduleType === "messaging" ? (
+            <p className="text-sm text-gray-900 truncate">
+              {(module.config as { prompt?: string }).prompt ||
+                "(No prompt set)"}
             </p>
           ) : (
             <div className="flex items-center gap-2">
@@ -324,6 +359,23 @@ export default function SceneEditor({
     caption: "",
     fullWidth: false,
   });
+  const [messagingPrompt, setMessagingPrompt] = useState("");
+
+  // Per-instance style overrides for the messaging module
+  const [messagingInputBg, setMessagingInputBg] = useState(
+    DEFAULT_INPUT_BACKGROUND,
+  );
+  const [messagingInputText, setMessagingInputText] =
+    useState(DEFAULT_INPUT_TEXT);
+  const [messagingButtonBg, setMessagingButtonBg] = useState(
+    DEFAULT_BUTTON_BACKGROUND,
+  );
+  const [messagingButtonText, setMessagingButtonText] =
+    useState(DEFAULT_BUTTON_TEXT);
+  const [activeMessagingPicker, setActiveMessagingPicker] = useState<
+    "inputBg" | "inputText" | "buttonBg" | "buttonText" | null
+  >(null);
+
   const [isSaving, setIsSaving] = useState(false);
 
   // Fetch brands for the organisation
@@ -407,11 +459,19 @@ export default function SceneEditor({
                 caption: "",
                 fullWidth: false,
               }
-            : { content: { type: "doc", content: [] } },
+            : moduleType === "messaging"
+              ? { moduleType: "messaging", prompt: "", isOpen: true }
+              : { content: { type: "doc", content: [] } },
       };
       setEditingModule(newModule);
       if (moduleType === "text") {
         setTextContent({ type: "doc", content: [] });
+      } else if (moduleType === "messaging") {
+        setMessagingPrompt("");
+        setMessagingInputBg(DEFAULT_INPUT_BACKGROUND);
+        setMessagingInputText(DEFAULT_INPUT_TEXT);
+        setMessagingButtonBg(DEFAULT_BUTTON_BACKGROUND);
+        setMessagingButtonText(DEFAULT_BUTTON_TEXT);
       } else {
         setImageModuleConfig({
           imageId: "",
@@ -431,6 +491,21 @@ export default function SceneEditor({
     if (module.moduleType === "text") {
       const content = (module.config as { content?: JSONContent }).content;
       setTextContent(content || { type: "doc", content: [] });
+    } else if (module.moduleType === "messaging") {
+      const cfg = module.config as MessagingModuleConfig;
+      setMessagingPrompt(cfg.prompt ?? "");
+      setMessagingInputBg(
+        cfg.styleOverrides?.inputBackgroundColor ?? DEFAULT_INPUT_BACKGROUND,
+      );
+      setMessagingInputText(
+        cfg.styleOverrides?.inputTextColor ?? DEFAULT_INPUT_TEXT,
+      );
+      setMessagingButtonBg(
+        cfg.styleOverrides?.buttonBackgroundColor ?? DEFAULT_BUTTON_BACKGROUND,
+      );
+      setMessagingButtonText(
+        cfg.styleOverrides?.buttonTextColor ?? DEFAULT_BUTTON_TEXT,
+      );
     } else {
       const cfg = module.config as {
         imageId?: string;
@@ -456,7 +531,31 @@ export default function SceneEditor({
     const updatedModule: ModuleInstance =
       editingModule.moduleType === "text"
         ? { ...editingModule, config: { content: textContent } }
-        : { ...editingModule, config: { ...imageModuleConfig } };
+        : editingModule.moduleType === "messaging"
+          ? (() => {
+              const hasOverrides =
+                messagingInputBg !== DEFAULT_INPUT_BACKGROUND ||
+                messagingInputText !== DEFAULT_INPUT_TEXT ||
+                messagingButtonBg !== DEFAULT_BUTTON_BACKGROUND ||
+                messagingButtonText !== DEFAULT_BUTTON_TEXT;
+              return {
+                ...editingModule,
+                config: {
+                  moduleType: "messaging",
+                  prompt: messagingPrompt,
+                  isOpen: true,
+                  ...(hasOverrides && {
+                    styleOverrides: {
+                      inputBackgroundColor: messagingInputBg,
+                      inputTextColor: messagingInputText,
+                      buttonBackgroundColor: messagingButtonBg,
+                      buttonTextColor: messagingButtonText,
+                    },
+                  }),
+                },
+              };
+            })()
+          : { ...editingModule, config: { ...imageModuleConfig } };
 
     setModules((prev) => {
       const existing = prev.find((m) => m.id === editingModule.id);
@@ -477,7 +576,16 @@ export default function SceneEditor({
       caption: "",
       fullWidth: false,
     });
-  }, [editingModule, textContent, imageModuleConfig]);
+  }, [
+    editingModule,
+    textContent,
+    imageModuleConfig,
+    messagingPrompt,
+    messagingInputBg,
+    messagingInputText,
+    messagingButtonBg,
+    messagingButtonText,
+  ]);
 
   const handleDeleteModule = useCallback((moduleId: string) => {
     setModules((prev) => prev.filter((m) => m.id !== moduleId));
@@ -494,6 +602,12 @@ export default function SceneEditor({
       caption: "",
       fullWidth: false,
     });
+    setMessagingPrompt("");
+    setMessagingInputBg(DEFAULT_INPUT_BACKGROUND);
+    setMessagingInputText(DEFAULT_INPUT_TEXT);
+    setMessagingButtonBg(DEFAULT_BUTTON_BACKGROUND);
+    setMessagingButtonText(DEFAULT_BUTTON_TEXT);
+    setActiveMessagingPicker(null);
   }, []);
 
   const handleImagePickerSelect = useCallback((image: ImagePickerSelection) => {
@@ -779,7 +893,9 @@ export default function SceneEditor({
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 {editingModule.moduleType === "text"
                   ? "Edit Text Module"
-                  : "Edit Image Module"}
+                  : editingModule.moduleType === "messaging"
+                    ? "Edit Messaging Module"
+                    : "Edit Image Module"}
               </h3>
 
               <div className="mb-6">
@@ -794,6 +910,94 @@ export default function SceneEditor({
                       placeholder="Start typing your content here..."
                     />
                   </>
+                ) : editingModule.moduleType === "messaging" ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label
+                        htmlFor="messaging-prompt"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        Prompt <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="messaging-prompt"
+                        value={messagingPrompt}
+                        onChange={(e) => setMessagingPrompt(e.target.value)}
+                        className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2"
+                        placeholder="e.g. Got a question for our guest?"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Shown above the message input on audience devices.
+                      </p>
+                    </div>
+
+                    {/* Style overrides */}
+                    <div className="pt-3 border-t border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 mb-2">
+                        Colour overrides{" "}
+                        <span className="font-normal text-gray-400">
+                          (optional — leave as defaults to use brand colours)
+                        </span>
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {(
+                          [
+                            {
+                              label: "Input Background",
+                              value: messagingInputBg,
+                              setter: setMessagingInputBg,
+                              pickerKey: "inputBg" as const,
+                            },
+                            {
+                              label: "Input Text",
+                              value: messagingInputText,
+                              setter: setMessagingInputText,
+                              pickerKey: "inputText" as const,
+                            },
+                            {
+                              label: "Button Background",
+                              value: messagingButtonBg,
+                              setter: setMessagingButtonBg,
+                              pickerKey: "buttonBg" as const,
+                            },
+                            {
+                              label: "Button Text",
+                              value: messagingButtonText,
+                              setter: setMessagingButtonText,
+                              pickerKey: "buttonText" as const,
+                            },
+                          ] as const
+                        ).map(({ label, value, setter, pickerKey }) => (
+                          <div key={pickerKey}>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              {label}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setActiveMessagingPicker(pickerKey)
+                                }
+                                className="flex-shrink-0 w-7 h-7 rounded border-2 border-gray-300 shadow-sm hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                                style={{ backgroundColor: value }}
+                                title="Click to open colour picker"
+                              />
+                              <input
+                                type="text"
+                                value={value}
+                                onChange={(e) =>
+                                  setter(e.target.value.toUpperCase())
+                                }
+                                className="block w-full border-gray-300 rounded text-xs px-2 py-1.5 font-mono"
+                                maxLength={7}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {/* Image preview */}
@@ -903,9 +1107,11 @@ export default function SceneEditor({
                   type="button"
                   onClick={handleSaveModule}
                   disabled={
-                    editingModule.moduleType === "image" &&
-                    (!imageModuleConfig.url ||
-                      !imageModuleConfig.altText.trim())
+                    (editingModule.moduleType === "image" &&
+                      (!imageModuleConfig.url ||
+                        !imageModuleConfig.altText.trim())) ||
+                    (editingModule.moduleType === "messaging" &&
+                      !messagingPrompt.trim())
                   }
                   className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
                 >
@@ -915,6 +1121,84 @@ export default function SceneEditor({
             </div>
           </div>
         )}
+
+      {/* Messaging module colour picker popover */}
+      {activeMessagingPicker && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setActiveMessagingPicker(null)}
+          />
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-lg shadow-2xl p-4 border border-gray-200 max-w-xs">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-gray-900">
+                {activeMessagingPicker === "inputBg"
+                  ? "Input Background Colour"
+                  : activeMessagingPicker === "inputText"
+                    ? "Input Text Colour"
+                    : activeMessagingPicker === "buttonBg"
+                      ? "Button Background Colour"
+                      : "Button Text Colour"}
+              </h3>
+              <button
+                onClick={() => setActiveMessagingPicker(null)}
+                className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded p-1"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="flex justify-center mb-3">
+              <HexColorPicker
+                color={
+                  activeMessagingPicker === "inputBg"
+                    ? messagingInputBg
+                    : activeMessagingPicker === "inputText"
+                      ? messagingInputText
+                      : activeMessagingPicker === "buttonBg"
+                        ? messagingButtonBg
+                        : messagingButtonText
+                }
+                onChange={
+                  activeMessagingPicker === "inputBg"
+                    ? setMessagingInputBg
+                    : activeMessagingPicker === "inputText"
+                      ? setMessagingInputText
+                      : activeMessagingPicker === "buttonBg"
+                        ? setMessagingButtonBg
+                        : setMessagingButtonText
+                }
+                style={{ width: "220px", height: "160px" }}
+              />
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-medium text-gray-700 mb-1">
+                Selected Colour
+              </p>
+              <p className="text-sm font-mono text-gray-900">
+                {activeMessagingPicker === "inputBg"
+                  ? messagingInputBg
+                  : activeMessagingPicker === "inputText"
+                    ? messagingInputText
+                    : activeMessagingPicker === "buttonBg"
+                      ? messagingButtonBg
+                      : messagingButtonText}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </form>
   );
 }

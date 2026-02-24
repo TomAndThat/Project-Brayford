@@ -506,12 +506,14 @@ export async function reorderMessage(
  * - Creator app: Kanban board column headers and scene builder config
  *
  * @param eventId - Event ID to subscribe to
+ * @param organizationId - Organization ID — required so the query satisfies
+ *   Firestore security rules which gate reads on `resource.data.organizationId`
  * @returns Object with columns array, loading state, and error
  *
  * @example
  * ```tsx
- * function KanbanBoard({ eventId }: { eventId: EventId }) {
- *   const { columns, loading, error } = useMessageColumns(eventId);
+ * function KanbanBoard({ eventId, orgId }: Props) {
+ *   const { columns, loading, error } = useMessageColumns(eventId, orgId);
  *
  *   if (loading) return <LoadingSpinner />;
  *   if (error) return <ErrorMessage error={error} />;
@@ -526,7 +528,7 @@ export async function reorderMessage(
  * }
  * ```
  */
-export function useMessageColumns(eventId: EventId): {
+export function useMessageColumns(eventId: EventId, organizationId: OrganizationId): {
   columns: MessageColumnDocument[];
   loading: boolean;
   error: Error | null;
@@ -542,6 +544,7 @@ export function useMessageColumns(eventId: EventId): {
     const q = query(
       getMessageColumnsCollection(),
       where('eventId', '==', fromBranded(eventId)),
+      where('organizationId', '==', fromBranded(organizationId)),
       orderBy('order', 'asc'),
     );
 
@@ -570,7 +573,7 @@ export function useMessageColumns(eventId: EventId): {
 
     // Cleanup: unsubscribe from onSnapshot listener when component unmounts
     return unsubscribe;
-  }, [eventId]);
+  }, [eventId, organizationId]);
 
   return { columns, loading, error };
 }

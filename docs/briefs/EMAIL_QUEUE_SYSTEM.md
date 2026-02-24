@@ -781,6 +781,7 @@ pnpm email:test
 ```
 
 This script (`functions/scripts/test-email.mjs`):
+
 1. Validates that `POSTMARK_API_KEY` and `POSTMARK_FROM_EMAIL` are set in `functions/.env`
 2. Calls `client.getServer()` to confirm the API key is valid
 3. Sends a plain-text + HTML test email to `support@brayford.live`

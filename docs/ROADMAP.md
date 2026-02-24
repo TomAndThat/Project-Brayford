@@ -52,7 +52,7 @@
 
 - [x] Brand creation UI in creator app
 - [x] Brand editing & settings page
-  - [ ] Brand customization (colors, branding)
+  - [x] Brand customization (colors, branding)
 - [ ] Brand listing & selection (brand switcher in dashboard)
 - [x] Brand member access management UI
   - [x] View which team members have access to specific brands
@@ -96,8 +96,10 @@
 - [x] Scenes page in Creator dashboard (`/dashboard/scenes`) with navigation card
 - [x] Creator UI: Scene list with create/edit/delete
 - [x] Creator UI: Scene builder with module palette and configuration
-- [ ] Creator UI: Live scene switcher panel
+- [x] Creator UI: Live scene switcher panel
+- [x] Creator UI: Event Control View — go live, activate, end event from within the studio console (with confirmation dialog for irreversible transitions and real-time event document subscription)
 - [x] Audience: Real-time scene renderer (fetches scene on each live-state change driven by onSnapshot)
+- [x] Audience: Real-time event status transitions — audience members on the "Not Started Yet" screen are automatically taken into the event when the host goes live, including auto-join on the QR code entry page
 - [ ] Scene templates and reusability
 
 **Interactive Modules:**
@@ -107,9 +109,9 @@
 - [x] Image management library (org-level assets, reference tracking, cascade deletion, server-side WebP processing)
 - [ ] Messaging module (audience message submission with Kanban moderation board)
   - [x] Schema, Firestore security rules, and constants (`@brayford/core` — foundation complete)
-  - [ ] `@brayford/firebase-utils` real-time hooks (`useMessages`, `useMessageColumns`)
-  - [ ] Scene Builder: messaging module config form
-  - [ ] Audience: message submission form + API route (rate limiting, honeypot)
+  - [x] `@brayford/firebase-utils` real-time hooks (`useMessages`, `useMessageColumns`, `useColumnMessageEntries`)
+  - [x] Scene Builder: messaging module config form
+  - [x] Audience: message submission form + API route (rate limiting, rate-limit feedback)
   - [ ] Creator console: Kanban moderation board with drag-and-drop
 - [ ] Q&A module MVP (submit questions, moderation)
 - [ ] Polling module MVP (create polls, vote, view results)

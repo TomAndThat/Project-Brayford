@@ -202,33 +202,40 @@ service cloud.firestore {
     // ===== Messages Collection =====
     // Audience-submitted messages for event moderation (Interaction Domain).
     //
-    // Read: Org members with events:view permission ('ev').
-    //       Messages are only read by the creator console — audience members
-    //       submit via POST API route and receive only a confirmation response.
-    // Write: Server-side only. Audience submissions go through the audience app
-    //        API route; moderation actions (move, edit, soft-delete) go through
-    //        creator app API routes. All use the Admin SDK.
+    // Read: Org members with events:view ('ev') or events:manage_modules ('emo').
+    //       Messages are read by the creator console moderation board.
+    // Create: Server-side only. Audience submissions go through the audience
+    //         app API route which uses the Admin SDK.
+    // Update: Org members with 'emo' permission — covers soft-delete, restore,
+    //         and inline content edits from the moderation board.
+    // Delete: Server-side only (hard-deletes are an admin concern).
     match /messages/{messageId} {
       allow read: if hasOrgPermission(resource.data.organizationId, 'ev')
                  || hasOrgPermission(resource.data.organizationId, 'emo');
-      allow write: if false;
+      allow create: if false;
+      allow update: if hasOrgPermission(resource.data.organizationId, 'emo');
+      allow delete: if false;
     }
 
     // ===== Message Columns Collection =====
     // Kanban-style moderation board columns for an event (Interaction Domain).
     //
-    // Read: Org members with events:view permission ('ev').
-    // Write: Server-side only (column creation, reordering, rename all via API routes).
+    // Read: Org members with 'ev' or 'emo' permission.
+    // Create: Org members with 'emo' — new custom columns from the board.
+    //         Uses request.resource.data (document doesn't exist yet).
+    // Update: Org members with 'emo' — rename, reorder columns.
+    // Delete: Org members with 'emo' — remove empty custom columns.
     //
     // Subcollection /messages/{entryId}:
-    //   These are lightweight join documents (messageId + order) that drive the
-    //   within-column ordering. The parent column's organizationId is fetched via
-    //   get() to enforce the same org-membership gate — this is the standard pattern
-    //   for securing subcollections where the parent carries the tenancy data.
+    //   Lightweight join documents (messageId + order) for within-column ordering.
+    //   The parent column's organizationId is fetched via get() to enforce the
+    //   same org-membership gate.
     match /messageColumns/{columnId} {
       allow read: if hasOrgPermission(resource.data.organizationId, 'ev')
                  || hasOrgPermission(resource.data.organizationId, 'emo');
-      allow write: if false;
+      allow create: if hasOrgPermission(request.resource.data.organizationId, 'emo');
+      allow update: if hasOrgPermission(resource.data.organizationId, 'emo');
+      allow delete: if hasOrgPermission(resource.data.organizationId, 'emo');
 
       match /messages/{entryId} {
         allow read: if hasOrgPermission(
@@ -239,7 +246,11 @@ service cloud.firestore {
                       get(/databases/$(database)/documents/messageColumns/$(columnId)).data.organizationId,
                       'emo'
                     );
-        allow write: if false;
+        allow create, update, delete:
+          if hasOrgPermission(
+               get(/databases/$(database)/documents/messageColumns/$(columnId)).data.organizationId,
+               'emo'
+             );
       }
     }
 

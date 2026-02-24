@@ -26,6 +26,10 @@ import {
   BRANDS_DELETE,
   validateBackgroundColor,
   DEFAULT_AUDIENCE_BACKGROUND,
+  DEFAULT_INPUT_BACKGROUND,
+  DEFAULT_INPUT_TEXT,
+  DEFAULT_BUTTON_BACKGROUND,
+  DEFAULT_BUTTON_TEXT,
 } from "@brayford/core";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ArchiveBrandDialog from "@/components/brands/ArchiveBrandDialog";
@@ -64,7 +68,14 @@ export default function BrandSettingsPage() {
   );
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [activeColorPicker, setActiveColorPicker] = useState<
-    "background" | "text" | "headerBackground" | null
+    | "background"
+    | "text"
+    | "headerBackground"
+    | "inputBackground"
+    | "inputText"
+    | "buttonBackground"
+    | "buttonText"
+    | null
   >(null);
 
   // Header styling state
@@ -82,6 +93,16 @@ export default function BrandSettingsPage() {
   const [headerBackgroundImageId, setHeaderBackgroundImageId] = useState<
     string | undefined
   >();
+
+  // Interactive element styling state
+  const [inputBackgroundColor, setInputBackgroundColor] = useState(
+    DEFAULT_INPUT_BACKGROUND,
+  );
+  const [inputTextColor, setInputTextColor] = useState(DEFAULT_INPUT_TEXT);
+  const [buttonBackgroundColor, setButtonBackgroundColor] = useState(
+    DEFAULT_BUTTON_BACKGROUND,
+  );
+  const [buttonTextColor, setButtonTextColor] = useState(DEFAULT_BUTTON_TEXT);
 
   // Image picker dialog state
   type ImageSlot = "profile" | "logo" | "banner" | "header-background";
@@ -153,6 +174,18 @@ export default function BrandSettingsPage() {
       );
       setHeaderBackgroundImageId(
         brandData.styling?.headerBackgroundImageId ?? undefined,
+      );
+      setInputBackgroundColor(
+        brandData.styling?.inputBackgroundColor || DEFAULT_INPUT_BACKGROUND,
+      );
+      setInputTextColor(
+        brandData.styling?.inputTextColor || DEFAULT_INPUT_TEXT,
+      );
+      setButtonBackgroundColor(
+        brandData.styling?.buttonBackgroundColor || DEFAULT_BUTTON_BACKGROUND,
+      );
+      setButtonTextColor(
+        brandData.styling?.buttonTextColor || DEFAULT_BUTTON_TEXT,
       );
     } catch (error) {
       console.error("Error loading brand data:", error);
@@ -269,6 +302,10 @@ export default function BrandSettingsPage() {
           headerBackgroundColor,
           headerBackgroundImageId: headerBackgroundImageId || null,
           headerBackgroundImageUrl: headerBackgroundImageUrl || null,
+          inputBackgroundColor,
+          inputTextColor,
+          buttonBackgroundColor,
+          buttonTextColor,
         },
       };
 
@@ -1036,6 +1073,131 @@ export default function BrandSettingsPage() {
                     </div>
                   )}
 
+                  {/* Interactive Element Styles */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                      Interactive Elements
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Colours for buttons and text fields shown to the audience
+                      (e.g.&nbsp;messaging, polls).
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Input background */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Input Background
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActiveColorPicker("inputBackground")
+                            }
+                            className="flex-shrink-0 w-7 h-7 rounded border-2 border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                            style={{ backgroundColor: inputBackgroundColor }}
+                            disabled={!canUpdate || isSubmitting}
+                            title="Click to open colour picker"
+                          />
+                          <input
+                            type="text"
+                            value={inputBackgroundColor}
+                            onChange={(e) => {
+                              const v = e.target.value.toUpperCase();
+                              setInputBackgroundColor(v);
+                            }}
+                            className="block w-full border-gray-300 rounded text-xs px-2 py-1.5 font-mono"
+                            maxLength={7}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Input text */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Input Text
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setActiveColorPicker("inputText")}
+                            className="flex-shrink-0 w-7 h-7 rounded border-2 border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                            style={{ backgroundColor: inputTextColor }}
+                            disabled={!canUpdate || isSubmitting}
+                            title="Click to open colour picker"
+                          />
+                          <input
+                            type="text"
+                            value={inputTextColor}
+                            onChange={(e) => {
+                              const v = e.target.value.toUpperCase();
+                              setInputTextColor(v);
+                            }}
+                            className="block w-full border-gray-300 rounded text-xs px-2 py-1.5 font-mono"
+                            maxLength={7}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Button background */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Button Background
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActiveColorPicker("buttonBackground")
+                            }
+                            className="flex-shrink-0 w-7 h-7 rounded border-2 border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                            style={{ backgroundColor: buttonBackgroundColor }}
+                            disabled={!canUpdate || isSubmitting}
+                            title="Click to open colour picker"
+                          />
+                          <input
+                            type="text"
+                            value={buttonBackgroundColor}
+                            onChange={(e) => {
+                              const v = e.target.value.toUpperCase();
+                              setButtonBackgroundColor(v);
+                            }}
+                            className="block w-full border-gray-300 rounded text-xs px-2 py-1.5 font-mono"
+                            maxLength={7}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Button text */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Button Text
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setActiveColorPicker("buttonText")}
+                            className="flex-shrink-0 w-7 h-7 rounded border-2 border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                            style={{ backgroundColor: buttonTextColor }}
+                            disabled={!canUpdate || isSubmitting}
+                            title="Click to open colour picker"
+                          />
+                          <input
+                            type="text"
+                            value={buttonTextColor}
+                            onChange={(e) => {
+                              const v = e.target.value.toUpperCase();
+                              setButtonTextColor(v);
+                            }}
+                            className="block w-full border-gray-300 rounded text-xs px-2 py-1.5 font-mono"
+                            maxLength={7}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Save Button */}
                   {canUpdate && (
                     <div className="pt-4 border-t border-gray-200">
@@ -1129,7 +1291,15 @@ export default function BrandSettingsPage() {
                   ? "Background Colour"
                   : activeColorPicker === "text"
                     ? "Text Colour"
-                    : "Header Background Colour"}
+                    : activeColorPicker === "headerBackground"
+                      ? "Header Background Colour"
+                      : activeColorPicker === "inputBackground"
+                        ? "Input Background Colour"
+                        : activeColorPicker === "inputText"
+                          ? "Input Text Colour"
+                          : activeColorPicker === "buttonBackground"
+                            ? "Button Background Colour"
+                            : "Button Text Colour"}
               </h3>
               <button
                 onClick={() => setActiveColorPicker(null)}
@@ -1158,14 +1328,30 @@ export default function BrandSettingsPage() {
                     ? backgroundColor
                     : activeColorPicker === "text"
                       ? textColor
-                      : headerBackgroundColor
+                      : activeColorPicker === "headerBackground"
+                        ? headerBackgroundColor
+                        : activeColorPicker === "inputBackground"
+                          ? inputBackgroundColor
+                          : activeColorPicker === "inputText"
+                            ? inputTextColor
+                            : activeColorPicker === "buttonBackground"
+                              ? buttonBackgroundColor
+                              : buttonTextColor
                 }
                 onChange={
                   activeColorPicker === "background"
                     ? setBackgroundColor
                     : activeColorPicker === "text"
                       ? setTextColor
-                      : setHeaderBackgroundColor
+                      : activeColorPicker === "headerBackground"
+                        ? setHeaderBackgroundColor
+                        : activeColorPicker === "inputBackground"
+                          ? setInputBackgroundColor
+                          : activeColorPicker === "inputText"
+                            ? setInputTextColor
+                            : activeColorPicker === "buttonBackground"
+                              ? setButtonBackgroundColor
+                              : setButtonTextColor
                 }
                 style={{
                   width: "220px",
@@ -1183,7 +1369,15 @@ export default function BrandSettingsPage() {
                   ? backgroundColor
                   : activeColorPicker === "text"
                     ? textColor
-                    : headerBackgroundColor}
+                    : activeColorPicker === "headerBackground"
+                      ? headerBackgroundColor
+                      : activeColorPicker === "inputBackground"
+                        ? inputBackgroundColor
+                        : activeColorPicker === "inputText"
+                          ? inputTextColor
+                          : activeColorPicker === "buttonBackground"
+                            ? buttonBackgroundColor
+                            : buttonTextColor}
               </p>
             </div>
           </div>

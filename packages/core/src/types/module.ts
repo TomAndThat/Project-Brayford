@@ -74,6 +74,13 @@ export interface MessagingModuleConfig {
   prompt: string;
   /** Whether the module is currently accepting new submissions */
   isOpen: boolean;
+  /** Optional per-module style overrides (take priority over brand defaults) */
+  styleOverrides?: {
+    inputBackgroundColor?: string;
+    inputTextColor?: string;
+    buttonBackgroundColor?: string;
+    buttonTextColor?: string;
+  };
 }
 
 // ===== Discriminated Union =====

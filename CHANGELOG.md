@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Studio — Event Control View**: Creators can now manage the event status lifecycle directly from within the Studio console, without leaving to the dashboard
+  - A new "Control" panel is accessible via the left nav rail, positioned at the top as the primary studio action
+  - Displays the current event status (`Draft`, `Ready`, `Live`, `Ended`) with a colour-coded badge and contextual description of what each status means
+  - Presents the primary forward transition as a prominent action button (Draft → Activate, Ready → Go Live, Live → End Event)
+  - Provides a secondary backward transition for error recovery (e.g. "Revert to Ready" if live status was triggered by mistake)
+  - "End Event" requires explicit confirmation via a dialog before executing, since the transition is irreversible
+  - A colour-coded status pip on the "Control" nav button shows the current event status at a glance from any view in the studio
+  - The studio console now subscribes to the event document in real time (`onSnapshot`), so the top bar status badge and all status-dependent UI update immediately without a page refresh when status changes
+  - `useEventDocument(eventId)` hook added to `@brayford/firebase-utils` for real-time single-event subscriptions with automatic cleanup
+
+- **Audience App — Real-Time Status Transitions**: Audience members waiting on the "Not Started Yet" screen are now automatically taken into the event the moment the host goes live — no refresh required
+  - The event page (`/events/[eventId]`) and join page (`/events/[eventId]/join/[qrCodeId]`) both subscribe to the event document in real time via `useEventDocument`
+  - Status transitions update the UI immediately: draft/active → live renders the event view; live → ended renders the "This Event Has Ended" screen
+  - On the join page, when the auto-join triggers, the QR code is re-validated in case it was deactivated while the audience member was waiting, and the "Joining…" loader is shown before navigating through to the event
+  - Both waiting screens now display a pulsing amber indicator and updated copy ("We'll take you straight in when it begins") to communicate that the browser is actively watching for the event to start
+
 ### Removed
 
 - **`@brayford/email-utils` package removed**: The standalone package has been consolidated. Email validation utilities (`isValidEmail`, `normalizeEmail`, `isTestEmail`) are now exported directly from `@brayford/core/utils`. The Postmark integration and queue infrastructure live solely in `functions/src/email/`, which is the correct home given it is Cloud Functions-only code with a Firestore-backed rate limiter.
@@ -20,6 +38,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Audience app — submission form**: `MessagingModule` component renders a name (optional) + message textarea with live character counter. Inline error feedback is shown for validation failures and rate limiting — no intrusive countdown timer
   - **Audience app — API route** (`POST /api/audience/messages`): Server-side submission handler enforces rate limiting (one message per device per `MESSAGE_RATE_LIMIT_SECONDS`), validates content length, confirms the event is live, and writes the message atomically to `/messages/` with a subcollection entry in the event's default inbox column so it appears immediately on the creator moderation board
   - `isOpen` is preserved in the `MessagingModuleConfig` data model (defaults `true`) for future use; the toggle is not exposed in the Scene Builder UI yet
+
+- **Message Moderation Board — Studio Console**: Creators and event staff can now manage incoming audience messages in real time from the Studio console
+  - Accessible via the "Messages" tab in the Studio nav rail during any live or active event
+  - Kanban-style board with a draggable column layout; new columns are created via a modal (validated name input), hard-capped at **8 columns total** per event to keep Firestore subscription cost bounded
+  - The default **Inbox** column is fixed at the left end and cannot be dragged or deleted; it receives all incoming audience messages automatically
+  - Custom columns can be **reordered** (drag column header), **renamed** (click name to edit inline), and **deleted** (only when empty — tooltip explains why when blocked)
+  - Message cards support **drag-and-drop** within and between columns with midpoint-order insertion so repeated reordering does not erode precision
+  - **Delete** a message with an inline confirmation step; hold **Shift** and click the delete button to bypass confirmation — designed for high-throughput moderation of busy events
+  - **Inline editing** writes to `editedContent`, preserving the original `content` for audit purposes; a "Revert to original" affordance appears on cards that have been edited
+  - `MAX_COLUMNS_PER_EVENT = 8` constant added to `@brayford/core` — Brand-Level + Module-Level Overrides\*\*: Brand owners can now configure the appearance of interactive elements (inputs and buttons) across all audience-facing modules
+  - Four new optional fields on `BrandStyling`: `inputBackgroundColor`, `inputTextColor`, `buttonBackgroundColor`, `buttonTextColor` — set via the brand settings page in the Creator dashboard under a new "Interactive Elements" section
+  - `InteractiveStyles` interface and hardcoded defaults (`DEFAULT_INPUT_BACKGROUND`, `DEFAULT_INPUT_TEXT`, `DEFAULT_BUTTON_BACKGROUND`, `DEFAULT_BUTTON_TEXT`) exported from `@brayford/core` for consistent resolution across the platform
+  - Resolution chain: module-level `styleOverrides` → brand styling → hardcoded defaults — computed once in `SceneRenderer` and passed to all interactive modules
+  - `MessagingModuleConfig` now accepts an optional `styleOverrides` object for per-module colour customisation; the Scene Builder exposes all four colour fields (with clickable swatches + hex inputs) in the messaging module config form
+  - `MessagingModule` applies resolved styles via inline CSS to inputs and the submit button, ensuring legibility regardless of the brand's background colour
 
 - **Messaging Module — Real-Time Hooks**: `@brayford/firebase-utils` now includes the shared Firebase hooks and CRUD functions for the messaging module
   - `useMessages(eventId)` — subscribes to all non-deleted messages for an event, capped at `MAX_INBOX_MESSAGES` (250); returns a `Map<MessageId, MessageDocument>` for O(1) column-entry resolution

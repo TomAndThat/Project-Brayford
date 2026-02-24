@@ -155,3 +155,37 @@ export const DEFAULT_AUDIENCE_BACKGROUND = '#0A0A0A';
  * Default text color for audience app
  */
 export const DEFAULT_AUDIENCE_TEXT = '#FFFFFF';
+
+/**
+ * Default background colour for interactive inputs (text fields, textareas)
+ */
+export const DEFAULT_INPUT_BACKGROUND = '#FFFFFF';
+
+/**
+ * Default text colour for interactive inputs
+ */
+export const DEFAULT_INPUT_TEXT = '#111111';
+
+/**
+ * Default background colour for action buttons
+ */
+export const DEFAULT_BUTTON_BACKGROUND = '#FFFFFF';
+
+/**
+ * Default text colour for action buttons
+ */
+export const DEFAULT_BUTTON_TEXT = '#111111';
+
+/**
+ * Resolved interactive element styles for audience-facing modules.
+ *
+ * Resolution order: module-level override → brand styling → hardcoded default.
+ * Computed once in SceneRenderer and passed down to all interactive modules
+ * so that each module doesn't need to fetch the brand document independently.
+ */
+export interface InteractiveStyles {
+  inputBackgroundColor: string;
+  inputTextColor: string;
+  buttonBackgroundColor: string;
+  buttonTextColor: string;
+}

@@ -179,12 +179,12 @@ _\*\* Members only for brands/events they have access to_
 
 ### Image Management
 
-| Permission       | Description                      | Owner | Admin | Member |
-| ---------------- | -------------------------------- | ----- | ----- | ------ |
-| `images:upload`  | Upload new images to library     | ✅    | ✅    | ✅     |
-| `images:view`    | View organisation's image library| ✅    | ✅    | ✅     |
-| `images:update`  | Edit image metadata (name, tags) | ✅    | ✅    | ✅     |
-| `images:delete`  | Delete images (if not in use)    | ✅    | ✅    | ✅     |
+| Permission      | Description                       | Owner | Admin | Member |
+| --------------- | --------------------------------- | ----- | ----- | ------ |
+| `images:upload` | Upload new images to library      | ✅    | ✅    | ✅     |
+| `images:view`   | View organisation's image library | ✅    | ✅    | ✅     |
+| `images:update` | Edit image metadata (name, tags)  | ✅    | ✅    | ✅     |
+| `images:delete` | Delete images (if not in use)     | ✅    | ✅    | ✅     |
 
 _All roles have full image management access. Members frequently need to upload and manage images for scenes and events._
 
@@ -443,40 +443,40 @@ match /messages/{messageId} {
 
 All permissions are stored as short abbreviations in the `p` array of each org claim. The full mapping lives in `functions/src/claims.ts`.
 
-| Full Permission | Abbreviation | Notes |
-|---|---|---|
-| `*` (owner wildcard) | `*` | Grants all permissions |
-| `org:update` | `ou` | |
-| `org:delete` | `od` | |
-| `org:transfer` | `ot` | |
-| `org:view_billing` | `ovb` | |
-| `org:manage_billing` | `omb` | |
-| `org:view_settings` | `ovs` | |
-| `users:invite` | `ui` | |
-| `users:view` | `uv` | |
-| `users:update_role` | `uur` | |
-| `users:update_access` | `uua` | |
-| `users:remove` | `ur` | |
-| `brands:create` | `bc` | |
-| `brands:view` | `bv` | |
-| `brands:update` | `bu` | |
-| `brands:delete` | `bd` | |
-| `brands:manage_team` | `bmt` | |
-| `events:create` | `ec` | |
-| `events:view` | `ev` | Required to read `/messages` and `/messageColumns` |
-| `events:update` | `eu` | |
-| `events:publish` | `ep` | |
-| `events:delete` | `ed` | |
-| `events:manage_modules` | `emm` | |
-| `events:moderate` | `emo` | Also grants read access to `/messages` and `/messageColumns` |
-| `analytics:view_org` | `avo` | |
-| `analytics:view_brand` | `avb` | |
-| `analytics:view_event` | `ave` | |
-| `analytics:export` | `ae` | |
-| `images:upload` | `iu` | |
-| `images:view` | `iv` | |
-| `images:update` | `iup` | |
-| `images:delete` | `id` | |
+| Full Permission         | Abbreviation | Notes                                                        |
+| ----------------------- | ------------ | ------------------------------------------------------------ |
+| `*` (owner wildcard)    | `*`          | Grants all permissions                                       |
+| `org:update`            | `ou`         |                                                              |
+| `org:delete`            | `od`         |                                                              |
+| `org:transfer`          | `ot`         |                                                              |
+| `org:view_billing`      | `ovb`        |                                                              |
+| `org:manage_billing`    | `omb`        |                                                              |
+| `org:view_settings`     | `ovs`        |                                                              |
+| `users:invite`          | `ui`         |                                                              |
+| `users:view`            | `uv`         |                                                              |
+| `users:update_role`     | `uur`        |                                                              |
+| `users:update_access`   | `uua`        |                                                              |
+| `users:remove`          | `ur`         |                                                              |
+| `brands:create`         | `bc`         |                                                              |
+| `brands:view`           | `bv`         |                                                              |
+| `brands:update`         | `bu`         |                                                              |
+| `brands:delete`         | `bd`         |                                                              |
+| `brands:manage_team`    | `bmt`        |                                                              |
+| `events:create`         | `ec`         |                                                              |
+| `events:view`           | `ev`         | Required to read `/messages` and `/messageColumns`           |
+| `events:update`         | `eu`         |                                                              |
+| `events:publish`        | `ep`         |                                                              |
+| `events:delete`         | `ed`         |                                                              |
+| `events:manage_modules` | `emm`        |                                                              |
+| `events:moderate`       | `emo`        | Also grants read access to `/messages` and `/messageColumns` |
+| `analytics:view_org`    | `avo`        |                                                              |
+| `analytics:view_brand`  | `avb`        |                                                              |
+| `analytics:view_event`  | `ave`        |                                                              |
+| `analytics:export`      | `ae`         |                                                              |
+| `images:upload`         | `iu`         |                                                              |
+| `images:view`           | `iv`         |                                                              |
+| `images:update`         | `iup`        |                                                              |
+| `images:delete`         | `id`         |                                                              |
 
 ---
 

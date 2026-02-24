@@ -5,11 +5,13 @@
  * CRUD operations for events collection
  */
 
+import { useEffect, useState } from 'react';
 import {
   doc,
   getDoc,
   setDoc,
   updateDoc,
+  onSnapshot,
   collection,
   query,
   where,
@@ -300,3 +302,74 @@ export async function getChildEvents(
   
   return events;
 }
+
+/**
+ * React hook: real-time event document subscription
+ *
+ * Subscribes to a single event document via `onSnapshot` and keeps the
+ * returned `event` in sync for the lifetime of the component. Automatically
+ * unsubscribes when the component unmounts or `eventId` changes.
+ *
+ * @param eventId - Branded event ID to subscribe to
+ * @returns `{ event, loading, error }` — event is `null` until loaded or if
+ *          the document does not exist
+ *
+ * @example
+ * ```tsx
+ * const { event, loading } = useEventDocument(eventId);
+ * if (loading) return <Spinner />;
+ * if (!event) return null;
+ * ```
+ */
+export function useEventDocument(eventId: EventId): {
+  event: EventDocument | null;
+  loading: boolean;
+  error: string | null;
+} {
+  const [event, setEvent] = useState<EventDocument | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const eventRef = doc(db, 'events', fromBranded(eventId));
+
+    const unsubscribe = onSnapshot(
+      eventRef,
+      (snap) => {
+        if (!snap.exists()) {
+          setEvent(null);
+          setError('Event not found.');
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const data = validateEventData(convertEventTimestamps(snap.data()));
+          setEvent({
+            id: eventId,
+            ...data,
+            brandId: toBranded<BrandId>(data.brandId),
+            organizationId: toBranded<OrganizationId>(data.organizationId),
+          });
+          setError(null);
+        } catch (err) {
+          setError('Failed to parse event data.');
+          console.error('[useEventDocument] Validation error:', err);
+        } finally {
+          setLoading(false);
+        }
+      },
+      (err) => {
+        setError('Failed to subscribe to event updates.');
+        setLoading(false);
+        console.error('[useEventDocument] onSnapshot error:', err);
+      },
+    );
+
+    // Cleanup: unsubscribe from onSnapshot listener when component unmounts
+    return unsubscribe;
+  }, [eventId]);
+
+  return { event, loading, error };
+}
+

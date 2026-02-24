@@ -246,12 +246,14 @@ export async function clearMessageEdit(messageId: MessageId): Promise<void> {
  * - Creator app: moderation board (resolves column entry IDs to message content)
  *
  * @param eventId - Event ID to subscribe to
+ * @param organizationId - Organization ID — required so the query satisfies
+ *   Firestore security rules which gate reads on `resource.data.organizationId`
  * @returns Object with messages Map, loading state, and error
  *
  * @example
  * ```tsx
- * function ModerationBoard({ eventId }: { eventId: EventId }) {
- *   const { messages, loading, error } = useMessages(eventId);
+ * function ModerationBoard({ eventId, orgId }: Props) {
+ *   const { messages, loading, error } = useMessages(eventId, orgId);
  *
  *   if (loading) return <LoadingSpinner />;
  *   if (error) return <ErrorMessage error={error} />;
@@ -261,7 +263,7 @@ export async function clearMessageEdit(messageId: MessageId): Promise<void> {
  * }
  * ```
  */
-export function useMessages(eventId: EventId): {
+export function useMessages(eventId: EventId, organizationId: OrganizationId): {
   messages: Map<MessageId, MessageDocument>;
   loading: boolean;
   error: Error | null;
@@ -277,6 +279,7 @@ export function useMessages(eventId: EventId): {
     const q = query(
       getMessagesCollection(),
       where('eventId', '==', fromBranded(eventId)),
+      where('organizationId', '==', fromBranded(organizationId)),
       where('isDeleted', '==', false),
       orderBy('submittedAt', 'desc'),
       limit(MAX_INBOX_MESSAGES),
@@ -309,7 +312,7 @@ export function useMessages(eventId: EventId): {
 
     // Cleanup: unsubscribe from onSnapshot listener when component unmounts
     return unsubscribe;
-  }, [eventId]);
+  }, [eventId, organizationId]);
 
   return { messages, loading, error };
 }

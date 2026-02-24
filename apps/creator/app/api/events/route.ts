@@ -34,6 +34,7 @@ import {
   EVENTS_CREATE,
   validateCreateEventData,
   generateQRCode,
+  DEFAULT_INBOX_COLUMN_NAME,
 } from "@brayford/core";
 import type { OrganizationMember } from "@brayford/core";
 
@@ -162,6 +163,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       name: "Main QR Code",
       isActive: true,
       createdAt: FieldValue.serverTimestamp(),
+    });
+
+    // 8. Create default inbox column for message moderation
+    const inboxColumnRef = adminDb.collection("messageColumns").doc();
+
+    await inboxColumnRef.set({
+      eventId: eventRef.id,
+      organizationId,
+      brandId,
+      name: DEFAULT_INBOX_COLUMN_NAME,
+      order: 0,
+      isDefault: true,
+      isBin: false,
+      messageCount: 0,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
     return NextResponse.json(

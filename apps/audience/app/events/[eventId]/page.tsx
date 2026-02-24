@@ -4,18 +4,17 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   toBranded,
+  fromBranded,
   type EventId,
-  type EventDocument,
   type BrandDocument,
-  type BrandId,
   type HeaderType,
   DEFAULT_AUDIENCE_BACKGROUND,
   DEFAULT_AUDIENCE_TEXT,
 } from "@brayford/core";
 import {
-  getEvent,
   getBrand,
   useEventLiveState,
+  useEventDocument,
 } from "@brayford/firebase-utils";
 import SceneRenderer from "@/components/SceneRenderer";
 import WaitingScreen from "@/components/WaitingScreen";
@@ -26,62 +25,31 @@ export default function EventPage() {
   const params = useParams<{ eventId: string }>();
   const eventId = toBranded<EventId>(params.eventId);
 
-  const [loading, setLoading] = useState(true);
-  const [event, setEvent] = useState<EventDocument | null>(null);
+  // Real-time event document subscription — status changes update the UI
+  // automatically without a page refresh.
+  const { event, loading: eventLoading } = useEventDocument(eventId);
+
   const [brand, setBrand] = useState<BrandDocument | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [accessBlocked, setAccessBlocked] = useState<
-    "not-started" | "ended" | null
-  >(null);
 
   // Subscribe to live state for real-time scene updates
   const { liveState } = useEventLiveState(eventId);
 
+  // Load brand styling whenever the event goes (or is already) live.
+  // Runs whenever event.brandId changes (i.e. once on first live transition).
   useEffect(() => {
-    const loadEvent = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    if (event?.status !== "live" || brand) return;
+    getBrand(event.brandId)
+      .then((data) => {
+        if (data) setBrand(data);
+      })
+      .catch((err) => console.error("Error loading brand:", err));
+  }, [event?.status, event?.brandId, brand]);
 
-        const eventData = await getEvent(eventId);
-        if (!eventData) {
-          setError("Event not found");
-          return;
-        }
-
-        setEvent(eventData);
-
-        // Surface appropriate message for non-live events (e.g. bookmarked links)
-        if (eventData.status === "ended") {
-          setAccessBlocked("ended");
-          return;
-        }
-        if (eventData.status === "draft" || eventData.status === "active") {
-          setAccessBlocked("not-started");
-          return;
-        }
-
-        // Fetch brand data for styling
-        const brandData = await getBrand(eventData.brandId);
-        if (brandData) {
-          setBrand(brandData);
-        }
-      } catch (err) {
-        console.error("Error loading event:", err);
-        setError("Failed to load event");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadEvent();
-  }, [eventId]);
-
-  if (loading) {
+  if (eventLoading) {
     return <FullScreenLoader message="Loading event…" />;
   }
 
-  if (error || !event) {
+  if (!event) {
     return (
       <FullScreenMessage
         iconBgClass="bg-zinc-100"
@@ -100,7 +68,9 @@ export default function EventPage() {
     );
   }
 
-  if (accessBlocked === "not-started") {
+  // Status gating — derived directly from the live event document so
+  // transitions happen automatically as the host changes the event status.
+  if (event.status === "draft" || event.status === "active") {
     const formattedDate = event.scheduledDate.toLocaleDateString("en-GB", {
       weekday: "long",
       day: "numeric",
@@ -120,16 +90,20 @@ export default function EventPage() {
           />
         }
         title="Not Started Yet"
-        message="This event hasn't started yet. We'll see you soon!"
+        message="This event hasn't started yet. We'll take you in automatically when it does."
       >
         <p className="text-sm font-medium text-zinc-500">
           Scheduled for {formattedDate} at {event.scheduledStartTime}
         </p>
+        <div className="mt-5 flex items-center justify-center gap-2 text-xs text-zinc-400">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          Waiting for the event to begin
+        </div>
       </FullScreenMessage>
     );
   }
 
-  if (accessBlocked === "ended") {
+  if (event.status === "ended") {
     return (
       <FullScreenMessage
         iconBgClass="bg-slate-100"
@@ -291,6 +265,11 @@ export default function EventPage() {
               key="scene-renderer"
               sceneId={liveState.activeSceneId}
               eventName={event.name}
+              eventId={fromBranded(event.id)}
+              brandInputBackgroundColor={brand?.styling?.inputBackgroundColor}
+              brandInputTextColor={brand?.styling?.inputTextColor}
+              brandButtonBackgroundColor={brand?.styling?.buttonBackgroundColor}
+              brandButtonTextColor={brand?.styling?.buttonTextColor}
             />
           ) : (
             <WaitingScreen eventName={event.name} />

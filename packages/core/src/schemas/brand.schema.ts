@@ -88,6 +88,24 @@ export const BrandStylingSchema = z.object({
     .describe('Header background image download URL from image library')
     .nullable()
     .optional(),
+
+  // Interactive element styling (inputs, buttons — used by messaging, polls, etc.)
+  inputBackgroundColor: z.string()
+    .regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color')
+    .describe('Background colour for text inputs and textareas on audience devices')
+    .optional(),
+  inputTextColor: z.string()
+    .regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color')
+    .describe('Text colour for text inputs and textareas on audience devices')
+    .optional(),
+  buttonBackgroundColor: z.string()
+    .regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color')
+    .describe('Background colour for action buttons on audience devices')
+    .optional(),
+  buttonTextColor: z.string()
+    .regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color')
+    .describe('Text colour for action buttons on audience devices')
+    .optional(),
 }).optional();
 
 export type BrandStyling = z.infer<typeof BrandStylingSchema>;

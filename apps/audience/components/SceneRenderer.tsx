@@ -5,14 +5,27 @@ import {
   type SceneId,
   type SceneDocument,
   type ModuleInstance,
+  type InteractiveStyles,
+  type MessagingModuleConfig,
+  DEFAULT_INPUT_BACKGROUND,
+  DEFAULT_INPUT_TEXT,
+  DEFAULT_BUTTON_BACKGROUND,
+  DEFAULT_BUTTON_TEXT,
 } from "@brayford/core";
 import { getScene } from "@brayford/firebase-utils";
 import TextModule from "./modules/TextModule";
 import ImageModule from "./modules/ImageModule";
+import MessagingModule from "./modules/MessagingModule";
 
 interface SceneRendererProps {
   sceneId: SceneId;
   eventName: string;
+  eventId: string;
+  /** Brand-level interactive element styling (input + button colours) */
+  brandInputBackgroundColor?: string;
+  brandInputTextColor?: string;
+  brandButtonBackgroundColor?: string;
+  brandButtonTextColor?: string;
 }
 
 /**
@@ -28,6 +41,11 @@ interface SceneRendererProps {
 export default function SceneRenderer({
   sceneId,
   eventName,
+  eventId,
+  brandInputBackgroundColor,
+  brandInputTextColor,
+  brandButtonBackgroundColor,
+  brandButtonTextColor,
 }: SceneRendererProps) {
   const [displayedScene, setDisplayedScene] = useState<SceneDocument | null>(
     null,
@@ -80,10 +98,24 @@ export default function SceneRenderer({
     (a, b) => a.order - b.order,
   );
 
+  // Build brand-level interactive styles (fallback to hardcoded defaults)
+  const brandStyles: InteractiveStyles = {
+    inputBackgroundColor: brandInputBackgroundColor || DEFAULT_INPUT_BACKGROUND,
+    inputTextColor: brandInputTextColor || DEFAULT_INPUT_TEXT,
+    buttonBackgroundColor:
+      brandButtonBackgroundColor || DEFAULT_BUTTON_BACKGROUND,
+    buttonTextColor: brandButtonTextColor || DEFAULT_BUTTON_TEXT,
+  };
+
   return (
     <div className="w-full space-y-4 py-6">
       {sortedModules.map((module) => (
-        <ModuleRenderer key={module.id} module={module} />
+        <ModuleRenderer
+          key={module.id}
+          module={module}
+          eventId={eventId}
+          brandStyles={brandStyles}
+        />
       ))}
     </div>
   );
@@ -94,13 +126,45 @@ export default function SceneRenderer({
  *
  * Extensible: add new module type cases as they're implemented.
  */
-function ModuleRenderer({ module }: { module: ModuleInstance }) {
+function ModuleRenderer({
+  module,
+  eventId,
+  brandStyles,
+}: {
+  module: ModuleInstance;
+  eventId: string;
+  brandStyles: InteractiveStyles;
+}) {
   switch (module.moduleType) {
     case "text":
       return <TextModule config={module.config as any} />;
 
     case "image":
       return <ImageModule config={module.config as any} />;
+
+    case "messaging": {
+      const cfg = module.config as MessagingModuleConfig;
+      // Resolve: module override → brand style → default (already in brandStyles)
+      const resolvedStyles: InteractiveStyles = {
+        inputBackgroundColor:
+          cfg.styleOverrides?.inputBackgroundColor ||
+          brandStyles.inputBackgroundColor,
+        inputTextColor:
+          cfg.styleOverrides?.inputTextColor || brandStyles.inputTextColor,
+        buttonBackgroundColor:
+          cfg.styleOverrides?.buttonBackgroundColor ||
+          brandStyles.buttonBackgroundColor,
+        buttonTextColor:
+          cfg.styleOverrides?.buttonTextColor || brandStyles.buttonTextColor,
+      };
+      return (
+        <MessagingModule
+          config={cfg}
+          eventId={eventId}
+          styles={resolvedStyles}
+        />
+      );
+    }
 
     default:
       // Unknown module types are silently skipped

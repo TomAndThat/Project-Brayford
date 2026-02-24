@@ -342,7 +342,7 @@ describe('Message Firestore Operations', () => {
       vi.mocked(query).mockReturnValue({} as any);
       vi.mocked(onSnapshot).mockReturnValue(vi.fn() as any);
 
-      useMessages(mockEventId);
+      useMessages(mockEventId, mockOrgId);
       capturedEffects[0]?.();
 
       expect(onSnapshot).toHaveBeenCalledOnce();
@@ -353,10 +353,11 @@ describe('Message Firestore Operations', () => {
       vi.mocked(query).mockReturnValue({} as any);
       vi.mocked(onSnapshot).mockReturnValue(vi.fn() as any);
 
-      useMessages(mockEventId);
+      useMessages(mockEventId, mockOrgId);
       capturedEffects[0]?.();
 
       expect(where).toHaveBeenCalledWith('eventId', '==', 'event123');
+      expect(where).toHaveBeenCalledWith('organizationId', '==', 'org123');
       expect(where).toHaveBeenCalledWith('isDeleted', '==', false);
       expect(orderBy).toHaveBeenCalledWith('submittedAt', 'desc');
       expect(limit).toHaveBeenCalledWith(MAX_INBOX_MESSAGES);
@@ -368,7 +369,7 @@ describe('Message Firestore Operations', () => {
       vi.mocked(query).mockReturnValue({} as any);
       vi.mocked(onSnapshot).mockReturnValue(mockUnsubscribe as any);
 
-      useMessages(mockEventId);
+      useMessages(mockEventId, mockOrgId);
       const cleanup = capturedEffects[0]?.() as (() => void) | undefined;
       cleanup?.();
 
@@ -384,7 +385,7 @@ describe('Message Firestore Operations', () => {
         return vi.fn();
       });
 
-      useMessages(mockEventId);
+      useMessages(mockEventId, mockOrgId);
       capturedEffects[0]?.();
 
       // stateSetters[0] = setMessages
@@ -405,7 +406,7 @@ describe('Message Firestore Operations', () => {
         return vi.fn();
       });
 
-      useMessages(mockEventId);
+      useMessages(mockEventId, mockOrgId);
       capturedEffects[0]?.();
 
       // stateSetters[2] = setError

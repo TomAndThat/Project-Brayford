@@ -1,12 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import type { EventStatus } from "@brayford/core";
 
-export type StudioView = "scenes" | "messages" | "polls" | "settings";
+export type StudioView =
+  | "event-control"
+  | "scenes"
+  | "messages"
+  | "polls"
+  | "settings";
 
 interface StudioNavRailProps {
   currentView: StudioView;
   onViewChange: (view: StudioView) => void;
+  eventStatus: EventStatus;
 }
 
 interface NavItem {
@@ -18,10 +25,42 @@ interface NavItem {
 export default function StudioNavRail({
   currentView,
   onViewChange,
+  eventStatus,
 }: StudioNavRailProps) {
   const router = useRouter();
 
+  const statusPipConfig: Record<
+    EventStatus,
+    { color: string; pulse: boolean; title: string }
+  > = {
+    draft: { color: "bg-gray-400", pulse: false, title: "Draft" },
+    active: { color: "bg-green-500", pulse: false, title: "Ready" },
+    live: { color: "bg-red-500", pulse: true, title: "Live" },
+    ended: { color: "bg-gray-500", pulse: false, title: "Ended" },
+  };
+
+  const pip = statusPipConfig[eventStatus];
+
   const navItems: NavItem[] = [
+    {
+      id: "event-control",
+      label: "Control",
+      icon: (
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728M8.464 15.536a5 5 0 010-7.072m7.072 0a5 5 0 010 7.072M12 12h.01"
+          />
+        </svg>
+      ),
+    },
     {
       id: "scenes",
       label: "Scenes",
@@ -136,20 +175,26 @@ export default function StudioNavRail({
       {/* View Navigation */}
       {navItems.map((item) => {
         const isActive = currentView === item.id;
+        const showPip = item.id === "event-control";
         return (
           <button
             key={item.id}
             onClick={() => onViewChange(item.id)}
             className={`
-              w-14 h-14 rounded-lg flex flex-col items-center justify-center gap-1 transition-colors
+              relative w-14 h-14 rounded-lg flex flex-col items-center justify-center gap-1 transition-colors
               ${
                 isActive
                   ? "bg-blue-600 text-white"
                   : "text-gray-400 hover:text-white hover:bg-gray-800"
               }
             `}
-            title={item.label}
+            title={showPip ? `${item.label} — ${pip.title}` : item.label}
           >
+            {showPip && (
+              <span
+                className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full border-2 border-gray-950 ${pip.color} ${pip.pulse ? "animate-pulse" : ""}`}
+              />
+            )}
             {item.icon}
             <span className="text-xs font-medium">{item.label}</span>
           </button>
