@@ -694,7 +694,7 @@ export const onInvitationCreated = onDocumentCreated(
 
       // Construct invitation URL
       const baseUrl = process.env.CREATOR_APP_URL || "http://localhost:3000";
-      const inviteLink = `${baseUrl}/join?token=${invData.token}`;
+      const invitationLink = `${baseUrl}/join?token=${invData.token}`;
 
       // Queue email
       await db.collection("emailQueue").add({
@@ -706,7 +706,7 @@ export const onInvitationCreated = onDocumentCreated(
         templateData: {
           organizationName: invData.organizationName,
           inviterName,
-          inviteLink,
+          invitationLink,
           role: invData.role,
           expiresAt: formattedExpiry,
         },

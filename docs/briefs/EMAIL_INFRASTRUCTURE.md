@@ -88,7 +88,7 @@ await sendEmail({
   templateData: {
     organizationName: "Acme Corp",
     inviterName: "Sarah Smith",
-    inviteLink: "https://brayford.app/join/abc123",
+    invitationLink: "https://brayford.app/join/abc123",
   },
   metadata: {
     organizationId: "org-123",
@@ -288,7 +288,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     alias: "organization-invitation",
     displayName: "Organisation Invitation",
     description: "Invite user to join organisation",
-    requiredData: ["organizationName", "inviterName", "inviteLink"],
+    requiredData: ["organizationName", "inviterName", "invitationLink"],
     locale: "en-GB",
   },
   // ... more templates
@@ -521,7 +521,7 @@ export const onOrganizationMemberInvited = onDocumentCreated(
       templateData: {
         organizationName: org.data()?.name,
         inviterName: inviter.data()?.displayName,
-        inviteLink: `https://brayford.app/join/${member.inviteToken}`,
+        invitationLink: `https://brayford.app/join/${member.inviteToken}`,
       },
       metadata: {
         organizationId: member.organizationId,

@@ -34,7 +34,7 @@ export async function queueTestEmail(
     templateData: {
       organizationName: 'Test Organization',
       inviterName: 'Test User',
-      inviteLink: 'https://creator.brayford.live/join/test123',
+      invitationLink: 'https://creator.brayford.live/join/test123',
       recipientEmail: to,
     },
     metadata: {
@@ -132,7 +132,7 @@ export async function queueInvitationEmail(invitationId: string): Promise<string
 
   // Construct invitation URL
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const inviteLink = `${baseUrl}/join?token=${invData.token}`;
+  const invitationLink = `${baseUrl}/join?token=${invData.token}`;
 
   // Queue the email
   const emailData: CreateEmailQueueData = {
@@ -143,7 +143,7 @@ export async function queueInvitationEmail(invitationId: string): Promise<string
     templateData: {
       organizationName: invData.organizationName,
       inviterName,
-      inviteLink,
+      invitationLink,
       role: invData.role,
       expiresAt: formattedExpiry,
     },

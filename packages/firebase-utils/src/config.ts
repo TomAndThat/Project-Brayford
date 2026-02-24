@@ -13,9 +13,14 @@
  * - NEXT_PUBLIC_FIREBASE_APP_ID (not required in emulator mode)
  * 
  * Emulator support:
- * - Set NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true to connect to local emulators
+ * - Set NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true to connect Firestore and Storage to local emulators
+ * - Set NEXT_PUBLIC_FIREBASE_AUTH_USE_EMULATOR=true to connect Auth to the local emulator
  * - Auth emulator: localhost:9099
  * - Firestore emulator: localhost:8080
+ * - Storage emulator: localhost:9199
+ *
+ * These flags are intentionally independent so that, for example, the admin app
+ * can use production Auth while still pointing Firestore at the local emulator.
  */
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
@@ -23,8 +28,11 @@ import { getAuth, connectAuthEmulator, signInWithCustomToken, type Auth } from '
 import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
 
-/** Whether running against Firebase emulators */
-const isEmulatorMode = process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === 'true';
+/** Whether Firestore and Storage should connect to local emulators */
+const isFirestoreEmulatorMode = process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === 'true';
+
+/** Whether Auth should connect to the local emulator */
+const isAuthEmulatorMode = process.env.NEXT_PUBLIC_FIREBASE_AUTH_USE_EMULATOR === 'true';
 
 /**
  * Firebase configuration object
@@ -56,7 +64,7 @@ const EMULATOR_REQUIRED_KEYS: (keyof typeof firebaseConfig)[] = [
  * In production mode, all keys are required.
  */
 function validateConfig(): void {
-  const requiredKeys = isEmulatorMode
+  const requiredKeys = isFirestoreEmulatorMode
     ? EMULATOR_REQUIRED_KEYS
     : (Object.keys(firebaseConfig) as (keyof typeof firebaseConfig)[]);
 
@@ -116,22 +124,27 @@ export const firebaseApp: FirebaseApp = app;
 export { firebaseConfig };
 
 /**
- * Emulator connection for local development and E2E testing.
- * 
- * When NEXT_PUBLIC_FIREBASE_USE_EMULATORS is 'true':
- * - Auth connects to localhost:9099
- * - Firestore connects to localhost:8080
- * - A __FIREBASE_TEST__ global is exposed on window for Playwright
- *   to programmatically sign in via signInWithCustomToken
+ * Emulator connections for local development and E2E testing.
+ *
+ * NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true  → Firestore (8080) + Storage (9199)
+ * NEXT_PUBLIC_FIREBASE_AUTH_USE_EMULATOR=true → Auth (9099)
+ *
+ * The two flags are independent. The admin app, for example, omits the Auth
+ * flag so that real production accounts can be used while Firestore data stays
+ * local. When Auth emulator is active, a __FIREBASE_TEST__ global is exposed
+ * for Playwright to sign in via signInWithCustomToken.
  */
-if (isEmulatorMode) {
+if (isAuthEmulatorMode) {
   connectAuthEmulator(auth, 'http://localhost:9099');
+}
+
+if (isFirestoreEmulatorMode) {
   connectFirestoreEmulator(db, 'localhost', 8080);
   connectStorageEmulator(storage, 'localhost', 9199);
+}
 
-  if (typeof window !== 'undefined') {
-    (window as Record<string, unknown>).__FIREBASE_TEST__ = {
-      signIn: (token: string) => signInWithCustomToken(auth, token),
-    };
-  }
+if (isAuthEmulatorMode && typeof window !== 'undefined') {
+  (window as Record<string, unknown>).__FIREBASE_TEST__ = {
+    signIn: (token: string) => signInWithCustomToken(auth, token),
+  };
 }

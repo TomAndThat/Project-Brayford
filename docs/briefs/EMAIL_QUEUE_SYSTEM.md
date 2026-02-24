@@ -83,7 +83,7 @@ Set in:
    To: user@example.com
    Type: invitation
    Template: brayford-invitation-member
-   Data: { organizationName: "Acme Corp", inviteLink: "..." }
+   Data: { organizationName: "Acme Corp", invitationLink: "..." }
 ```
 
 ### 3. Rate Limiting (Firestore-Backed)
@@ -297,7 +297,7 @@ Template: brayford-invitation-member
 Required Variables:
 - organizationName (string): Name of the organization user is invited to
 - inviterName (string): Full name of person who sent the invitation
-- inviteLink (string): Full HTTPS URL to accept invitation (expires in 7 days)
+- invitationLink (string): Full HTTPS URL to accept invitation (expires in 7 days)
 - recipientEmail (string): Email address of invitee (for display/confirmation)
 
 Optional Variables:
@@ -307,7 +307,7 @@ Example Payload:
 {
   "organizationName": "Acme Podcasts",
   "inviterName": "Sarah Smith",
-  "inviteLink": "https://creator.brayford.live/join/abc123def456",
+  "invitationLink": "https://creator.brayford.live/join/abc123def456",
   "recipientEmail": "john@example.com",
   "customMessage": "Looking forward to working with you!"
 }

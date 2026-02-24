@@ -312,7 +312,7 @@ export function createMockEmailQueueDocument(
     templateData: {
       organizationName: 'Test Org',
       inviterName: 'Test User',
-      inviteLink: 'https://example.com/invite/abc123',
+      invitationLink: 'https://example.com/invite/abc123',
     },
     metadata: {
       userId: 'user-123',

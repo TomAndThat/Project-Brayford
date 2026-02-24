@@ -65,7 +65,7 @@ await db.collection("emailQueue").add({
     // for pb-admin-* templates — do NOT include them here.
     organizationName: "Acme Corp",
     inviterName: "Jane Smith",
-    inviteLink: "https://app.brayford.live/join?token=abc123",
+    invitationLink: "https://app.brayford.live/join?token=abc123",
   },
   metadata: {
     userId: "user-abc",
