@@ -8,6 +8,7 @@ import {
 } from "@brayford/core";
 import { getScene } from "@brayford/firebase-utils";
 import TextModule from "./modules/TextModule";
+import ImageModule from "./modules/ImageModule";
 
 interface SceneRendererProps {
   sceneId: SceneId;
@@ -97,6 +98,9 @@ function ModuleRenderer({ module }: { module: ModuleInstance }) {
   switch (module.moduleType) {
     case "text":
       return <TextModule config={module.config as any} />;
+
+    case "image":
+      return <ImageModule config={module.config as any} />;
 
     default:
       // Unknown module types are silently skipped

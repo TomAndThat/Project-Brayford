@@ -228,6 +228,37 @@ export {
   type UpdateEventLiveStateData,
 } from './event-live-state.schema';
 
+// Message Schema (Interaction Domain)
+export {
+  MessageSchema,
+  CreateMessageSchema,
+  UpdateMessageSchema,
+  validateMessageData,
+  validateCreateMessageData,
+  validateUpdateMessageData,
+  type Message,
+  type MessageDocument,
+  type CreateMessageData,
+  type UpdateMessageData,
+} from './message.schema';
+
+// Message Column Schema (Interaction Domain)
+export {
+  MessageColumnSchema,
+  ColumnMessageEntrySchema,
+  CreateMessageColumnSchema,
+  UpdateMessageColumnSchema,
+  validateMessageColumnData,
+  validateCreateMessageColumnData,
+  validateUpdateMessageColumnData,
+  validateColumnMessageEntryData,
+  type MessageColumn,
+  type MessageColumnDocument,
+  type ColumnMessageEntry,
+  type CreateMessageColumnData,
+  type UpdateMessageColumnData,
+} from './message-column.schema';
+
 // Image Schema (Asset Management Domain)
 export {
   ImageSchema,

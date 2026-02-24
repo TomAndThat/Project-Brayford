@@ -606,6 +606,239 @@ describe('Server-only collections', () => {
   });
 });
 
+// ===== Messages Collection =====
+
+describe('Messages collection', () => {
+  const orgId = 'org-msg-1';
+  const otherOrgId = 'org-msg-2';
+  const messageId = 'msg-1';
+  const messageDoc = {
+    eventId: 'event-1',
+    organizationId: orgId,
+    brandId: 'brand-1',
+    content: 'What is your favourite colour?',
+    editedContent: null,
+    displayName: 'Alice',
+    audienceUUID: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    isDeleted: false,
+    submittedAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  beforeEach(async () => {
+    await seedDoc(`messages/${messageId}`, messageDoc);
+  });
+
+  describe('read', () => {
+    it('allows org members with events:view (ev) to read a message', async () => {
+      const auth = orgMemberToken('user-1', 'user@test.com', orgId, ['ev']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertSucceeds(getDoc(doc(ctx.firestore(), 'messages', messageId)));
+    });
+
+    it('allows org owners (wildcard) to read a message', async () => {
+      const auth = orgMemberToken('owner-1', 'owner@test.com', orgId, ['*']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertSucceeds(getDoc(doc(ctx.firestore(), 'messages', messageId)));
+    });
+
+    it('allows org members with events:moderate (emo) to read a message', async () => {
+      const auth = orgMemberToken('mod-1', 'mod@test.com', orgId, ['emo']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertSucceeds(getDoc(doc(ctx.firestore(), 'messages', messageId)));
+    });
+
+    it('denies org members without events:view or events:moderate', async () => {
+      const auth = orgMemberToken('user-2', 'user2@test.com', orgId, ['bv']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertFails(getDoc(doc(ctx.firestore(), 'messages', messageId)));
+    });
+
+    it('denies members of a different organisation', async () => {
+      const auth = orgMemberToken('user-other', 'other@test.com', otherOrgId, ['*']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertFails(getDoc(doc(ctx.firestore(), 'messages', messageId)));
+    });
+
+    it('denies unauthenticated reads', async () => {
+      const ctx = testEnv.unauthenticatedContext();
+      await assertFails(getDoc(doc(ctx.firestore(), 'messages', messageId)));
+    });
+
+    it('denies authenticated users with no org claims', async () => {
+      const ctx = testEnv.authenticatedContext('no-claims', { email: 'noclaims@test.com' });
+      await assertFails(getDoc(doc(ctx.firestore(), 'messages', messageId)));
+    });
+  });
+
+  describe('write', () => {
+    it('denies client-side creates — all submissions go via API route', async () => {
+      const auth = orgMemberToken('owner-1', 'owner@test.com', orgId, ['*']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertFails(
+        setDoc(doc(ctx.firestore(), 'messages', 'new-msg'), messageDoc),
+      );
+    });
+
+    it('denies client-side updates — all moderation goes via API route', async () => {
+      const auth = orgMemberToken('mod-1', 'mod@test.com', orgId, ['emo']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertFails(
+        updateDoc(doc(ctx.firestore(), 'messages', messageId), { isDeleted: true }),
+      );
+    });
+
+    it('denies unauthenticated writes', async () => {
+      const ctx = testEnv.unauthenticatedContext();
+      await assertFails(
+        setDoc(doc(ctx.firestore(), 'messages', 'new-msg'), messageDoc),
+      );
+    });
+  });
+});
+
+// ===== Message Columns Collection =====
+
+describe('Message columns collection', () => {
+  const orgId = 'org-col-1';
+  const otherOrgId = 'org-col-2';
+  const columnId = 'col-1';
+  const entryId = 'msg-1';
+
+  const columnDoc = {
+    eventId: 'event-1',
+    organizationId: orgId,
+    brandId: 'brand-1',
+    name: 'Inbox',
+    order: 0,
+    isDefault: true,
+    isBin: false,
+    messageCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const entryDoc = {
+    messageId: entryId,
+    addedAt: new Date(),
+    order: 1000,
+  };
+
+  beforeEach(async () => {
+    await seedDoc(`messageColumns/${columnId}`, columnDoc);
+    await seedDoc(`messageColumns/${columnId}/messages/${entryId}`, entryDoc);
+  });
+
+  describe('column read', () => {
+    it('allows org members with events:view (ev) to read a column', async () => {
+      const auth = orgMemberToken('user-1', 'user@test.com', orgId, ['ev']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertSucceeds(getDoc(doc(ctx.firestore(), 'messageColumns', columnId)));
+    });
+
+    it('allows org owners (wildcard) to read a column', async () => {
+      const auth = orgMemberToken('owner-1', 'owner@test.com', orgId, ['*']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertSucceeds(getDoc(doc(ctx.firestore(), 'messageColumns', columnId)));
+    });
+
+    it('allows org members with events:moderate (emo) to read a column', async () => {
+      const auth = orgMemberToken('mod-1', 'mod@test.com', orgId, ['emo']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertSucceeds(getDoc(doc(ctx.firestore(), 'messageColumns', columnId)));
+    });
+
+    it('denies org members without events:view', async () => {
+      const auth = orgMemberToken('user-2', 'user2@test.com', orgId, ['bv']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertFails(getDoc(doc(ctx.firestore(), 'messageColumns', columnId)));
+    });
+
+    it('denies members of a different organisation', async () => {
+      const auth = orgMemberToken('user-other', 'other@test.com', otherOrgId, ['*']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertFails(getDoc(doc(ctx.firestore(), 'messageColumns', columnId)));
+    });
+
+    it('denies unauthenticated reads', async () => {
+      const ctx = testEnv.unauthenticatedContext();
+      await assertFails(getDoc(doc(ctx.firestore(), 'messageColumns', columnId)));
+    });
+  });
+
+  describe('column write', () => {
+    it('denies client-side creates — all column management via API route', async () => {
+      const auth = orgMemberToken('owner-1', 'owner@test.com', orgId, ['*']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertFails(
+        setDoc(doc(ctx.firestore(), 'messageColumns', 'new-col'), columnDoc),
+      );
+    });
+
+    it('denies client-side updates', async () => {
+      const auth = orgMemberToken('owner-1', 'owner@test.com', orgId, ['*']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertFails(
+        updateDoc(doc(ctx.firestore(), 'messageColumns', columnId), { name: 'On Air' }),
+      );
+    });
+  });
+
+  describe('column messages subcollection read', () => {
+    it('allows org members with events:view to read a column entry', async () => {
+      const auth = orgMemberToken('user-1', 'user@test.com', orgId, ['ev']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertSucceeds(
+        getDoc(doc(ctx.firestore(), 'messageColumns', columnId, 'messages', entryId)),
+      );
+    });
+
+    it('allows org owners (wildcard) to read a column entry', async () => {
+      const auth = orgMemberToken('owner-1', 'owner@test.com', orgId, ['*']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertSucceeds(
+        getDoc(doc(ctx.firestore(), 'messageColumns', columnId, 'messages', entryId)),
+      );
+    });
+
+    it('allows org members with events:moderate (emo) to read a column entry', async () => {
+      const auth = orgMemberToken('mod-1', 'mod@test.com', orgId, ['emo']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertSucceeds(
+        getDoc(doc(ctx.firestore(), 'messageColumns', columnId, 'messages', entryId)),
+      );
+    });
+
+    it('denies members of a different organisation', async () => {
+      const auth = orgMemberToken('user-other', 'other@test.com', otherOrgId, ['*']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertFails(
+        getDoc(doc(ctx.firestore(), 'messageColumns', columnId, 'messages', entryId)),
+      );
+    });
+
+    it('denies unauthenticated reads of column entries', async () => {
+      const ctx = testEnv.unauthenticatedContext();
+      await assertFails(
+        getDoc(doc(ctx.firestore(), 'messageColumns', columnId, 'messages', entryId)),
+      );
+    });
+  });
+
+  describe('column messages subcollection write', () => {
+    it('denies client-side writes to column entries — ordering via API route only', async () => {
+      const auth = orgMemberToken('owner-1', 'owner@test.com', orgId, ['*']);
+      const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
+      await assertFails(
+        setDoc(
+          doc(ctx.firestore(), 'messageColumns', columnId, 'messages', 'new-entry'),
+          entryDoc,
+        ),
+      );
+    });
+  });
+});
+
 // ===== Default Deny =====
 
 describe('Default deny rule', () => {

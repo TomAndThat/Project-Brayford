@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Messaging Module — Foundation**: Core data layer for the audience messaging feature (Interaction Domain)
+  - `MessageSchema` and `MessageColumnSchema` Zod schemas added to `@brayford/core` with full Create/Update variants
+  - `ColumnMessageEntrySchema` for the subcollection join documents that drive within-column ordering
+  - `MessageId` and `MessageColumnId` branded types added to the type system
+  - Messaging constants (`MIN_MESSAGE_CONTENT_LENGTH`, `MAX_MESSAGE_CONTENT_LENGTH`, `MAX_DISPLAY_NAME_LENGTH`, `MESSAGE_RATE_LIMIT_SECONDS`, `MAX_INBOX_MESSAGES`, `DEFAULT_INBOX_COLUMN_NAME`) exported from `@brayford/core`
+  - `MessagingModuleConfig` type added alongside `ImageModuleConfig` in the module type system
+  - Firestore security rules for `/messages` and `/messageColumns` (including subcollection) — read-gated to org members with `ev` or `emo` permission; all writes server-side only
+  - 22 new Firestore rules unit tests (69 total passing) covering both collections, all permission levels, cross-org isolation, and write denials
+
+- **Scene Builder — Image Module**: Creators can now add images from the organisation's image library to scenes
+  - Full-width image display on audience devices with automatic (native) aspect ratio — no cropping
+  - By default the image uses the same horizontal padding as text content (`px-6`) so it sits neatly in the content flow
+  - Optional "Full width (no padding)" toggle in the module editor to extend the image edge-to-edge for hero imagery
+  - Alt text field (pre-filled from the image name, editable) for accessibility and fallback display
+  - Optional caption field rendered below the image, always padded regardless of the full-width setting
+  - Creator canvas card shows a small image thumbnail and alt text for easy identification when multiple image modules are in use
+  - Image URL is baked into the module config at save time (display-variant WebP), so the audience app requires no extra round-trip
+  - `ImageModuleConfig` type and `'image'` module type added to `@brayford/core`
+
 - **Audience App — Event Access Gating**: QR code join links are now only accessible when an event is `live`
   - `draft` and `active` events show a "Not Started Yet" screen with the scheduled date and time
   - `ended` events show a warm "This Event Has Ended" screen
@@ -37,6 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `ImageVariantsSchema` and `ImageVariants` type added to `@brayford/core` and exported
 
 ### Fixed
+
+- **Scene Builder — Text Module**: Fixed rogue empty paragraph appearing at the bottom of text modules on audience devices
+  - Root cause: ProseMirror always appends a trailing empty `<p>` after non-paragraph nodes (e.g. headings) to ensure a valid cursor position. This was being serialised and persisted to Firestore on every save.
+  - `RichTextEditor`: Trailing empty paragraphs are now stripped from `editor.getJSON()` before the `onChange` callback fires, so they are never written to the database going forward.
+  - `RichTextRenderer`: The renderer also strips trailing empty paragraphs before rendering, so existing stored content that already contains the stale node displays cleanly without requiring a re-save.
 
 - **Image Library — Cascade Deletion**: Fixed critical bug where images could be deleted whilst actively in use
   - Root cause: Original implementation relied on async-cached `usageCount` field updated by Cloud Functions. When the function hadn't fired yet, `usageCount` was 0 even when the image was actively referenced by brands/scenes.

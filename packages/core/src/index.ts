@@ -21,6 +21,8 @@ export {
   type ModuleInstanceId,
   type ModuleId,
   type InteractionId,
+  type MessageId,
+  type MessageColumnId,
   type ParticipantId,
   type EmailCaptureId,
   type SubscriptionId,
@@ -34,6 +36,8 @@ export {
   type ModuleType,
   type ModuleConfig,
   type TextModuleConfig,
+  type ImageModuleConfig,
+  type MessagingModuleConfig,
 } from './types/module';
 
 // Billing types

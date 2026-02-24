@@ -33,7 +33,7 @@ describe('ModuleInstanceSchema', () => {
     });
 
     it('validates all module types', () => {
-      const types = ['text'] as const;
+      const types = ['text', 'image'] as const;
       
       types.forEach((type) => {
         const module = createMockModuleInstance({ moduleType: type });

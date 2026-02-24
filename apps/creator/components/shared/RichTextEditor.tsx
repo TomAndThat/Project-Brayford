@@ -73,7 +73,25 @@ export default function RichTextEditor({
       },
     },
     onUpdate: ({ editor }) => {
-      onChange(editor.getJSON());
+      const json = editor.getJSON();
+      // Tiptap (ProseMirror) always appends an empty paragraph at the end of
+      // the document so the cursor has a valid position after non-paragraph
+      // nodes (e.g. headings). Strip any trailing empty paragraphs before
+      // persisting so they don't render as blank lines in the audience view.
+      if (json.content && json.content.length > 0) {
+        while (json.content.length > 0) {
+          const last = json.content[json.content.length - 1];
+          const isEmpty =
+            last.type === "paragraph" &&
+            (!last.content || last.content.length === 0);
+          if (isEmpty) {
+            json.content.pop();
+          } else {
+            break;
+          }
+        }
+      }
+      onChange(json);
     },
   });
 

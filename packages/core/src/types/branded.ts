@@ -50,6 +50,8 @@ export type SceneId = Brand<string, 'SceneId'>;
 export type ModuleInstanceId = Brand<string, 'ModuleInstanceId'>;
 export type ModuleId = Brand<string, 'ModuleId'>;
 export type InteractionId = Brand<string, 'InteractionId'>;
+export type MessageId = Brand<string, 'MessageId'>;
+export type MessageColumnId = Brand<string, 'MessageColumnId'>;
 
 /**
  * Asset Management Domain

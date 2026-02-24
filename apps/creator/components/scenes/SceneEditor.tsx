@@ -39,6 +39,9 @@ import type { ModuleInstance, ModuleType } from "@brayford/core";
 import { v4 as uuidv4 } from "uuid";
 import type { JSONContent } from "@tiptap/react";
 import RichTextEditor from "../shared/RichTextEditor";
+import ImagePickerDialog, {
+  type ImagePickerSelection,
+} from "../images/ImagePickerDialog";
 
 // Available module types with metadata
 interface ModuleTypeDefinition {
@@ -65,6 +68,26 @@ const AVAILABLE_MODULE_TYPES: ModuleTypeDefinition[] = [
           strokeLinejoin="round"
           strokeWidth={2}
           d="M4 6h16M4 12h16M4 18h7"
+        />
+      </svg>
+    ),
+  },
+  {
+    type: "image",
+    name: "Image",
+    description: "Display a full-width image",
+    icon: (
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
         />
       </svg>
     ),
@@ -194,15 +217,31 @@ function SortableModuleItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
-              Text
+              {module.moduleType === "text" ? "Text" : "Image"}
             </span>
             <span className="text-xs text-gray-500">Order: {module.order}</span>
           </div>
-          <p className="text-sm text-gray-900 truncate">
-            {(module.config as { content?: JSONContent }).content
-              ? "Rich text content"
-              : "(No content)"}
-          </p>
+          {module.moduleType === "text" ? (
+            <p className="text-sm text-gray-900 truncate">
+              {(module.config as { content?: JSONContent }).content
+                ? "Rich text content"
+                : "(No content)"}
+            </p>
+          ) : (
+            <div className="flex items-center gap-2">
+              {(module.config as { url?: string }).url && (
+                <img
+                  src={(module.config as { url: string }).url}
+                  alt={(module.config as { altText?: string }).altText || ""}
+                  className="h-8 w-8 rounded object-cover flex-shrink-0"
+                />
+              )}
+              <p className="text-sm text-gray-900 truncate">
+                {(module.config as { altText?: string }).altText ||
+                  "(No image selected)"}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
@@ -274,6 +313,16 @@ export default function SceneEditor({
   const [textContent, setTextContent] = useState<JSONContent>({
     type: "doc",
     content: [],
+  });
+  const [imagePickerStep, setImagePickerStep] = useState<
+    "picker" | "config" | null
+  >(null);
+  const [imageModuleConfig, setImageModuleConfig] = useState({
+    imageId: "",
+    url: "",
+    altText: "",
+    caption: "",
+    fullWidth: false,
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -349,28 +398,65 @@ export default function SceneEditor({
         id: uuidv4(),
         moduleType,
         order: modules.length * 10,
-        config: { content: { type: "doc", content: [] } },
+        config:
+          moduleType === "image"
+            ? {
+                imageId: "",
+                url: "",
+                altText: "",
+                caption: "",
+                fullWidth: false,
+              }
+            : { content: { type: "doc", content: [] } },
       };
-      // Immediately open editor for the new module
       setEditingModule(newModule);
-      setTextContent({ type: "doc", content: [] });
+      if (moduleType === "text") {
+        setTextContent({ type: "doc", content: [] });
+      } else {
+        setImageModuleConfig({
+          imageId: "",
+          url: "",
+          altText: "",
+          caption: "",
+          fullWidth: false,
+        });
+        setImagePickerStep("picker");
+      }
     },
     [modules.length],
   );
 
   const handleEditModule = useCallback((module: ModuleInstance) => {
     setEditingModule(module);
-    const content = (module.config as { content?: JSONContent }).content;
-    setTextContent(content || { type: "doc", content: [] });
+    if (module.moduleType === "text") {
+      const content = (module.config as { content?: JSONContent }).content;
+      setTextContent(content || { type: "doc", content: [] });
+    } else {
+      const cfg = module.config as {
+        imageId?: string;
+        url?: string;
+        altText?: string;
+        caption?: string;
+        fullWidth?: boolean;
+      };
+      setImageModuleConfig({
+        imageId: cfg.imageId ?? "",
+        url: cfg.url ?? "",
+        altText: cfg.altText ?? "",
+        caption: cfg.caption ?? "",
+        fullWidth: cfg.fullWidth ?? false,
+      });
+      setImagePickerStep("config");
+    }
   }, []);
 
   const handleSaveModule = useCallback(() => {
     if (!editingModule) return;
 
-    const updatedModule: ModuleInstance = {
-      ...editingModule,
-      config: { content: textContent },
-    };
+    const updatedModule: ModuleInstance =
+      editingModule.moduleType === "text"
+        ? { ...editingModule, config: { content: textContent } }
+        : { ...editingModule, config: { ...imageModuleConfig } };
 
     setModules((prev) => {
       const existing = prev.find((m) => m.id === editingModule.id);
@@ -383,11 +469,54 @@ export default function SceneEditor({
 
     setEditingModule(null);
     setTextContent({ type: "doc", content: [] });
-  }, [editingModule, textContent]);
+    setImagePickerStep(null);
+    setImageModuleConfig({
+      imageId: "",
+      url: "",
+      altText: "",
+      caption: "",
+      fullWidth: false,
+    });
+  }, [editingModule, textContent, imageModuleConfig]);
 
   const handleDeleteModule = useCallback((moduleId: string) => {
     setModules((prev) => prev.filter((m) => m.id !== moduleId));
   }, []);
+
+  const handleCancelEditModule = useCallback(() => {
+    setEditingModule(null);
+    setTextContent({ type: "doc", content: [] });
+    setImagePickerStep(null);
+    setImageModuleConfig({
+      imageId: "",
+      url: "",
+      altText: "",
+      caption: "",
+      fullWidth: false,
+    });
+  }, []);
+
+  const handleImagePickerSelect = useCallback((image: ImagePickerSelection) => {
+    setImageModuleConfig((prev) => ({
+      ...prev,
+      imageId: image.id,
+      url: image.url,
+      // Pre-fill alt text from the image name only if it hasn't been set yet
+      altText: prev.altText || image.name,
+    }));
+    setImagePickerStep("config");
+  }, []);
+
+  const handleImagePickerClose = useCallback(() => {
+    if (imageModuleConfig.url) {
+      // Already have an image selected — go back to the config form
+      setImagePickerStep("config");
+    } else {
+      // No image yet (new module) — discard the whole thing
+      setEditingModule(null);
+      setImagePickerStep(null);
+    }
+  }, [imageModuleConfig.url]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -631,47 +760,161 @@ export default function SceneEditor({
         </button>
       </div>
 
+      {/* Image picker — shown as a standalone overlay when selecting an image */}
+      {editingModule?.moduleType === "image" &&
+        imagePickerStep === "picker" && (
+          <ImagePickerDialog
+            organizationId={organizationId}
+            onSelect={handleImagePickerSelect}
+            onClose={handleImagePickerClose}
+          />
+        )}
+
       {/* Module editor modal */}
-      {editingModule && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {editingModule.moduleType === "text"
-                ? "Edit Text Module"
-                : "Edit Module"}
-            </h3>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Content
-              </label>
-              <RichTextEditor
-                content={textContent}
-                onChange={setTextContent}
-                placeholder="Start typing your content here..."
-              />
-            </div>
-            <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingModule(null);
-                  setTextContent({ type: "doc", content: [] });
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveModule}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-              >
-                Save Module
-              </button>
+      {editingModule &&
+        (editingModule.moduleType !== "image" ||
+          imagePickerStep === "config") && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {editingModule.moduleType === "text"
+                  ? "Edit Text Module"
+                  : "Edit Image Module"}
+              </h3>
+
+              <div className="mb-6">
+                {editingModule.moduleType === "text" ? (
+                  <>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Content
+                    </label>
+                    <RichTextEditor
+                      content={textContent}
+                      onChange={setTextContent}
+                      placeholder="Start typing your content here..."
+                    />
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Image preview */}
+                    {imageModuleConfig.url && (
+                      <div className="relative rounded-lg overflow-hidden bg-gray-100">
+                        <img
+                          src={imageModuleConfig.url}
+                          alt={imageModuleConfig.altText}
+                          className="w-full max-h-48 object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setImagePickerStep("picker")}
+                          className="absolute bottom-2 right-2 px-3 py-1.5 text-xs font-medium text-white bg-black/60 hover:bg-black/80 rounded-md transition-colors"
+                        >
+                          Change image
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Alt text */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Alt text <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={imageModuleConfig.altText}
+                        onChange={(e) =>
+                          setImageModuleConfig((prev) => ({
+                            ...prev,
+                            altText: e.target.value,
+                          }))
+                        }
+                        className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2"
+                        placeholder="Describe the image for screen readers"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Used by screen readers and shown if the image fails to
+                        load.
+                      </p>
+                    </div>
+
+                    {/* Caption */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Caption{" "}
+                        <span className="text-gray-400 font-normal">
+                          (optional)
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        value={imageModuleConfig.caption}
+                        onChange={(e) =>
+                          setImageModuleConfig((prev) => ({
+                            ...prev,
+                            caption: e.target.value,
+                          }))
+                        }
+                        className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2"
+                        placeholder="Add a caption below the image…"
+                      />
+                    </div>
+
+                    {/* Full-width toggle */}
+                    <div className="flex items-start gap-3 pt-1">
+                      <input
+                        type="checkbox"
+                        id="image-full-width"
+                        checked={imageModuleConfig.fullWidth}
+                        onChange={(e) =>
+                          setImageModuleConfig((prev) => ({
+                            ...prev,
+                            fullWidth: e.target.checked,
+                          }))
+                        }
+                        className="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <div>
+                        <label
+                          htmlFor="image-full-width"
+                          className="block text-sm font-medium text-gray-700 cursor-pointer"
+                        >
+                          Full width (no padding)
+                        </label>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          By default the image uses the same side padding as
+                          text content. Tick this to extend it to the screen
+                          edges.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleCancelEditModule}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveModule}
+                  disabled={
+                    editingModule.moduleType === "image" &&
+                    (!imageModuleConfig.url ||
+                      !imageModuleConfig.altText.trim())
+                  }
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  Save Module
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </form>
   );
 }

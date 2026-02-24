@@ -5,3 +5,4 @@
  */
 
 export * from './scene';
+export * from './messaging';

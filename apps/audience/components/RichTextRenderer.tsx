@@ -27,6 +27,31 @@ interface RichTextRendererProps {
  * - Text color
  * - Code blocks and inline code
  */
+/**
+ * Strips trailing empty paragraph nodes from Tiptap JSONContent.
+ *
+ * ProseMirror always appends an empty paragraph after non-paragraph nodes
+ * (e.g. headings) so the cursor has a valid position. This can get
+ * persisted to the database and renders as a blank line. We remove it
+ * here so existing stored content displays cleanly, even before the
+ * creator re-saves.
+ */
+function stripTrailingEmptyParagraphs(content: JSONContent): JSONContent {
+  if (!content.content || content.content.length === 0) return content;
+  const nodes = [...content.content];
+  while (nodes.length > 0) {
+    const last = nodes[nodes.length - 1];
+    const isEmpty =
+      last.type === "paragraph" && (!last.content || last.content.length === 0);
+    if (isEmpty) {
+      nodes.pop();
+    } else {
+      break;
+    }
+  }
+  return { ...content, content: nodes };
+}
+
 export default function RichTextRenderer({
   content,
   className = "",
@@ -55,7 +80,10 @@ export default function RichTextRenderer({
         types: ["heading", "paragraph"],
       }),
     ],
-    content: typeof content === "string" ? content : content,
+    content:
+      typeof content === "string"
+        ? content
+        : stripTrailingEmptyParagraphs(content),
     editable: false,
     immediatelyRender: false,
     editorProps: {
@@ -67,8 +95,13 @@ export default function RichTextRenderer({
 
   // Update editor content when prop changes
   useEffect(() => {
-    if (editor && content !== editor.getJSON()) {
-      editor.commands.setContent(content);
+    if (!editor) return;
+    const cleaned =
+      typeof content === "string"
+        ? content
+        : stripTrailingEmptyParagraphs(content);
+    if (JSON.stringify(cleaned) !== JSON.stringify(editor.getJSON())) {
+      editor.commands.setContent(cleaned);
     }
   }, [editor, content]);
 
