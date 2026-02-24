@@ -28,6 +28,7 @@ import {
   onBrandImageReferencesChange,
   onSceneImageReferencesChange,
 } from "./images/update-image-references.js";
+import {onImageUploaded} from "./images/process-image.js";
 
 // Initialize Firebase Admin
 initializeApp();
@@ -742,3 +743,8 @@ export { onBrandStylingChange };
 
 // Re-export image reference tracking triggers
 export { onBrandImageReferencesChange, onSceneImageReferencesChange };
+
+// ===== Image Processing =====
+
+// Storage trigger: resize and convert uploaded images to WebP variants
+export { onImageUploaded };

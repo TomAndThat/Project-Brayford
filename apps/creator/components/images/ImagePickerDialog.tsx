@@ -81,7 +81,7 @@ export default function ImagePickerDialog({
     if (selectedImage) {
       onSelect({
         id: selectedImage.id,
-        url: selectedImage.url,
+        url: selectedImage.variants?.display ?? selectedImage.url,
         name: selectedImage.name,
       });
     }

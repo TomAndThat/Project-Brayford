@@ -28,6 +28,7 @@ export interface ImageLibraryItem {
   sizeBytes: number;
   dimensions: { width: number; height: number };
   uploadStatus: ImageUploadStatus;
+  variants?: { thumbnail: string; display: string };
   usageCount: number;
   usedBy: { brands: string[]; scenes: string[] };
   createdAt: Date | null;
@@ -40,7 +41,7 @@ export interface ImageLibraryItem {
 export interface UseImageLibraryOptions {
   /** Filter by tag (optional) */
   tag?: string;
-  /** Filter by upload status (default: 'ready') */
+  /** Filter by upload status (default: 'processed' — fully processed with variants available) */
   uploadStatus?: ImageUploadStatus;
 }
 
@@ -82,7 +83,7 @@ export function useImageLibrary(
   organizationId: string | null,
   options: UseImageLibraryOptions = {},
 ): UseImageLibraryReturn {
-  const { tag, uploadStatus = 'ready' } = options;
+  const { tag, uploadStatus = 'processed' } = options;
   const [images, setImages] = useState<ImageLibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +128,7 @@ export function useImageLibrary(
             sizeBytes: data.sizeBytes,
             dimensions: data.dimensions || { width: 0, height: 0 },
             uploadStatus: data.uploadStatus,
+            variants: data.variants,
             usageCount: data.usageCount || 0,
             usedBy: data.usedBy || { brands: [], scenes: [] },
             createdAt: data.createdAt?.toDate?.() || null,

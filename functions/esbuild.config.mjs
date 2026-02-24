@@ -9,9 +9,9 @@ await esbuild.build({
   format: "cjs",
   sourcemap: true,
   // firebase-admin and firebase-functions are provided by the Cloud Functions
-  // runtime — they must NOT be bundled. Everything else (including workspace
-  // packages like @brayford/*) gets inlined into the output.
-  external: ["firebase-admin", "firebase-functions"],
+  // runtime — they must NOT be bundled. sharp uses native binaries and must
+  // also be excluded so the runtime resolves it from node_modules.
+  external: ["firebase-admin", "firebase-functions", "sharp"],
 });
 
 console.log("✔ functions bundled successfully");
