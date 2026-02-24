@@ -771,6 +771,24 @@ severity="ERROR"
 
 ---
 
+## Testing Postmark Credentials
+
+Before deploying or relying on the email queue in any environment, verify your Postmark credentials are correctly configured using the standalone test script:
+
+```bash
+# From the repo root
+pnpm email:test
+```
+
+This script (`functions/scripts/test-email.mjs`):
+1. Validates that `POSTMARK_API_KEY` and `POSTMARK_FROM_EMAIL` are set in `functions/.env`
+2. Calls `client.getServer()` to confirm the API key is valid
+3. Sends a plain-text + HTML test email to `support@brayford.live`
+
+The script requires `EMAIL_DEV_MODE=false` in `functions/.env` — it will exit cleanly with a warning if dev mode is on. No Firebase emulators or deployed functions are required; it talks directly to the Postmark API.
+
+---
+
 ## Next Steps (Post-Implementation)
 
 1. **Monitoring Dashboard:** Build admin UI to view pending/failed emails

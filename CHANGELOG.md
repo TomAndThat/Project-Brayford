@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Postmark test script**: `functions/scripts/test-email.mjs` verifies credentials and sends a test email to `support@brayford.live`. Run with `pnpm email:test` from the repo root. Requires `EMAIL_DEV_MODE=false` and valid credentials in `functions/.env`.
+
 - **Messaging Module — Real-Time Hooks**: `@brayford/firebase-utils` now includes the shared Firebase hooks and CRUD functions for the messaging module
   - `useMessages(eventId)` — subscribes to all non-deleted messages for an event, capped at `MAX_INBOX_MESSAGES` (250); returns a `Map<MessageId, MessageDocument>` for O(1) column-entry resolution
   - `useMessageColumns(eventId)` — subscribes to all columns for an event ordered by board position
