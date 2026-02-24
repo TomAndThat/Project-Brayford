@@ -28,6 +28,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { authenticateRequest } from "@/lib/api-auth";
 import {
   hasPermission,
+  hasBrandAccess,
   EVENTS_MANAGE_MODULES,
   DEFAULT_INBOX_COLUMN_NAME,
 } from "@brayford/core";
@@ -91,6 +92,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!hasPermission(actorMember, EVENTS_MANAGE_MODULES)) {
       return NextResponse.json(
         { error: "You do not have permission to manage event modules" },
+        { status: 403 },
+      );
+    }
+
+    // Verify user has access to the supplied brand
+    if (!hasBrandAccess(actorMember, brandId)) {
+      return NextResponse.json(
+        { error: "You do not have access to this brand" },
         { status: 403 },
       );
     }

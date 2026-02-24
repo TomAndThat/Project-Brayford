@@ -60,17 +60,28 @@ export async function GET(
     }
     const { uid } = authResult;
 
-    // Find user's organization membership
+    // Fetch scene first so we can scope the membership lookup to the correct org
+    const sceneRef = adminDb.collection("scenes").doc(sceneId);
+    const sceneSnap = await sceneRef.get();
+
+    if (!sceneSnap.exists) {
+      return NextResponse.json({ error: "Scene not found" }, { status: 404 });
+    }
+
+    const sceneData = sceneSnap.data()!;
+
+    // Find user's organization membership, scoped to the scene's org
     const memberQuery = await adminDb
       .collection("organizationMembers")
+      .where("organizationId", "==", sceneData.organizationId)
       .where("userId", "==", uid)
       .limit(1)
       .get();
 
     if (memberQuery.empty) {
       return NextResponse.json(
-        { error: "Organisation membership not found" },
-        { status: 404 },
+        { error: "You do not have access to this scene" },
+        { status: 403 },
       );
     }
 
@@ -91,32 +102,12 @@ export async function GET(
       );
     }
 
-    // Get scene
-    const sceneRef = adminDb.collection("scenes").doc(sceneId);
-    const sceneSnap = await sceneRef.get();
-
-    if (!sceneSnap.exists) {
-      return NextResponse.json({ error: "Scene not found" }, { status: 404 });
-    }
-
-    const sceneData = sceneSnap.data()!;
-
-    // Verify scene belongs to user's organization
-    if (sceneData.organizationId !== actorMember.organizationId) {
+    // Verify user has access to this scene's brand
+    if (sceneData.brandId && !hasBrandAccess(actorMember, sceneData.brandId)) {
       return NextResponse.json(
-        { error: "You do not have access to this scene" },
+        { error: "You do not have access to this brand" },
         { status: 403 },
       );
-    }
-
-    // If brandId is set, verify user has access
-    if (sceneData.brandId && actorMember.brandAccess.length > 0) {
-      if (!actorMember.brandAccess.includes(sceneData.brandId)) {
-        return NextResponse.json(
-          { error: "You do not have access to this brand" },
-          { status: 403 },
-        );
-      }
     }
 
     const scene = {
@@ -168,17 +159,28 @@ export async function PATCH(
       );
     }
 
-    // Find user's organization membership
+    // Fetch scene first so we can scope the membership lookup to the correct org
+    const sceneRef = adminDb.collection("scenes").doc(sceneId);
+    const sceneSnap = await sceneRef.get();
+
+    if (!sceneSnap.exists) {
+      return NextResponse.json({ error: "Scene not found" }, { status: 404 });
+    }
+
+    const sceneData = sceneSnap.data()!;
+
+    // Find user's organization membership, scoped to the scene's org
     const memberQuery = await adminDb
       .collection("organizationMembers")
+      .where("organizationId", "==", sceneData.organizationId)
       .where("userId", "==", uid)
       .limit(1)
       .get();
 
     if (memberQuery.empty) {
       return NextResponse.json(
-        { error: "Organisation membership not found" },
-        { status: 404 },
+        { error: "You do not have access to this scene" },
+        { status: 403 },
       );
     }
 
@@ -199,32 +201,12 @@ export async function PATCH(
       );
     }
 
-    // Get scene
-    const sceneRef = adminDb.collection("scenes").doc(sceneId);
-    const sceneSnap = await sceneRef.get();
-
-    if (!sceneSnap.exists) {
-      return NextResponse.json({ error: "Scene not found" }, { status: 404 });
-    }
-
-    const sceneData = sceneSnap.data()!;
-
-    // Verify scene belongs to user's organization
-    if (sceneData.organizationId !== actorMember.organizationId) {
+    // Verify user has access to this scene's brand
+    if (sceneData.brandId && !hasBrandAccess(actorMember, sceneData.brandId)) {
       return NextResponse.json(
-        { error: "You do not have access to this scene" },
+        { error: "You do not have access to this brand" },
         { status: 403 },
       );
-    }
-
-    // If brandId is set, verify user has access
-    if (sceneData.brandId && actorMember.brandAccess.length > 0) {
-      if (!actorMember.brandAccess.includes(sceneData.brandId)) {
-        return NextResponse.json(
-          { error: "You do not have access to this brand" },
-          { status: 403 },
-        );
-      }
     }
 
     // Update scene

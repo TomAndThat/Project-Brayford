@@ -35,6 +35,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { authenticateRequest } from "@/lib/api-auth";
 import {
   hasPermission,
+  hasBrandAccess,
   EVENTS_MANAGE_MODULES,
   validateCreateSceneData,
 } from "@brayford/core";
@@ -54,9 +55,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     const { uid } = authResult;
 
-    // Find user's organization membership
+    // organizationId is required to scope the membership lookup and scenes query.
+    // This prevents non-deterministic results for users who belong to multiple orgs.
+    const { searchParams } = new URL(request.url);
+    const organizationId = searchParams.get("organizationId");
+
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "Missing required query parameter: organizationId" },
+        { status: 400 },
+      );
+    }
+
+    // Find user's organization membership, scoped to the requested org
     const memberQuery = await adminDb
       .collection("organizationMembers")
+      .where("organizationId", "==", organizationId)
       .where("userId", "==", uid)
       .limit(1)
       .get();
@@ -64,7 +78,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (memberQuery.empty) {
       return NextResponse.json(
         { error: "Organisation membership not found" },
-        { status: 404 },
+        { status: 403 },
       );
     }
 
@@ -88,17 +102,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Fetch all scenes for the organization
     const scenesSnapshot = await adminDb
       .collection("scenes")
-      .where("organizationId", "==", actorMember.organizationId)
+      .where("organizationId", "==", organizationId)
       .orderBy("createdAt", "asc")
       .get();
 
-    const scenes = scenesSnapshot.docs.map((doc) => ({
+    const allScenes = scenesSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
       // Convert Firestore timestamps to ISO strings
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt,
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || doc.data().updatedAt,
     }));
+
+    // Members only see org-wide scenes (brandId == null) and scenes for brands they
+    // have access to. Admins and owners (empty brandAccess + brands:create) see all.
+    const scenes = allScenes.filter((scene) => {
+      if (!scene.brandId) return true;
+      return hasBrandAccess(actorMember, scene.brandId as string);
+    });
 
     return NextResponse.json({ scenes }, { status: 200 });
   } catch (error) {
@@ -170,13 +191,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // If brandId is set, verify user has access
-    if (sceneData.brandId && actorMember.brandAccess.length > 0) {
-      if (!actorMember.brandAccess.includes(sceneData.brandId)) {
-        return NextResponse.json(
-          { error: "You do not have access to this brand" },
-          { status: 403 },
-        );
-      }
+    if (sceneData.brandId && !hasBrandAccess(actorMember, sceneData.brandId)) {
+      return NextResponse.json(
+        { error: "You do not have access to this brand" },
+        { status: 403 },
+      );
     }
 
     // Create scene document
