@@ -1,13 +1,9 @@
 /**
- * Validation Utilities
- * 
- * Helper functions for email validation
+ * Email Validation Utilities
+ *
+ * Helper functions for validating and normalising email addresses.
  */
 
-/**
- * Basic email validation regex
- * More comprehensive validation is done by Zod schemas
- */
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
@@ -18,7 +14,7 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * Normalize email address (lowercase, trim)
+ * Normalise email address (lowercase, trim)
  */
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -31,5 +27,5 @@ export function normalizeEmail(email: string): string {
 export function isTestEmail(email: string): boolean {
   const testDomains = ['postmarkapp.com', 'example.com', 'test.com'];
   const domain = email.split('@')[1]?.toLowerCase();
-  return testDomains.includes(domain || '');
+  return testDomains.includes(domain ?? '');
 }

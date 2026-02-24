@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **`@brayford/email-utils` package removed**: The standalone package has been consolidated. Email validation utilities (`isValidEmail`, `normalizeEmail`, `isTestEmail`) are now exported directly from `@brayford/core/utils`. The Postmark integration and queue infrastructure live solely in `functions/src/email/`, which is the correct home given it is Cloud Functions-only code with a Firestore-backed rate limiter.
+
 ### Added
+
+- **Messaging Module — Real-Time Hooks**: `@brayford/firebase-utils` now includes the shared Firebase hooks and CRUD functions for the messaging module
+  - `useMessages(eventId)` — subscribes to all non-deleted messages for an event, capped at `MAX_INBOX_MESSAGES` (250); returns a `Map<MessageId, MessageDocument>` for O(1) column-entry resolution
+  - `useMessageColumns(eventId)` — subscribes to all columns for an event ordered by board position
+  - `useColumnMessageEntries(columnId)` — subscribes to the `/messageColumns/{columnId}/messages` subcollection ordered by `order asc`; designed to be called per-column so subscriptions stay small and targeted
+  - CRUD: `getMessage`, `getEventMessages`, `softDeleteMessage`, `restoreMessage`, `editMessage`, `clearMessageEdit`
+  - Column CRUD: `getMessageColumn`, `getEventMessageColumns`, `createMessageColumn`, `updateMessageColumn`, `deleteMessageColumn` (protected: rejects deletion of the default inbox)
+  - Subcollection operations: `addMessageToColumn`, `removeMessageFromColumn`, `reorderMessage`
+  - `moveMessage` — atomic batched write (remove from source, add to target, decrement/increment `messageCount` on both columns); wrapped in `withJitter` for burst protection
+  - `ColumnMessageEntryDocument` exported type (subcollection document with typed `id` and `columnId`)
 
 - **Messaging Module — Foundation**: Core data layer for the audience messaging feature (Interaction Domain)
   - `MessageSchema` and `MessageColumnSchema` Zod schemas added to `@brayford/core` with full Create/Update variants

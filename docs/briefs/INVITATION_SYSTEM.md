@@ -17,7 +17,7 @@ Implement a complete invitation system allowing organization owners/admins to in
 - **Batch invitation handling**: If user has multiple pending invitations, they can accept all at once
 - **Auto-grant new brands**: Optional flag to automatically grant access to future brands
 - **Secure tokens**: Invitation links expire after 7 days
-- **Email integration**: Leverage existing `@brayford/email-utils` package
+- **Email integration**: Queue emails via the Firestore `emailQueue` collection; processed by Cloud Functions (`functions/src/email/`)
 
 ---
 
@@ -402,7 +402,7 @@ interface OrganizationMember {
 
 **Tasks:**
 
-1. **Create invitation email template** (`packages/email-utils/src/templates/invitation.ts`)
+1. **Create invitation email template** (register template alias in Postmark dashboard; add any new `EmailType` to `@brayford/core` schemas and the rate limit config in `functions/src/email/config.ts`)
 
    ```typescript
    interface InvitationEmailData {
@@ -424,13 +424,7 @@ interface OrganizationMember {
      - Expiration notice: "This invitation expires on {date}"
      - Footer: "If you weren't expecting this, you can ignore it"
 
-3. **Add email helper** (`packages/email-utils/src/helpers.ts`)
-
-   ```typescript
-   export async function sendInvitationEmail(
-     data: InvitationEmailData,
-   ): Promise<void>;
-   ```
+3. **Add email helper** — write an `enqueueInvitationEmail()` function in `@brayford/firebase-utils` that adds a document to the `emailQueue` Firestore collection. The Cloud Function picks it up automatically.
 
 4. **Write email tests**
    - Template validation
@@ -808,7 +802,7 @@ match /invitations/{invitationId} {
 
 - **Rate limiting:** Max 10 invitations per hour per user
 - **Batch emails:** If inviting multiple users, queue and send in batches
-- **Retry logic:** Already handled by `@brayford/email-utils`
+- **Retry logic:** Already handled by Cloud Functions automatic retries (configured in `functions/src/index.ts`)
 
 ### Auto-Grant Updates
 
@@ -883,7 +877,7 @@ match /invitations/{invitationId} {
 
 - `@brayford/core` - Schemas, types, permissions
 - `@brayford/firebase-utils` - Firestore operations
-- `@brayford/email-utils` - Email sending
+- `functions/src/email/` - Postmark integration and queue processing (Cloud Functions only)
 
 ### New Dependencies
 

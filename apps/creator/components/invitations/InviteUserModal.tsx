@@ -15,7 +15,7 @@ import {
   pendingInvitationExists,
   getOrganizationMembers,
 } from "@brayford/firebase-utils";
-import { isValidEmail, normalizeEmail } from "@brayford/email-utils";
+import { isValidEmail, normalizeEmail } from "@brayford/core";
 import OwnerInvitationConfirmDialog from "./OwnerInvitationConfirmDialog";
 
 interface InviteUserModalProps {

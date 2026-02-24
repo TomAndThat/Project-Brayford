@@ -1415,7 +1415,7 @@ for (let i = 0; i < 1000; i++) {
 
 **Recommendation:**
 
-1. Implement rate limiting in API routes (already done for emails in @brayford/email-utils)
+1. Implement rate limiting in API routes (already done for emails — Firestore-backed rate limiting in `functions/src/email/rate-limiter.ts`)
 2. Use Firebase App Check to prevent abusive traffic
 3. Monitor Firestore usage metrics for anomalies
 

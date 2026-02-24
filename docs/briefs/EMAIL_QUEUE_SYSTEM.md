@@ -193,7 +193,7 @@ interface EmailQueueDocument {
 3. If `immediate`:
    - Check Firestore-backed rate limit for scope
    - If rate-limited, update status to `rate-limited` and exit
-   - If allowed, call `sendEmail()` from `@brayford/email-utils`
+   - If allowed, call `sendEmail()` from `functions/src/email/postmark-client`
    - Update document with `status: 'sent'` or `status: 'failed'` + error details
 4. Cloud Functions automatically retries on failure (3 attempts)
 
@@ -319,7 +319,7 @@ Example Payload:
 
 ### Step 1: Define Email Type
 
-**File:** `packages/email-utils/src/types.ts`
+**File:** `packages/core/src/types/email.ts` (or the relevant schema file in `@brayford/core`)
 
 ```typescript
 export type EmailType =
@@ -333,7 +333,7 @@ export type EmailType =
 
 ### Step 2: Configure Rate Limit
 
-**File:** `packages/email-utils/src/rate-limiter.ts`
+**File:** `functions/src/email/rate-limiter.ts`
 
 ```typescript
 const RATE_LIMIT_CONFIGS: Record<EmailType, RateLimitConfig> = {
@@ -347,7 +347,7 @@ const RATE_LIMIT_CONFIGS: Record<EmailType, RateLimitConfig> = {
 
 ### Step 3: Register Template in Registry
 
-**File:** `packages/email-utils/src/templates/registry.ts`
+**File:** `functions/src/email/config.ts` (rate limit config) — template aliases are managed in the Postmark dashboard; no local registry file is needed
 
 ```typescript
 import { z } from "zod";
@@ -373,7 +373,7 @@ export const TEMPLATES = {
 
 ### Step 4: Create Helper Function (Optional)
 
-**File:** `packages/email-utils/src/helpers/your-new-email.ts`
+**File:** `packages/firebase-utils/src/email/your-new-email.ts` (or inline in the relevant app/function)
 
 ```typescript
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
@@ -412,7 +412,7 @@ export async function sendYourNewEmail(
 
 ### Step 5: Create Postmark Template Documentation
 
-**File:** `packages/email-utils/docs/templates/brayford-category-variant.md`
+**File:** `docs/briefs/templates/brayford-category-variant.md`
 
 ````markdown
 # Template: brayford-category-variant
@@ -469,7 +469,7 @@ Explain when this email is sent and what user action triggers it.
 
 ### Step 6: Add Tests
 
-**File:** `packages/email-utils/src/__tests__/your-new-email.test.ts`
+**File:** `functions/src/email/__tests__/your-new-email.test.ts`
 
 ```typescript
 import { describe, it, expect, vi } from "vitest";

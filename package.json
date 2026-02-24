@@ -4,7 +4,7 @@
   "private": true,
   "description": "Monorepo for project-brayford",
   "scripts": {
-    "build:packages": "pnpm --filter @brayford/core --filter @brayford/email-utils build",
+    "build:packages": "pnpm --filter @brayford/core build",
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "build": "pnpm --parallel --filter \"./apps/*\" build",
     "functions:build": "pnpm build:packages && cd functions && npm run build",

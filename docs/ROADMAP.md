@@ -17,7 +17,7 @@
 - [x] Implement Brand schema
 - [x] Firebase Auth integration (Google provider)
 - [x] User onboarding Flow A: New user + new organization
-- [x] Email infrastructure package (@brayford/email-utils)
+- [x] Email validation utilities consolidated into `@brayford/core`
 - [x] Granular permission system (29 tests, 100% coverage)
 - [x] User management page (/dashboard/users)
 - [x] User onboarding Flow B: Invitation system

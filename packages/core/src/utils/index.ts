@@ -5,5 +5,6 @@
  */
 
 export * from './email-domains';
+export * from './email';
 export * from './color';
 export * from './upload';
