@@ -1,5 +1,11 @@
 # Copilot Instructions - Project Brayford
 
+## Shortcodes
+
+**How to interpret the following instructions when received via copilot chat:**
+
+- _Code 1_: Please investigate the error detailed in the message and provide a detailed analysis of the root cause, potential fixes, and recommended next steps. Do not implement any fixes or write code until we have discussed the analysis and agreed on an approach.
+
 ## Ways of Working
 
 **Collaboration principles for this project:**
