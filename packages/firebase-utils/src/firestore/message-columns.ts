@@ -553,7 +553,10 @@ export function useMessageColumns(eventId: EventId, organizationId: Organization
       (snapshot) => {
         try {
           const cols = snapshot.docs.map((d) =>
-            toMessageColumnDocument(d.id, d.data() as Record<string, unknown>)
+            toMessageColumnDocument(
+              d.id,
+              d.data({ serverTimestamps: 'estimate' }) as Record<string, unknown>,
+            )
           );
           setColumns(cols);
         } catch (err) {
@@ -648,7 +651,7 @@ export function useColumnMessageEntries(columnId: MessageColumnId): {
             toColumnMessageEntryDocument(
               d.id,
               columnId,
-              d.data() as Record<string, unknown>,
+              d.data({ serverTimestamps: 'estimate' }) as Record<string, unknown>,
             )
           );
           setEntries(entryDocs);

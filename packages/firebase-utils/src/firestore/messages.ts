@@ -343,7 +343,10 @@ export function useMessages(eventId: EventId, organizationId: OrganizationId): {
         try {
           const map = new Map<MessageId, MessageDocument>();
           for (const d of snapshot.docs) {
-            const doc = toMessageDocument(d.id, d.data() as Record<string, unknown>);
+            const doc = toMessageDocument(
+              d.id,
+              d.data({ serverTimestamps: 'estimate' }) as Record<string, unknown>,
+            );
             map.set(doc.id, doc);
           }
           setMessages(map);
