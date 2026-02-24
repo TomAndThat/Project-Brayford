@@ -44,6 +44,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { authenticateRequest } from "@/lib/api-auth";
 import {
   hasPermission,
+  hasBrandAccess,
   EVENTS_MANAGE_MODULES,
 } from "@brayford/core";
 import type { OrganizationMember } from "@brayford/core";
@@ -112,11 +113,7 @@ async function verifyLiveStateAccess(
     };
   }
 
-  const hasBrandAccess =
-    actorMember.brandAccess.length === 0 ||
-    actorMember.brandAccess.includes(brandId);
-
-  if (!hasBrandAccess) {
+  if (!hasBrandAccess(actorMember, brandId)) {
     return {
       error: NextResponse.json(
         { error: "You do not have access to this brand" },

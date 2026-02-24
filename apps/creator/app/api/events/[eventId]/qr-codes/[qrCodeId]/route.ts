@@ -23,6 +23,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { authenticateRequest } from "@/lib/api-auth";
 import {
   hasPermission,
+  hasBrandAccess,
   EVENTS_UPDATE,
 } from "@brayford/core";
 import type { OrganizationMember } from "@brayford/core";
@@ -118,11 +119,7 @@ async function verifyQRCodePermission(
   }
 
   // Verify user has access to the brand
-  const hasBrandAccess =
-    actorMember.brandAccess.length === 0 || // Empty array = access to all
-    actorMember.brandAccess.includes(brandId);
-
-  if (!hasBrandAccess) {
+  if (!hasBrandAccess(actorMember, brandId)) {
     return {
       error: NextResponse.json(
         { error: "You do not have access to this brand" },

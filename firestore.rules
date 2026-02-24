@@ -36,6 +36,22 @@ service cloud.firestore {
             || abbrevPermission in request.auth.token.orgs[orgId].p);
     }
 
+    // Check if the authenticated user has access to a specific brand.
+    // Mirrors the hasBrandAccess() logic in packages/core/src/permissions/helpers.ts.
+    // 'bv' = brands:view, 'bc' = brands:create
+    // Members with a non-empty b[] array must have the brand listed.
+    // Members with an empty b[] array have access only if they can create brands (owner/admin).
+    function hasBrandAccess(orgId, brandId) {
+      return isOrgMember(orgId)
+        && hasOrgPermission(orgId, 'bv')
+        && (
+          (request.auth.token.orgs[orgId].b.size() > 0
+            && brandId in request.auth.token.orgs[orgId].b)
+          || (request.auth.token.orgs[orgId].b.size() == 0
+            && hasOrgPermission(orgId, 'bc'))
+        );
+    }
+
     // ===== Users Collection =====
     // Users can read any user profile (needed for team member listings).
     // Users can create their own profile on first sign-in.
@@ -84,7 +100,7 @@ service cloud.firestore {
     // List (queries): Org members only (for creator app brand management)
     // All writes go through server-side API routes (Firebase Admin SDK).
     match /brands/{brandId} {
-      allow get: if isOrgMember(resource.data.organizationId)
+      allow get: if hasBrandAccess(resource.data.organizationId, brandId)
                  || resource.data.isActive == true;
       allow list: if isOrgMember(resource.data.organizationId);
       allow write: if false;

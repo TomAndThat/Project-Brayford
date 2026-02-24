@@ -22,6 +22,7 @@ import {
   type OrganizationMemberDocument,
   type HeaderType,
   hasPermission,
+  hasBrandAccess,
   BRANDS_UPDATE,
   BRANDS_DELETE,
   validateBackgroundColor,
@@ -131,6 +132,12 @@ export default function BrandSettingsPage() {
 
       const currentMembership = memberships[0]!;
       setCurrentMember(currentMembership);
+
+      // Verify user has access to this specific brand before loading
+      if (!hasBrandAccess(currentMembership, toBranded<BrandId>(brandId))) {
+        router.push("/dashboard/brands");
+        return;
+      }
 
       // Load organization
       const orgId = currentMembership.organizationId;

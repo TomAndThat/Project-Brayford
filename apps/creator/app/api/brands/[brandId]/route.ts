@@ -23,6 +23,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { authenticateRequest } from "@/lib/api-auth";
 import {
   hasPermission,
+  hasBrandAccess,
   BRANDS_UPDATE,
   BRANDS_DELETE,
   validateUpdateBrandData,
@@ -88,6 +89,16 @@ async function verifyBrandPermission(
     return {
       error: NextResponse.json(
         { error: "You do not have the required permission" },
+        { status: 403 },
+      ),
+    };
+  }
+
+  // Verify user has access to this specific brand
+  if (!hasBrandAccess(actorMember, brandId)) {
+    return {
+      error: NextResponse.json(
+        { error: "You do not have access to this brand" },
         { status: 403 },
       ),
     };

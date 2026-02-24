@@ -17,6 +17,7 @@ import {
   type BrandDocument,
   type BrandId,
   hasPermission,
+  hasBrandAccess,
   BRANDS_VIEW,
   BRANDS_CREATE,
   BRANDS_UPDATE,
@@ -169,8 +170,9 @@ export default function BrandsPage() {
   const canCreate = hasPermission(currentMember, BRANDS_CREATE);
   const canUpdate = hasPermission(currentMember, BRANDS_UPDATE);
 
-  // Filter brands based on selected filter
+  // Filter brands based on brand access and selected filter
   const filteredBrands = brands.filter((brand) => {
+    if (!hasBrandAccess(currentMember, brand.id)) return false;
     if (filter === "active") return brand.isActive;
     if (filter === "archived") return !brand.isActive;
     return true; // "all"

@@ -38,6 +38,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { authenticateRequest } from "@/lib/api-auth";
 import {
   hasPermission,
+  hasBrandAccess,
   EVENTS_MANAGE_MODULES,
   validateUpdateSceneData,
 } from "@brayford/core";
@@ -118,11 +119,7 @@ async function verifySceneAccess(
   }
 
   // Verify brand access
-  const hasBrandAccess =
-    actorMember.brandAccess.length === 0 ||
-    actorMember.brandAccess.includes(brandId);
-
-  if (!hasBrandAccess) {
+  if (!hasBrandAccess(actorMember, brandId)) {
     return {
       error: NextResponse.json(
         { error: "You do not have access to this brand" },

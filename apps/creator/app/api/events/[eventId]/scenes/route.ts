@@ -35,6 +35,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { authenticateRequest } from "@/lib/api-auth";
 import {
   hasPermission,
+  hasBrandAccess,
   EVENTS_MANAGE_MODULES,
   validateCreateSceneData,
   MAX_SCENES_PER_EVENT,
@@ -106,11 +107,7 @@ async function verifyEventSceneAccess(
   }
 
   // Verify user has access to the event's brand
-  const hasBrandAccess =
-    actorMember.brandAccess.length === 0 ||
-    actorMember.brandAccess.includes(brandId);
-
-  if (!hasBrandAccess) {
+  if (!hasBrandAccess(actorMember, brandId)) {
     return {
       error: NextResponse.json(
         { error: "You do not have access to this brand" },

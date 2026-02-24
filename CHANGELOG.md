@@ -756,6 +756,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Complete user flows and technical specifications
   - See [docs/briefs/INVITATION_SYSTEM.md](docs/briefs/INVITATION_SYSTEM.md)
 
+### Security
+
+- **Brand Access Enforcement**: Fixed a vulnerability where organisation members with the `brands:update` permission could read and edit the settings of any brand in the organisation, regardless of their specific brand access assignments
+  - `PATCH /api/brands/[brandId]` and `DELETE /api/brands/[brandId]` now call `hasBrandAccess()` to verify the requesting member has access to the specific brand being modified
+  - Firestore security rules for `brands/{brandId}` `get` operations now enforce brand-level access via a new `hasBrandAccess()` rule helper, rather than only checking organisation membership
+  - Brand settings page (`/dashboard/brands/[brandId]`) now redirects users without brand access before loading the form
+  - Brand list page now filters displayed brands to only those the current member has access to
+  - All event API routes (`/api/events/**`) standardised to use the shared `hasBrandAccess()` helper from `@brayford/core` rather than duplicated inline logic
+
 ### To Do
 
 - Firestore security rules comprehensive review (invitation rules, org member rules)
