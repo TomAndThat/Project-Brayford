@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  softDeleteMessage,
-  removeMessageFromColumn,
+  softDeleteAndRemoveFromColumn,
   editMessage,
   clearMessageEdit,
 } from "@brayford/firebase-utils";
@@ -43,6 +42,7 @@ export default function ModerationMessageCard({
   const [editValue, setEditValue] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const {
     attributes,
@@ -90,9 +90,12 @@ export default function ModerationMessageCard({
 
   const doDelete = async () => {
     setIsBusy(true);
+    setActionError(null);
     try {
-      await softDeleteMessage(message.id);
-      await removeMessageFromColumn(message.id, columnId);
+      await softDeleteAndRemoveFromColumn(message.id, columnId);
+    } catch {
+      setActionError("Failed to delete message. Please try again.");
+      setTimeout(() => setActionError(null), 5000);
     } finally {
       setIsBusy(false);
       setDeleteState("idle");
@@ -124,6 +127,8 @@ export default function ModerationMessageCard({
       await editMessage(message.id, trimmed);
       setIsEditing(false);
       setEditValue("");
+    } catch {
+      setEditError("Failed to save edit. Please try again.");
     } finally {
       setIsBusy(false);
     }
@@ -137,8 +142,12 @@ export default function ModerationMessageCard({
 
   const handleRevertEdit = async () => {
     setIsBusy(true);
+    setActionError(null);
     try {
       await clearMessageEdit(message.id);
+    } catch {
+      setActionError("Failed to revert edit. Please try again.");
+      setTimeout(() => setActionError(null), 5000);
     } finally {
       setIsBusy(false);
     }
@@ -212,16 +221,19 @@ export default function ModerationMessageCard({
         style={style}
         className="rounded-lg bg-gray-800 border border-red-800 p-3"
       >
-        <p className="text-xs text-gray-300 mb-2.5">
-          Remove this message? This cannot be undone.
-        </p>
+        <p className="text-xs text-gray-300 mb-2.5">Delete this message?</p>
+        {actionError && (
+          <p role="alert" className="text-xs text-red-400 mb-2">
+            {actionError}
+          </p>
+        )}
         <div className="flex gap-2">
           <button
             onClick={doDelete}
             disabled={isBusy}
             className="px-3 py-1 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
           >
-            {isBusy ? "Removing…" : "Remove"}
+            {isBusy ? "Deleting…" : "Delete"}
           </button>
           <button
             onClick={() => setDeleteState("idle")}
@@ -245,6 +257,11 @@ export default function ModerationMessageCard({
         isDragging ? "opacity-0" : "opacity-100"
       } ${isBusy ? "pointer-events-none opacity-60" : ""}`}
     >
+      {actionError && (
+        <div role="alert" className="px-3 pt-2">
+          <p className="text-xs text-red-400">{actionError}</p>
+        </div>
+      )}
       <div className="p-3">
         <div className="flex items-start gap-2">
           {/* Message content */}

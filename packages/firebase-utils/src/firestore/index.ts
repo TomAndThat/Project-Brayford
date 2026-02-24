@@ -144,6 +144,7 @@ export {
   getMessage,
   getEventMessages,
   softDeleteMessage,
+  softDeleteAndRemoveFromColumn,
   restoreMessage,
   editMessage,
   clearMessageEdit,

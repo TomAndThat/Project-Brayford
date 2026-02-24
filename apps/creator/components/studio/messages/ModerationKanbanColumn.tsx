@@ -60,6 +60,7 @@ export default function ModerationKanbanColumn({
   const [nameValue, setNameValue] = useState(column.name);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { entries, loading: entriesLoading } = useColumnMessageEntries(
     column.id,
@@ -106,9 +107,13 @@ export default function ModerationKanbanColumn({
       return;
     }
     setIsBusy(true);
+    setActionError(null);
     try {
       await updateMessageColumn(column.id, { name: trimmed });
       setIsEditingName(false);
+    } catch {
+      setActionError("Failed to rename column. Please try again.");
+      setTimeout(() => setActionError(null), 5000);
     } finally {
       setIsBusy(false);
     }
@@ -118,9 +123,13 @@ export default function ModerationKanbanColumn({
 
   const handleDeleteColumn = async () => {
     setIsBusy(true);
+    setActionError(null);
     try {
       await deleteMessageColumn(column.id);
       setShowDeleteConfirm(false);
+    } catch {
+      setActionError("Failed to delete column. Please try again.");
+      setTimeout(() => setActionError(null), 5000);
     } finally {
       setIsBusy(false);
     }
@@ -158,6 +167,11 @@ export default function ModerationKanbanColumn({
     >
       {/* Column header */}
       <div className="px-4 py-3 border-b border-gray-700 flex-shrink-0">
+        {actionError && (
+          <div role="alert" className="mb-2">
+            <p className="text-xs text-red-400">{actionError}</p>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           {/* Drag handle — custom columns only */}
           {!isDefault && (

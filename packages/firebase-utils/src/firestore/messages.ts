@@ -19,6 +19,8 @@ import {
   getDoc,
   getDocs,
   updateDoc,
+  writeBatch,
+  increment,
   query,
   where,
   orderBy,
@@ -37,6 +39,7 @@ import {
   toBranded,
   fromBranded,
   type MessageId,
+  type MessageColumnId,
   type EventId,
   type OrganizationId,
   type BrandId,
@@ -227,6 +230,55 @@ export async function clearMessageEdit(messageId: MessageId): Promise<void> {
     editedContent: null,
     updatedAt: serverTimestamp(),
   });
+}
+
+/**
+ * Soft-delete a message and remove it from its column atomically
+ *
+ * Performs a single batched write that:
+ *   1. Sets `isDeleted: true` on the message document
+ *   2. Deletes the entry from the column's `/messages` subcollection
+ *   3. Decrements the column's denormalised `messageCount`
+ *
+ * Using a batch ensures the column entry is never orphaned if one write
+ * fails — both succeed or neither does.
+ *
+ * @param messageId - Message to soft-delete
+ * @param columnId - Column the message currently belongs to
+ *
+ * @example
+ * ```ts
+ * await softDeleteAndRemoveFromColumn(messageId, columnId);
+ * ```
+ */
+export async function softDeleteAndRemoveFromColumn(
+  messageId: MessageId,
+  columnId: MessageColumnId,
+): Promise<void> {
+  const batch = writeBatch(db);
+
+  const msgRef = doc(db, 'messages', fromBranded(messageId));
+  batch.update(msgRef, {
+    isDeleted: true,
+    updatedAt: serverTimestamp(),
+  });
+
+  const entryRef = doc(
+    db,
+    'messageColumns',
+    fromBranded(columnId),
+    'messages',
+    fromBranded(messageId),
+  );
+  batch.delete(entryRef);
+
+  const columnRef = doc(db, 'messageColumns', fromBranded(columnId));
+  batch.update(columnRef, {
+    messageCount: increment(-1),
+    updatedAt: serverTimestamp(),
+  });
+
+  await batch.commit();
 }
 
 // ===== Real-Time Hook =====

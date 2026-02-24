@@ -76,6 +76,7 @@ export default function MessageModerationView({
   const [activeDragItem, setActiveDragItem] = useState<ActiveDragItem | null>(
     null,
   );
+  const [boardError, setBoardError] = useState<string | null>(null);
 
   const {
     messages,
@@ -130,7 +131,13 @@ export default function MessageModerationView({
         console.error("Failed to ensure default inbox column:", err);
       }
     })();
-  }, [columnsLoading, columns.length, event.id, event.organizationId, event.brandId]);
+  }, [
+    columnsLoading,
+    columns.length,
+    event.id,
+    event.organizationId,
+    event.brandId,
+  ]);
 
   /**
    * Stores the latest entry snapshot from each column, keyed by raw column ID string.
@@ -187,141 +194,155 @@ export default function MessageModerationView({
     if (!over || active.id === over.id) return;
 
     const activeType = active.data.current?.type as string | undefined;
+    setBoardError(null);
 
-    // ── Column reorder ──────────────────────────────────────────────────────
-    if (activeType === "column") {
-      const activeId = active.id as string; // "col:abc"
-      const overId = over.id as string;
+    try {
+      // ── Column reorder ──────────────────────────────────────────────────────
+      if (activeType === "column") {
+        const activeId = active.id as string; // "col:abc"
+        const overId = over.id as string;
 
-      // Guard: only accept column-to-column drops
-      if (!overId.startsWith("col:")) return;
+        // Guard: only accept column-to-column drops
+        if (!overId.startsWith("col:")) return;
 
-      const oldIdx = columns.findIndex(
-        (c) => `col:${fromBranded(c.id)}` === activeId,
-      );
-      const newIdx = columns.findIndex(
-        (c) => `col:${fromBranded(c.id)}` === overId,
-      );
-
-      if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return;
-
-      const reordered = arrayMove(columns, oldIdx, newIdx);
-
-      // Re-assign orders: default inbox always stays at 0; custom columns
-      // receive 1000, 2000, … in their new positions.
-      let counter = 1000;
-      const updates: Promise<void>[] = [];
-
-      for (const col of reordered) {
-        const newOrder = col.isDefault ? 0 : counter;
-        if (!col.isDefault) counter += 1000;
-        if (col.order !== newOrder) {
-          updates.push(updateMessageColumn(col.id, { order: newOrder }));
-        }
-      }
-
-      await Promise.all(updates);
-      return;
-    }
-
-    // ── Message move / reorder ──────────────────────────────────────────────
-    if (activeType === "message") {
-      const msgId = toBranded<MessageId>(
-        active.data.current?.messageId as string,
-      );
-      const srcColId = toBranded<MessageColumnId>(
-        active.data.current?.columnId as string,
-      );
-
-      // Determine target column from the 'over' element
-      const overType = over.data.current?.type as string | undefined;
-      let dstColId: MessageColumnId = srcColId;
-
-      if (overType === "message") {
-        dstColId = toBranded<MessageColumnId>(
-          over.data.current?.columnId as string,
+        const oldIdx = columns.findIndex(
+          (c) => `col:${fromBranded(c.id)}` === activeId,
         );
-      } else if (overType === "column-drop") {
-        dstColId = toBranded<MessageColumnId>(
-          over.data.current?.columnId as string,
+        const newIdx = columns.findIndex(
+          (c) => `col:${fromBranded(c.id)}` === overId,
         );
-      }
 
-      const srcColIdStr = fromBranded(srcColId);
-      const dstColIdStr = fromBranded(dstColId);
-      const srcEntries = columnEntriesRef.current.get(srcColIdStr) ?? [];
-      const dstEntries = columnEntriesRef.current.get(dstColIdStr) ?? [];
+        if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return;
 
-      // ── Within-column reorder ───────────────────────────────────────────
-      if (srcColIdStr === dstColIdStr) {
-        const oldIdx = srcEntries.findIndex(
-          (entry) => fromBranded(entry.id) === fromBranded(msgId),
-        );
-        const overMsgIdStr = over.data.current?.messageId as string | undefined;
-        const newIdx = overMsgIdStr
-          ? srcEntries.findIndex(
-              (entry) => fromBranded(entry.id) === overMsgIdStr,
-            )
-          : srcEntries.length - 1;
+        const reordered = arrayMove(columns, oldIdx, newIdx);
 
-        if (oldIdx < 0 || oldIdx === newIdx) return;
+        // Re-assign orders: default inbox always stays at 0; custom columns
+        // receive 1000, 2000, … in their new positions.
+        let counter = 1000;
+        const updates: Promise<void>[] = [];
 
-        // Compute midpoint order between new neighbours
-        const reordered = arrayMove(srcEntries, oldIdx, newIdx);
-        const prev = reordered[newIdx - 1];
-        const next = reordered[newIdx + 1];
-        let newOrder: number;
-        if (!prev) {
-          newOrder = Math.floor((next?.order ?? 2000) / 2);
-        } else if (!next) {
-          newOrder = prev.order + 1000;
-        } else {
-          newOrder = Math.floor((prev.order + next.order) / 2);
+        for (const col of reordered) {
+          const newOrder = col.isDefault ? 0 : counter;
+          if (!col.isDefault) counter += 1000;
+          if (col.order !== newOrder) {
+            updates.push(updateMessageColumn(col.id, { order: newOrder }));
+          }
         }
 
-        await reorderMessage(srcColId, msgId, newOrder);
+        await Promise.all(updates);
         return;
       }
 
-      // ── Cross-column move ──────────────────────────────────────────────
-      const overMsgIdStr = over.data.current?.messageId as string | undefined;
-      let newOrder: number;
-
-      if (overMsgIdStr) {
-        // Dropped on a specific message → insert before it
-        const dstIdx = dstEntries.findIndex(
-          (entry) => fromBranded(entry.id) === overMsgIdStr,
+      // ── Message move / reorder ──────────────────────────────────────────────
+      if (activeType === "message") {
+        const msgId = toBranded<MessageId>(
+          active.data.current?.messageId as string,
         );
-        const prev = dstEntries[dstIdx - 1];
-        const curr = dstEntries[dstIdx];
-        if (!prev) {
-          newOrder = Math.floor((curr?.order ?? 2000) / 2);
-        } else {
-          newOrder = Math.floor((prev.order + curr.order) / 2);
-        }
-      } else {
-        // Dropped on the column empty zone → append to bottom
-        const last = dstEntries[dstEntries.length - 1];
-        newOrder = last ? last.order + 1000 : 1000;
-      }
+        const srcColId = toBranded<MessageColumnId>(
+          active.data.current?.columnId as string,
+        );
 
-      await moveMessage(msgId, srcColId, dstColId, newOrder);
+        // Determine target column from the 'over' element
+        const overType = over.data.current?.type as string | undefined;
+        let dstColId: MessageColumnId = srcColId;
+
+        if (overType === "message") {
+          dstColId = toBranded<MessageColumnId>(
+            over.data.current?.columnId as string,
+          );
+        } else if (overType === "column-drop") {
+          dstColId = toBranded<MessageColumnId>(
+            over.data.current?.columnId as string,
+          );
+        }
+
+        const srcColIdStr = fromBranded(srcColId);
+        const dstColIdStr = fromBranded(dstColId);
+        const srcEntries = columnEntriesRef.current.get(srcColIdStr) ?? [];
+        const dstEntries = columnEntriesRef.current.get(dstColIdStr) ?? [];
+
+        // ── Within-column reorder ───────────────────────────────────────────
+        if (srcColIdStr === dstColIdStr) {
+          const oldIdx = srcEntries.findIndex(
+            (entry) => fromBranded(entry.id) === fromBranded(msgId),
+          );
+          const overMsgIdStr = over.data.current?.messageId as
+            | string
+            | undefined;
+          const newIdx = overMsgIdStr
+            ? srcEntries.findIndex(
+                (entry) => fromBranded(entry.id) === overMsgIdStr,
+              )
+            : srcEntries.length - 1;
+
+          if (oldIdx < 0 || oldIdx === newIdx) return;
+
+          // Compute midpoint order between new neighbours
+          const reordered = arrayMove(srcEntries, oldIdx, newIdx);
+          const prev = reordered[newIdx - 1];
+          const next = reordered[newIdx + 1];
+          let newOrder: number;
+          if (!prev) {
+            newOrder = Math.floor((next?.order ?? 2000) / 2);
+          } else if (!next) {
+            newOrder = prev.order + 1000;
+          } else {
+            newOrder = Math.floor((prev.order + next.order) / 2);
+          }
+
+          await reorderMessage(srcColId, msgId, newOrder);
+          return;
+        }
+
+        // ── Cross-column move ──────────────────────────────────────────────
+        const overMsgIdStr = over.data.current?.messageId as string | undefined;
+        let newOrder: number;
+
+        if (overMsgIdStr) {
+          // Dropped on a specific message → insert before it
+          const dstIdx = dstEntries.findIndex(
+            (entry) => fromBranded(entry.id) === overMsgIdStr,
+          );
+          const prev = dstEntries[dstIdx - 1];
+          const curr = dstEntries[dstIdx];
+          if (!prev) {
+            newOrder = Math.floor((curr?.order ?? 2000) / 2);
+          } else {
+            newOrder = Math.floor((prev.order + curr.order) / 2);
+          }
+        } else {
+          // Dropped on the column empty zone → append to bottom
+          const last = dstEntries[dstEntries.length - 1];
+          newOrder = last ? last.order + 1000 : 1000;
+        }
+
+        await moveMessage(msgId, srcColId, dstColId, newOrder);
+      }
+    } catch {
+      setBoardError("Something went wrong moving that item. Please try again.");
+      setTimeout(() => setBoardError(null), 5000);
     }
   };
 
   // ===== Column creation =====
 
   const handleCreateColumn = async (name: string) => {
-    const maxOrder = columns.reduce((mx, c) => Math.max(mx, c.order), 0);
-    await createMessageColumn({
-      eventId: fromBranded(event.id),
-      organizationId: fromBranded(event.organizationId),
-      brandId: fromBranded(event.brandId),
-      name,
-      order: maxOrder + 1000,
-      isDefault: false,
-      isBin: false,
-    });
+    setBoardError(null);
+    try {
+      const maxOrder = columns.reduce((mx, c) => Math.max(mx, c.order), 0);
+      await createMessageColumn({
+        eventId: fromBranded(event.id),
+        organizationId: fromBranded(event.organizationId),
+        brandId: fromBranded(event.brandId),
+        name,
+        order: maxOrder + 1000,
+        isDefault: false,
+        isBin: false,
+      });
+    } catch {
+      setBoardError("Failed to create column. Please try again.");
+      setTimeout(() => setBoardError(null), 5000);
+    }
   };
 
   // ===== Render states =====
@@ -362,6 +383,18 @@ export default function MessageModerationView({
               <h2 className="text-sm font-semibold text-white">
                 Message Moderation
               </h2>
+              {boardError && (
+                <div role="alert" className="flex items-center gap-2">
+                  <p className="text-xs text-red-400">{boardError}</p>
+                  <button
+                    onClick={() => setBoardError(null)}
+                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                    aria-label="Dismiss error"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
