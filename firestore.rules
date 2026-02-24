@@ -11,6 +11,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Check if the authenticated user is a superAdmin.
+    // The superAdmin custom claim is set via functions/scripts/set-super-admin.mjs.
+    // SuperAdmins can read and write any document for provisioning purposes.
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.superAdmin == true;
+    }
+
     // Check if the authenticated user is a member of the given organisation.
     // Relies on custom claims set by the onMembershipChange Cloud Function.
     // Claims structure: { orgs: { "orgId": { p: [...], b: [...] } } }
@@ -50,8 +57,8 @@ service cloud.firestore {
     // Only organisation members can read their own org document.
     // All writes go through server-side API routes (Firebase Admin SDK).
     match /organizations/{organizationId} {
-      allow read: if isOrgMember(organizationId);
-      allow write: if false;
+      allow read: if isOrgMember(organizationId) || isSuperAdmin();
+      allow write: if isSuperAdmin();
     }
 
     // ===== Organization Members Collection =====
@@ -67,8 +74,9 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         request.auth.uid == resource.data.userId
         || isOrgMember(resource.data.organizationId)
+        || isSuperAdmin()
       );
-      allow write: if false;
+      allow write: if isSuperAdmin();
     }
 
     // ===== Brands Collection =====
@@ -91,8 +99,13 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         request.auth.token.email.lower() == resource.data.email.lower()
         || hasOrgPermission(resource.data.organizationId, 'ui')
+        || isSuperAdmin()
       );
-      allow write: if false;
+      allow create: if isSuperAdmin()
+                    || hasOrgPermission(request.resource.data.organizationId, 'ui');
+      allow update: if isSuperAdmin()
+                    || hasOrgPermission(resource.data.organizationId, 'ui');
+      allow delete: if isSuperAdmin();
     }
 
     // ===== Events Collection =====

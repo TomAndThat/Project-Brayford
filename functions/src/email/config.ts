@@ -86,7 +86,7 @@ export function getEmailConfig(): EmailConfig {
   return {
     postmark: {
       apiKey: apiKey || '',
-      fromEmail: fromEmail || 'noreply@projectbrayford.com',
+      fromEmail: fromEmail || 'noreply@brayford.live',
       fromName,
     },
     devMode,

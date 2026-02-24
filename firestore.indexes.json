@@ -50,16 +50,6 @@
       ]
     },
     {
-      "collectionGroup": "organizations",
-      "queryScope": "COLLECTION",
-      "fields": [{ "fieldPath": "softDeletedAt", "order": "ASCENDING" }]
-    },
-    {
-      "collectionGroup": "brands",
-      "queryScope": "COLLECTION",
-      "fields": [{ "fieldPath": "organizationId", "order": "ASCENDING" }]
-    },
-    {
       "collectionGroup": "emailQueue",
       "queryScope": "COLLECTION",
       "fields": [

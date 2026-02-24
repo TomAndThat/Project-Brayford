@@ -1663,7 +1663,7 @@ allow read: if request.auth.token.email.lower() == resource.data.email.lower();
       ```
 
     - **Admin app (pending):**
-      - Separate authentication flow restricted to `@projectbrayford.com` emails
+      - Separate authentication flow restricted to `@brayford.live` emails
       - Organization browser with search/filters (name, domain, billing tier, status)
       - "Enter Organization" action redirects to creator app with org context
       - First super admin created via manual Firebase Admin SDK script

@@ -1,5 +1,5 @@
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { Header } from "@/components/layout/Header";
+import { Sidebar } from "@/components/layout/Sidebar";
 
 export default function ProtectedLayout({
   children,
@@ -8,9 +8,9 @@ export default function ProtectedLayout({
 }) {
   return (
     <AuthGuard>
-      <div className="flex min-h-screen flex-col bg-zinc-50">
-        <Header />
-        <main className="flex-1 px-6 py-8">{children}</main>
+      <div className="flex h-screen bg-zinc-50">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto px-8 py-8">{children}</main>
       </div>
     </AuthGuard>
   );

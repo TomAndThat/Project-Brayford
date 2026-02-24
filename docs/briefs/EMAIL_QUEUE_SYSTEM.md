@@ -307,7 +307,7 @@ Example Payload:
 {
   "organizationName": "Acme Podcasts",
   "inviterName": "Sarah Smith",
-  "inviteLink": "https://creator.projectbrayford.com/join/abc123def456",
+  "inviteLink": "https://creator.brayford.live/join/abc123def456",
   "recipientEmail": "john@example.com",
   "customMessage": "Looking forward to working with you!"
 }
@@ -434,15 +434,15 @@ Explain when this email is sent and what user action triggers it.
 
 ### Optional
 
-- `supportEmail` (string): Defaults to `support@projectbrayford.com`
+- `supportEmail` (string): Defaults to `support@brayford.live`
 
 ## Example Payload
 
 \```json
 {
 "userName": "John Smith",
-"actionLink": "https://creator.projectbrayford.com/confirm/abc123",
-"supportEmail": "support@projectbrayford.com"
+"actionLink": "https://creator.brayford.live/confirm/abc123",
+"supportEmail": "support@brayford.live"
 }
 \```
 
@@ -554,7 +554,7 @@ Test both Cloud Functions with emulated Firestore:
 ```bash
 # Postmark Configuration
 POSTMARK_API_KEY=your-production-api-key-here
-POSTMARK_FROM_EMAIL=noreply@projectbrayford.com
+POSTMARK_FROM_EMAIL=noreply@brayford.live
 POSTMARK_FROM_NAME=Project Brayford
 
 # Development Mode (logs to console instead of sending)

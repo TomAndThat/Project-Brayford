@@ -34,7 +34,7 @@ export async function queueTestEmail(
     templateData: {
       organizationName: 'Test Organization',
       inviterName: 'Test User',
-      inviteLink: 'https://creator.projectbrayford.com/join/test123',
+      inviteLink: 'https://creator.brayford.live/join/test123',
       recipientEmail: to,
     },
     metadata: {

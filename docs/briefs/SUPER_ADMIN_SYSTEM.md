@@ -53,7 +53,7 @@ Super admin status is stored as a **custom claim** on the Firebase Auth token:
 ```typescript
 {
   uid: "user123",
-  email: "support@projectbrayford.com",
+  email: "support@brayford.live",
   iss: "https://securetoken.google.com/...",
   // Custom claims:
   superAdmin: true  // ← Only for internal staff
@@ -72,12 +72,12 @@ export const setSuperAdmin = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("permission-denied", "Unauthorized");
   }
 
-  // Restrict to @projectbrayford.com emails (configurable)
+  // Restrict to @brayford.live emails (configurable)
   const targetUser = await admin.auth().getUser(data.userId);
-  if (!targetUser.email?.endsWith("@projectbrayford.com")) {
+  if (!targetUser.email?.endsWith("@brayford.live")) {
     throw new functions.https.HttpsError(
       "invalid-argument",
-      "Super admin must use @projectbrayford.com email",
+      "Super admin must use @brayford.live email",
     );
   }
 
@@ -149,7 +149,7 @@ match /organizations/{orgId}/brands/{brandId} {
 **Requirements:**
 
 - Separate Firebase Auth flow from creator app
-- Email/password or Google Sign-In restricted to `@projectbrayford.com` domain
+- Email/password or Google Sign-In restricted to `@brayford.live` domain
 - Check for `superAdmin` custom claim on login
 - Redirect non-super-admins to error page
 
@@ -364,7 +364,7 @@ When user clicks "Exit Support Mode":
 {
   type: 'superadmin_access',
   actorUserId: 'super_admin_uid',
-  actorEmail: 'support@projectbrayford.com',
+  actorEmail: 'support@brayford.live',
   organizationId: 'org123',
   organizationName: 'Acme',
   action: 'view_dashboard' | 'update_settings' | 'delete_user' | etc.,
@@ -400,7 +400,7 @@ const q = query(
 ```typescript
 // packages/core/src/constants.ts
 export const SUPER_ADMIN_DOMAINS = [
-  "projectbrayford.com",
+  "brayford.live",
   "brayford.io", // If you have multiple domains
 ];
 ```
@@ -451,7 +451,7 @@ Validate on claim grant and login.
 
 ```env
 # .env.local
-NEXT_PUBLIC_ADMIN_APP_URL=https://admin.projectbrayford.com  # Production
+NEXT_PUBLIC_ADMIN_APP_URL=https://admin.brayford.live  # Production
 # or
 NEXT_PUBLIC_ADMIN_APP_URL=http://localhost:3001  # Local development
 ```
@@ -460,7 +460,7 @@ NEXT_PUBLIC_ADMIN_APP_URL=http://localhost:3001  # Local development
 
 ```env
 # .env.local
-NEXT_PUBLIC_CREATOR_APP_URL=https://creator.projectbrayford.com  # Production
+NEXT_PUBLIC_CREATOR_APP_URL=https://creator.brayford.live  # Production
 # or
 NEXT_PUBLIC_CREATOR_APP_URL=http://localhost:3000  # Local development
 ```
@@ -547,7 +547,7 @@ When implementing, update:
 
 ## Questions / Decisions
 
-1. **Admin app domain:** Separate subdomain (`admin.projectbrayford.com`) or path-based (`projectbrayford.com/admin`)?
+1. **Admin app domain:** Separate subdomain (`admin.brayford.live`) or path-based (`brayford.live/admin`)?
    - **Recommendation:** Separate subdomain for clearer security boundary
 
 2. **Session duration:** Should super admins have shorter sessions (e.g., 30 min)?

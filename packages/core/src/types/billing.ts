@@ -1,7 +1,7 @@
 /**
  * Billing Types
  * 
- * Type definitions for organization billing tiers and email domain enforcement.
+ * Type definitions for organization billing tiers, billing methods, and email domain enforcement.
  * Part of the subscription sharing prevention system.
  */
 
@@ -12,6 +12,14 @@
  * - flat_rate: Monthly flat fee with generous brand allowance (for corporate domains)
  */
 export type BillingTier = 'per_brand' | 'flat_rate';
+
+/**
+ * Billing method determines how an organization pays and how they were onboarded
+ *
+ * - enterprise: Invoiced periodically; provisioned by a superAdmin; no card required
+ * - self_serve: Card on file; self-signup via the public website; charged automatically
+ */
+export type BillingMethod = 'enterprise' | 'self_serve';
 
 /**
  * Information about an organization's billing tier

@@ -29,6 +29,7 @@ export type EmailQueueId = string & { readonly __brand: 'EmailQueueId' };
  */
 export const EmailTypeSchema = z.enum([
   'invitation', // Organisation member invitations
+  'org-owner-invitation', // Admin-provisioned org: invite owner to claim their account
   'password-reset', // Password reset requests
   'verification', // Email verification
   'event-reminder', // Event reminders (bulk)
@@ -284,6 +285,7 @@ export interface RateLimitConfig {
  */
 export const EMAIL_RATE_LIMITS: Record<EmailType, RateLimitConfig> = {
   invitation: { maxPerMinute: 10, scope: 'organization' },
+  'org-owner-invitation': { maxPerMinute: 10, scope: 'organization' },
   'password-reset': { maxPerMinute: 5, scope: 'user' },
   verification: { maxPerMinute: 5, scope: 'user' },
   'event-reminder': { maxPerMinute: 100, scope: 'global' },

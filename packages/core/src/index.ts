@@ -44,6 +44,7 @@ export {
 export type {
   BillingTier,
   BillingTierInfo,
+  BillingMethod,
   DomainVerificationStatus,
 } from './types/billing';
 

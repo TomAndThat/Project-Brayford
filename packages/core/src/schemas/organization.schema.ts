@@ -12,7 +12,7 @@
 
 import { z } from 'zod';
 import type { OrganizationId, OrganizationMemberId, UserId, BrandId } from '../types/branded';
-import type { BillingTier } from '../types/billing';
+import type { BillingTier, BillingMethod } from '../types/billing';
 
 /**
  * Organization type determines feature access and billing structure
@@ -34,11 +34,21 @@ export const BillingTierSchema = z.enum(['per_brand', 'flat_rate']);
 export type BillingTierSchemaType = z.infer<typeof BillingTierSchema>;
 
 /**
+ * Billing method determines how an organization pays and how they were onboarded
+ *
+ * - enterprise: Invoiced periodically; provisioned by a superAdmin; no card required
+ * - self_serve: Card on file; self-signup via the public website; charged automatically
+ */
+export const BillingMethodSchema = z.enum(['enterprise', 'self_serve']);
+export type BillingMethodSchemaType = z.infer<typeof BillingMethodSchema>;
+
+/**
  * Organization document schema
  * 
  * @property name - Organization name (e.g., "BBC", "MrBeast LLC")
  * @property type - Organization tier/type
  * @property billingEmail - Primary email for billing and invoices
+ * @property billingMethod - How the org pays (enterprise = invoiced; self_serve = card on file)
  * @property billingTier - Pricing model (auto-assigned based on creator's email domain)
  * @property primaryEmailDomain - Domain from creator's email (e.g., 'bbc.co.uk' or 'gmail.com')
  * @property allowedDomains - Email domains allowed for invitations (for flat_rate tier only)
@@ -54,7 +64,9 @@ export const OrganizationSchema = z.object({
   name: z.string().min(1).max(100).describe('Organization name'),
   type: OrganizationTypeSchema.describe('Organization type/tier'),
   billingEmail: z.string().email().describe('Billing and invoice email'),
+  billingMethod: BillingMethodSchema.default('enterprise').describe('Payment method (enterprise = invoiced, self_serve = card on file)'),
   billingTier: BillingTierSchema.default('per_brand').describe('Pricing model (per_brand or flat_rate)'),
+
   primaryEmailDomain: z.string().default('').describe('Domain from creator email'),
   allowedDomains: z.array(z.string()).default([]).describe('Allowed email domains for invitations'),
   requireDomainMatch: z.boolean().default(false).describe('Enforce domain matching (admin-only setting)'),
@@ -90,6 +102,7 @@ export const UpdateOrganizationSchema = OrganizationSchema.partial().omit({
   createdAt: true,
   createdBy: true,
   billingTier: true,        // Cannot change billing tier after creation
+  billingMethod: true,       // Cannot change billing method without superAdmin action
   primaryEmailDomain: true,  // Cannot change primary domain after creation
 });
 export type UpdateOrganizationData = z.infer<typeof UpdateOrganizationSchema>;
