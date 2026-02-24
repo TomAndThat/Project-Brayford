@@ -22,6 +22,32 @@ export interface EmailConfig {
   };
   devMode: boolean;
   rateLimits: Record<EmailType, number>;
+  /**
+   * Variables automatically injected into any Postmark template whose alias
+   * starts with the PB_ADMIN_LAYOUT_PREFIX. These variables are required by
+   * the 'pb-admin' Postmark layout that wraps creator-facing admin emails.
+   */
+  pbAdminLayout: {
+    productName: string;
+    productUrl: string;
+    companyName: string;
+    companyAddress: string;
+  };
+}
+
+/**
+ * Alias prefix that identifies templates using the 'pb-admin' Postmark layout.
+ * Any template whose alias begins with this string will have layout variables
+ * automatically merged into its TemplateModel at send time.
+ */
+export const PB_ADMIN_LAYOUT_PREFIX = 'pb-admin-' as const;
+
+/**
+ * Returns true when the given template alias uses the 'pb-admin' layout,
+ * meaning layout variables should be injected automatically.
+ */
+export function usesPbAdminLayout(templateAlias: string): boolean {
+  return templateAlias.startsWith(PB_ADMIN_LAYOUT_PREFIX);
 }
 
 /**
@@ -47,6 +73,7 @@ export function getEmailConfig(): EmailConfig {
   // Parse rate limit overrides from environment
   const rateLimits = {
     invitation: parseInt(process.env.EMAIL_RATE_LIMIT_INVITATION || '') || EMAIL_RATE_LIMITS['invitation'].maxPerMinute,
+    'org-owner-invitation': parseInt(process.env.EMAIL_RATE_LIMIT_ORG_OWNER_INVITATION || '') || EMAIL_RATE_LIMITS['org-owner-invitation'].maxPerMinute,
     'password-reset': parseInt(process.env.EMAIL_RATE_LIMIT_PASSWORD_RESET || '') || EMAIL_RATE_LIMITS['password-reset'].maxPerMinute,
     verification: parseInt(process.env.EMAIL_RATE_LIMIT_VERIFICATION || '') || EMAIL_RATE_LIMITS['verification'].maxPerMinute,
     'event-reminder': parseInt(process.env.EMAIL_RATE_LIMIT_EVENT_REMINDER || '') || EMAIL_RATE_LIMITS['event-reminder'].maxPerMinute,
@@ -64,6 +91,12 @@ export function getEmailConfig(): EmailConfig {
     },
     devMode,
     rateLimits,
+    pbAdminLayout: {
+      productName: process.env.POSTMARK_PRODUCT_NAME || 'Project Brayford',
+      productUrl: process.env.POSTMARK_PRODUCT_URL || 'https://brayford.live',
+      companyName: process.env.BF_COMPANY_NAME || 'Project Brayford',
+      companyAddress: process.env.BF_COMPANY_ADDRESS || '',
+    },
   };
 }
 
@@ -98,5 +131,11 @@ export function logEmailConfig(): void {
     fromEmail: config.postmark.fromEmail,
     fromName: config.postmark.fromName,
     hasApiKey: !!config.postmark.apiKey,
+    pbAdminLayout: {
+      productName: config.pbAdminLayout.productName,
+      productUrl: config.pbAdminLayout.productUrl,
+      companyName: config.pbAdminLayout.companyName,
+      hasCompanyAddress: !!config.pbAdminLayout.companyAddress,
+    },
   });
 }

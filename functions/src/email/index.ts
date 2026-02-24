@@ -9,7 +9,14 @@
  */
 
 // Configuration
-export { getEmailConfig, isDevMode, getRateLimitForType, logEmailConfig } from './config';
+export {
+  getEmailConfig,
+  isDevMode,
+  getRateLimitForType,
+  logEmailConfig,
+  usesPbAdminLayout,
+  PB_ADMIN_LAYOUT_PREFIX,
+} from './config';
 
 // Rate limiting
 export {

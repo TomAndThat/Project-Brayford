@@ -8,7 +8,7 @@
 import { ServerClient } from 'postmark';
 import * as logger from 'firebase-functions/logger';
 import type { EmailQueueDocument, EmailQueueId } from '@brayford/core';
-import { getEmailConfig, isDevMode } from './config';
+import { getEmailConfig, isDevMode, usesPbAdminLayout } from './config';
 import { logEmailToConsole, createMockEmailResult } from './dev-mode';
 
 // ===== Types =====
@@ -111,12 +111,27 @@ export async function sendEmail(
     const fromName = email.from?.name || config.postmark.fromName;
     const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
 
-    // Send email with template
+    // Build layout variables for templates that use the 'pb-admin' layout.
+    // These are injected automatically so individual call sites don't need
+    // to know about the layout's required variables.
+    const layoutVars = usesPbAdminLayout(email.templateAlias)
+      ? {
+          product_name: config.pbAdminLayout.productName,
+          product_url: config.pbAdminLayout.productUrl,
+          bf_company_name: config.pbAdminLayout.companyName,
+          bf_company_address: config.pbAdminLayout.companyAddress,
+          current_year: new Date().getFullYear(),
+        }
+      : {};
+
+    // Send email with template.
+    // layoutVars is spread first so per-template templateData values take
+    // precedence if there is ever an intentional override.
     const response = await client.sendEmailWithTemplate({
       From: from,
       To: normaliseEmail(email.to),
       TemplateAlias: email.templateAlias,
-      TemplateModel: email.templateData,
+      TemplateModel: { ...layoutVars, ...email.templateData },
       ReplyTo: email.replyTo ? normaliseEmail(email.replyTo) : undefined,
       MessageStream: 'outbound',
       Metadata: convertMetadataToStrings(email.metadata),
