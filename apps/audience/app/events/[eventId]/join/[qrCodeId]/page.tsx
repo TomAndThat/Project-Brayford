@@ -12,65 +12,81 @@ import {
 } from "@brayford/core";
 import { getEvent, getQRCode, getChildEvents } from "@brayford/firebase-utils";
 import { getOrCreateUUID } from "@/lib/uuid";
+import FullScreenLoader from "@/components/FullScreenLoader";
+import FullScreenMessage from "@/components/FullScreenMessage";
+
+type JoinErrorType =
+  | "not-found"
+  | "not-started"
+  | "ended"
+  | "qr-inactive"
+  | "failed";
 
 export default function JoinEventPage() {
   const params = useParams<{ eventId: string; qrCodeId: string }>();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [joiningMessage, setJoiningMessage] = useState<string | null>(null);
   const [event, setEvent] = useState<EventDocument | null>(null);
   const [qrCode, setQRCode] = useState<QRCodeDocument | null>(null);
   const [childEvents, setChildEvents] = useState<EventDocument[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<JoinErrorType | null>(null);
 
   useEffect(() => {
     const loadEventAndQRCode = async () => {
       try {
         setLoading(true);
-        setError(null);
+        setErrorType(null);
 
-        // Load event
         const eventData = await getEvent(toBranded<EventId>(params.eventId));
         if (!eventData) {
-          setError("Event not found");
+          setErrorType("not-found");
           return;
         }
 
         setEvent(eventData);
 
-        // Load QR code and verify it's valid
+        // Gate access: QR codes are only scannable for live events
+        if (eventData.status === "ended") {
+          setErrorType("ended");
+          return;
+        }
+
+        if (eventData.status !== "live") {
+          setErrorType("not-started");
+          return;
+        }
+
         const qrCodeData = await getQRCode(
           toBranded<QRCodeId>(params.qrCodeId),
         );
 
         if (!qrCodeData) {
-          setError("QR code not found");
+          setErrorType("not-found");
           return;
         }
 
         if (!qrCodeData.isActive) {
-          setError("This QR code is no longer active");
+          setErrorType("qr-inactive");
           return;
         }
 
-        // Verify QR code belongs to this event
         if (qrCodeData.eventId !== eventData.id) {
-          setError("Invalid QR code for this event");
+          setErrorType("not-found");
           return;
         }
 
         setQRCode(qrCodeData);
 
-        // If this is an event group, load child events
         if (eventData.eventType === "group") {
           const children = await getChildEvents(eventData.id, true);
           setChildEvents(children);
         } else {
-          // Regular event - handle entry
           await handleEventEntry(eventData);
         }
       } catch (err) {
         console.error("Error loading event:", err);
-        setError("Failed to load event. Please try again.");
+        setErrorType("failed");
       } finally {
         setLoading(false);
       }
@@ -80,11 +96,10 @@ export default function JoinEventPage() {
   }, [params.eventId, params.qrCodeId]);
 
   const handleEventEntry = async (eventData: EventDocument) => {
+    setJoiningMessage(`Joining ${eventData.name}…`);
     try {
-      // Get or generate UUID from localStorage
       const audienceUUID = getOrCreateUUID();
 
-      // Create session via API (which sets httpOnly cookie)
       const response = await fetch("/api/audience/join", {
         method: "POST",
         headers: {
@@ -102,66 +117,129 @@ export default function JoinEventPage() {
         throw new Error(errorData.error || "Failed to join event");
       }
 
-      // Redirect to event page
       router.push(`/events/${params.eventId}`);
     } catch (err) {
       console.error("Error entering event:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to join event. Please try again.",
-      );
+      setErrorType("failed");
+      setJoiningMessage(null);
       setLoading(false);
     }
   };
 
   const handleSelectChildEvent = (childEventId: string) => {
-    // Redirect to child event (which will handle entry)
     router.push(`/events/${childEventId}`);
   };
 
-  if (loading) {
+  if (loading || joiningMessage) {
+    return <FullScreenLoader message={joiningMessage ?? "Loading event…"} />;
+  }
+
+  if (errorType === "not-started" && event) {
+    const formattedDate = event.scheduledDate.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <div className="text-center">
-          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-zinc-200 border-t-blue-600 mx-auto"></div>
-          <p className="text-lg text-zinc-600">Loading event...</p>
-        </div>
-      </div>
+      <FullScreenMessage
+        iconBgClass="bg-amber-100"
+        iconColorClass="text-amber-600"
+        icon={
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        }
+        title="Not Started Yet"
+        message="This event hasn't started yet. We'll see you soon!"
+      >
+        <p className="text-sm font-medium text-zinc-500">
+          Scheduled for {formattedDate} at {event.scheduledStartTime}
+        </p>
+      </FullScreenMessage>
     );
   }
 
-  if (error || !event || !qrCode) {
+  if (errorType === "ended") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
-        <div className="max-w-md text-center">
-          <div className="mb-4 mx-auto h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
-            <svg
-              className="h-8 w-8 text-red-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-          </div>
-          <h1 className="mb-2 text-2xl font-semibold text-zinc-900">
-            Unable to Access Event
-          </h1>
-          <p className="text-lg text-zinc-600">
-            {error || "Something went wrong"}
-          </p>
-        </div>
-      </div>
+      <FullScreenMessage
+        iconBgClass="bg-slate-100"
+        iconColorClass="text-slate-500"
+        icon={
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        }
+        title="This Event Has Ended"
+        message="Thanks for your interest — this event has finished. Keep an eye out for future events!"
+      />
     );
   }
 
-  // Event group - show child events list
+  if (errorType === "qr-inactive") {
+    return (
+      <FullScreenMessage
+        iconBgClass="bg-red-100"
+        iconColorClass="text-red-600"
+        icon={
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+          />
+        }
+        title="QR Code No Longer Valid"
+        message="This QR code has been deactivated. Ask a member of the team for a new one."
+      />
+    );
+  }
+
+  if (errorType === "failed") {
+    return (
+      <FullScreenMessage
+        iconBgClass="bg-red-100"
+        iconColorClass="text-red-600"
+        icon={
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        }
+        title="Something Went Wrong"
+        message="We weren't able to load this event. Please try again."
+      />
+    );
+  }
+
+  if (errorType === "not-found" || !event || !qrCode) {
+    return (
+      <FullScreenMessage
+        iconBgClass="bg-zinc-100"
+        iconColorClass="text-zinc-400"
+        icon={
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        }
+        title="Event Not Found"
+        message="We couldn't find the event you're looking for. Make sure you've scanned the correct QR code."
+      />
+    );
+  }
+
+  // Event group — show child events list
   if (event.eventType === "group") {
     return (
       <div className="min-h-screen bg-zinc-50">
@@ -229,13 +307,6 @@ export default function JoinEventPage() {
     );
   }
 
-  // Regular event - loading while we process entry
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-      <div className="text-center">
-        <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-zinc-200 border-t-blue-600 mx-auto"></div>
-        <p className="text-lg text-zinc-600">Joining {event.name}...</p>
-      </div>
-    </div>
-  );
+  // Regular event — loading while we process entry
+  return <FullScreenLoader message={`Joining ${event.name}…`} />;
 }

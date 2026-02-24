@@ -19,6 +19,8 @@ import {
 } from "@brayford/firebase-utils";
 import SceneRenderer from "@/components/SceneRenderer";
 import WaitingScreen from "@/components/WaitingScreen";
+import FullScreenLoader from "@/components/FullScreenLoader";
+import FullScreenMessage from "@/components/FullScreenMessage";
 
 export default function EventPage() {
   const params = useParams<{ eventId: string }>();
@@ -28,6 +30,9 @@ export default function EventPage() {
   const [event, setEvent] = useState<EventDocument | null>(null);
   const [brand, setBrand] = useState<BrandDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [accessBlocked, setAccessBlocked] = useState<
+    "not-started" | "ended" | null
+  >(null);
 
   // Subscribe to live state for real-time scene updates
   const { liveState } = useEventLiveState(eventId);
@@ -46,6 +51,16 @@ export default function EventPage() {
 
         setEvent(eventData);
 
+        // Surface appropriate message for non-live events (e.g. bookmarked links)
+        if (eventData.status === "ended") {
+          setAccessBlocked("ended");
+          return;
+        }
+        if (eventData.status === "draft" || eventData.status === "active") {
+          setAccessBlocked("not-started");
+          return;
+        }
+
         // Fetch brand data for styling
         const brandData = await getBrand(eventData.brandId);
         if (brandData) {
@@ -63,28 +78,73 @@ export default function EventPage() {
   }, [eventId]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <div className="text-center">
-          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-zinc-200 border-t-blue-600 mx-auto"></div>
-          <p className="text-lg text-zinc-600">Loading event...</p>
-        </div>
-      </div>
-    );
+    return <FullScreenLoader message="Loading event…" />;
   }
 
   if (error || !event) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
-        <div className="max-w-md text-center">
-          <h1 className="mb-4 text-2xl font-semibold text-zinc-900">
-            Event Not Found
-          </h1>
-          <p className="text-lg text-zinc-600">
-            {error || "The event you're looking for doesn't exist."}
-          </p>
-        </div>
-      </div>
+      <FullScreenMessage
+        iconBgClass="bg-zinc-100"
+        iconColorClass="text-zinc-400"
+        icon={
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        }
+        title="Event Not Found"
+        message="The event you're looking for doesn't exist or may have been removed."
+      />
+    );
+  }
+
+  if (accessBlocked === "not-started") {
+    const formattedDate = event.scheduledDate.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    return (
+      <FullScreenMessage
+        iconBgClass="bg-amber-100"
+        iconColorClass="text-amber-600"
+        icon={
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        }
+        title="Not Started Yet"
+        message="This event hasn't started yet. We'll see you soon!"
+      >
+        <p className="text-sm font-medium text-zinc-500">
+          Scheduled for {formattedDate} at {event.scheduledStartTime}
+        </p>
+      </FullScreenMessage>
+    );
+  }
+
+  if (accessBlocked === "ended") {
+    return (
+      <FullScreenMessage
+        iconBgClass="bg-slate-100"
+        iconColorClass="text-slate-500"
+        icon={
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        }
+        title="This Event Has Ended"
+        message="Thanks for joining us — this event has finished. Keep an eye out for future events!"
+      />
     );
   }
 

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Audience App — Event Access Gating**: QR code join links are now only accessible when an event is `live`
+  - `draft` and `active` events show a "Not Started Yet" screen with the scheduled date and time
+  - `ended` events show a warm "This Event Has Ended" screen
+  - Deactivated QR codes show a dedicated "QR Code No Longer Valid" screen (previously a generic error)
+  - The event page (`/events/[eventId]`) also enforces status gating for users arriving via bookmarks or direct links
+- **Audience App — Error Handling**: Improved error and not-found experiences across the audience app
+  - Added root `not-found.tsx` to catch unknown routes and invalid/expired links with a human-friendly message
+  - Added root `error.tsx` error boundary to prevent blank screens on runtime errors, with a "Try Again" recovery action
+  - Extracted reusable `FullScreenLoader` and `FullScreenMessage` components, replacing duplicated inline error UI across the join and event pages
+
+- **Image Processing**: Automatic server-side resising and WebP conversion for uploaded images
+  - New `onImageUploaded` Cloud Function (Storage trigger) processes every uploaded image via `sharp`
+  - Generates two WebP variants per image: `thumbnail` (400px wide) and `display` (1000px wide)
+  - Variants cover retina display at 2× the actual render size (image picker ~200px, audience container ~500px)
+  - Variants stored at `images/{orgId}/{imageId}/variants/{name}.webp` with stable Firebase download URLs
+  - Image document updated with `variants: { thumbnail, display }` and `uploadStatus: 'processed'` on completion
+  - Processing failure sets `uploadStatus: 'failed'` for operator visibility
+  - Image picker now serves the `display` WebP variant URL instead of the original upload URL, drastically reducing client bandwidth — especially important for high-density event environments on mobile
+
+### Changed
+
+- **Image Library**: Upload status lifecycle extended with `'processed'` state
+  - Status flow: `pending` → `ready` (upload confirmed) → `processed` (variants generated)
+  - Image picker and library now default to showing only `'processed'` images (fully usable with variants)
+  - `ImageUploadStatusSchema` updated in `@brayford/core` with new `'processed'` value
+  - `ImageVariantsSchema` and `ImageVariants` type added to `@brayford/core` and exported
+
 ### Fixed
 
 - **Image Library — Cascade Deletion**: Fixed critical bug where images could be deleted whilst actively in use
