@@ -6,6 +6,14 @@
 
 - _Code 1_: Please investigate the error detailed in the message and provide a detailed analysis of the root cause, potential fixes, and recommended next steps. Do not implement any fixes or write code until we have discussed the analysis and agreed on an approach.
 
+- _Code 2_: Please describe the features and functionality of the specified app, module, or component in detail. Include information on its purpose, how it fits into the overall architecture, and any critical patterns or considerations for working with it. This is for informational purposes only - no code implementation is needed.
+
+- _Code 3_: Please come up with a detailed proposal for implementing the described feature or functionality. Include the technical approach, architecture, data models, and any relevant patterns or best practices. Do not write any code until we have discussed and agreed on the proposed approach.
+
+- _Code 4_: Please commit the code changes affected in this conversation only, along with any related files, ensuring that all changes are properly staged and that the commit message follows our Conventional Commits format. Do not include any unrelated changes in this commit.
+
+- _Code 5_: Please commit all uncommitted changes to the codebase with a comprehensive commit message that follows our Conventional Commits format. Ensure that all uncommitted changes within the repository are included in the commit and that the message accurately reflects the changes made, so far as it possible.
+
 ## Ways of Working
 
 **Collaboration principles for this project:**
