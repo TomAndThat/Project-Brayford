@@ -1,7 +1,7 @@
 # Permissions & Access Control
 
 **Project Brayford** | Organization-Level Permission System  
-_Last Updated: February 10, 2026_
+_Last Updated: 24 February 2026_
 
 ---
 
@@ -406,17 +406,77 @@ if (canModifyMemberRole(actor, target)) {
 
 ### Firestore Security Rules
 
+Rules use **JWT custom claims** — no extra Firestore lookups needed. The helper functions below are defined in `firestore.rules`.
+
 ```javascript
-function hasPermission(userId, organizationId, permission) {
-  let member = get(/databases/$(database)/documents/organizationMembers/$(userId + '_' + organizationId));
-  return member.data.permissions.hasAny([permission, '*']);
+// Claims structure: { orgs: { "orgId": { p: ["ev", "bc", ...], b: [] } } }
+// 'p' contains abbreviated permission strings; '*' is the owner wildcard.
+// 'b' contains brand IDs the user can access (empty array = all brands).
+
+function isOrgMember(orgId) {
+  return request.auth != null
+    && orgId in request.auth.token.get('orgs', {});
 }
 
+function hasOrgPermission(orgId, abbrev) {
+  return isOrgMember(orgId)
+    && ('*' in request.auth.token.orgs[orgId].p
+        || abbrev in request.auth.token.orgs[orgId].p);
+}
+
+// Example: brands collection
 match /brands/{brandId} {
-  allow create: if hasPermission(request.auth.uid, resource.data.organizationId, 'brands:create');
-  allow delete: if hasPermission(request.auth.uid, resource.data.organizationId, 'brands:delete');
+  // Org members can read; all writes go through server-side API routes (Admin SDK)
+  allow read: if isOrgMember(resource.data.organizationId);
+  allow write: if false;
+}
+
+// Example: messages collection (requires specific permission)
+match /messages/{messageId} {
+  allow read: if hasOrgPermission(resource.data.organizationId, 'ev')
+             || hasOrgPermission(resource.data.organizationId, 'emo');
+  allow write: if false;
 }
 ```
+
+### Permission Claim Abbreviations
+
+All permissions are stored as short abbreviations in the `p` array of each org claim. The full mapping lives in `functions/src/claims.ts`.
+
+| Full Permission | Abbreviation | Notes |
+|---|---|---|
+| `*` (owner wildcard) | `*` | Grants all permissions |
+| `org:update` | `ou` | |
+| `org:delete` | `od` | |
+| `org:transfer` | `ot` | |
+| `org:view_billing` | `ovb` | |
+| `org:manage_billing` | `omb` | |
+| `org:view_settings` | `ovs` | |
+| `users:invite` | `ui` | |
+| `users:view` | `uv` | |
+| `users:update_role` | `uur` | |
+| `users:update_access` | `uua` | |
+| `users:remove` | `ur` | |
+| `brands:create` | `bc` | |
+| `brands:view` | `bv` | |
+| `brands:update` | `bu` | |
+| `brands:delete` | `bd` | |
+| `brands:manage_team` | `bmt` | |
+| `events:create` | `ec` | |
+| `events:view` | `ev` | Required to read `/messages` and `/messageColumns` |
+| `events:update` | `eu` | |
+| `events:publish` | `ep` | |
+| `events:delete` | `ed` | |
+| `events:manage_modules` | `emm` | |
+| `events:moderate` | `emo` | Also grants read access to `/messages` and `/messageColumns` |
+| `analytics:view_org` | `avo` | |
+| `analytics:view_brand` | `avb` | |
+| `analytics:view_event` | `ave` | |
+| `analytics:export` | `ae` | |
+| `images:upload` | `iu` | |
+| `images:view` | `iv` | |
+| `images:update` | `iup` | |
+| `images:delete` | `id` | |
 
 ---
 

@@ -1,7 +1,7 @@
 # Domain Model & Schema Design
 
 **Project Brayford** | Live Event Engagement Platform  
-_Last Updated: February 2026_
+_Last Updated: 24 February 2026_
 
 ---
 
@@ -88,10 +88,12 @@ Our application features eight core domains:
 **Key Concepts:**
 
 - **Scenes** (content views that define what audiences see - like slides in a presentation)
-- **Modules** (Q&A, polling, reactions, voting, welcome screens, sponsor content)
-- **Module instances** (a specific poll within a specific scene)
+- **Modules** (messaging, Q&A, polling, reactions, voting, welcome screens, sponsor content)
+- **Module instances** (a specific module within a specific scene)
 - **Module state** (active, paused, closed)
 - **Event live state** (currently active scene, real-time broadcast state)
+- **Messages** (audience-submitted messages; immutable original content with optional moderator `editedContent`)
+- **Message columns** (Kanban-style moderation board columns; message membership and ordering stored in a subcollection)
 - **Interaction data** (questions, votes, reactions)
 - **Scene templates** (reusable scene configurations across events)
 
@@ -180,8 +182,10 @@ Organization (the paying customer: BBC, MrBeast LLC, Jane Smith Productions)
   │    └── Usage Records (what they consume)
   └── Brands (public brands: Goal Hanger, MrBeast Gaming)
        └── Events (live shows)
-            ├── Modules (Q&A, polls, etc.)
+            ├── Modules (messaging, Q&A, polls, etc.)
             │    └── Interactions (questions, votes)
+            ├── Messages (audience submissions)
+            │    └── MessageColumns (Kanban columns + ordering subcollection)
             └── Participants (audience members)
                  └── Email Captures (leads)
 ```

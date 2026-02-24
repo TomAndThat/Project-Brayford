@@ -1,6 +1,6 @@
 # Project Brayford - Roadmap
 
-**Last Updated:** February 12, 2026
+**Last Updated:** 24 February 2026
 
 ---
 
@@ -94,17 +94,23 @@
 - [x] Firestore security rules for scenes and live state
 - [x] 85+ tests passing across core schemas, Firebase operations, and API routes
 - [x] Scenes page in Creator dashboard (`/dashboard/scenes`) with navigation card
-- [ ] Creator UI: Scene list with create/edit/delete
-- [ ] Creator UI: Scene builder with module palette and configuration
+- [x] Creator UI: Scene list with create/edit/delete
+- [x] Creator UI: Scene builder with module palette and configuration
 - [ ] Creator UI: Live scene switcher panel
-- [ ] Audience: Real-time scene renderer with onSnapshot
+- [x] Audience: Real-time scene renderer (fetches scene on each live-state change driven by onSnapshot)
 - [ ] Scene templates and reusability
 
 **Interactive Modules:**
 
 - [x] Text module (serves as foundation for other modules)
-- [ ] Image module (upload, store, configure per-scene)
-- [ ] Image management library (org-level assets, billing limits)
+- [x] Image module (full-width/padded display, alt text, caption; display-variant WebP URL baked in at save time)
+- [x] Image management library (org-level assets, reference tracking, cascade deletion, server-side WebP processing)
+- [ ] Messaging module (audience message submission with Kanban moderation board)
+  - [x] Schema, Firestore security rules, and constants (`@brayford/core` — foundation complete)
+  - [ ] `@brayford/firebase-utils` real-time hooks (`useMessages`, `useMessageColumns`)
+  - [ ] Scene Builder: messaging module config form
+  - [ ] Audience: message submission form + API route (rate limiting, honeypot)
+  - [ ] Creator console: Kanban moderation board with drag-and-drop
 - [ ] Q&A module MVP (submit questions, moderation)
 - [ ] Polling module MVP (create polls, vote, view results)
 - [ ] Additional modules (video, reactions, voting, trivia, etc.)
