@@ -7,6 +7,7 @@ import {
   softDeleteAndRemoveFromColumn,
   editMessage,
   clearMessageEdit,
+  auth,
 } from "@brayford/firebase-utils";
 import {
   type MessageDocument,
@@ -41,6 +42,7 @@ export default function ModerationMessageCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const [isFixingSpelling, setIsFixingSpelling] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -150,6 +152,45 @@ export default function ModerationMessageCard({
       setTimeout(() => setActionError(null), 5000);
     } finally {
       setIsBusy(false);
+    }
+  };
+
+  // ===== AI Spelling Fix =====
+
+  const handleFixSpelling = async () => {
+    if (isBusy) return;
+    setIsFixingSpelling(true);
+    setIsBusy(true);
+    setActionError(null);
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error("Not authenticated");
+
+      const response = await fetch(
+        `/api/messages/${fromBranded(message.id)}/fix-spelling`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${idToken}` },
+        },
+      );
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(data.error ?? "Unexpected error");
+      }
+      // Success — the real-time onSnapshot listener updates the card automatically
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to fix spelling. Please try again.";
+      setActionError(msg);
+      setTimeout(() => setActionError(null), 5000);
+    } finally {
+      setIsBusy(false);
+      setIsFixingSpelling(false);
     }
   };
 
@@ -314,6 +355,49 @@ export default function ModerationMessageCard({
                   d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                 />
               </svg>
+            </button>
+
+            {/* AI spelling & grammar fix */}
+            <button
+              onClick={handleFixSpelling}
+              title="Fix spelling &amp; grammar with AI"
+              className="p-1.5 rounded text-gray-600 hover:text-indigo-400 hover:bg-gray-700 transition-colors"
+            >
+              {isFixingSpelling ? (
+                <svg
+                  className="w-3.5 h-3.5 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"
+                  />
+                </svg>
+              )}
             </button>
 
             {/* Delete — Shift+click skips confirmation */}
