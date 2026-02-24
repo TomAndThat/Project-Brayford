@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Admin Portal — Authentication**: Staff can now sign in to the Project Brayford Admin Portal using their Google Workspace account
+  - Google OAuth via Firebase Auth (popup flow) — no other sign-in methods are available or needed
+  - Access is gated on a `superAdmin: true` Firebase Auth custom claim; users without the claim are shown an Access Denied page
+  - `AuthProvider` supplies auth state (user, superAdmin status, loading) globally via React Context
+  - `AuthGuard` wraps all protected routes and redirects unauthenticated or unauthorised users appropriately
+  - Persistent header displays the signed-in user's name and avatar with a sign-out action
+  - `functions/scripts/set-super-admin.mjs` CLI script to grant or revoke the `superAdmin` claim for a given email address using the Firebase Admin SDK
+
+- **Studio — AI Spelling & Grammar Fix**: Moderators can now fix spelling and grammar errors in audience messages with a single click from the moderation Kanban board
+  - A sparkle icon button appears alongside the existing Edit and Delete actions on each message card
+  - Clicking it sends the current display text (`editedContent` if present, otherwise the original `content`) to Gemini 2.5 Flash for correction
+  - The result is written back to `editedContent`, preserving the original message as always — the existing "Edited · Revert to original" flow handles undoing AI corrections just like manual ones
+  - The button shows a spinner while the request is in flight; the card updates automatically via the existing real-time `onSnapshot` listener when the correction lands
+  - Prompt is conservative: spelling and grammar only, no rephrasing, tone and informality preserved
+  - Requires `events:moderate` permission
+  - New API route: `PATCH /api/messages/[messageId]/fix-spelling`
+
 - **Studio — Event Control View**: Creators can now manage the event status lifecycle directly from within the Studio console, without leaving to the dashboard
   - A new "Control" panel is accessible via the left nav rail, positioned at the top as the primary studio action
   - Displays the current event status (`Draft`, `Ready`, `Live`, `Ended`) with a colour-coded badge and contextual description of what each status means
