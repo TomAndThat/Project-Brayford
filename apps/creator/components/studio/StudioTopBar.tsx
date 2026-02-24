@@ -15,8 +15,9 @@ export default function StudioTopBar({ event }: StudioTopBarProps) {
   const connectionStatus = useFirebaseConnection();
 
   useEffect(() => {
-    // Calculate elapsed time if event is live
-    if (event.status !== "live") return;
+    // Sandbox events use a sentinel scheduled date (2099-12-31) with no
+    // semantic meaning — skip the elapsed timer entirely for them.
+    if (event.status !== "live" || event.isSandbox) return;
 
     const updateTimer = () => {
       // TODO: Calculate from actual event start time
@@ -46,7 +47,9 @@ export default function StudioTopBar({ event }: StudioTopBarProps) {
           <div className="flex items-center gap-2 px-3 py-1 bg-red-900/20 border border-red-500 rounded-md">
             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             <span className="text-red-500 font-semibold text-sm">LIVE</span>
-            <span className="text-red-400 text-sm">{elapsedTime}</span>
+            {!event.isSandbox && (
+              <span className="text-red-400 text-sm">{elapsedTime}</span>
+            )}
           </div>
         );
       case "active":

@@ -118,8 +118,8 @@ async function verifyQRCodePermission(
     };
   }
 
-  // Verify user has access to the brand
-  if (!hasBrandAccess(actorMember, brandId)) {
+  // Sandbox events use a hidden system brand — all org members are permitted.
+  if (!eventData.isSandbox && !hasBrandAccess(actorMember, brandId)) {
     return {
       error: NextResponse.json(
         { error: "You do not have access to this brand" },

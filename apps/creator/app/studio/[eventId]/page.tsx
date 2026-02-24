@@ -21,6 +21,8 @@ import StudioNavRail, {
 import SceneControlView from "@/components/studio/SceneControlView";
 import EventControlView from "@/components/studio/EventControlView";
 import MessageModerationView from "@/components/studio/messages/MessageModerationView";
+import SandboxBanner from "@/components/studio/SandboxBanner";
+import SandboxJoinPanel from "@/components/studio/SandboxJoinPanel";
 
 export default function StudioPage({
   params,
@@ -33,6 +35,7 @@ export default function StudioPage({
   const [accessLoading, setAccessLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [currentView, setCurrentView] = useState<StudioView>("event-control");
+  const [resetLoading, setResetLoading] = useState(false);
 
   const eventIdBranded = toBranded<EventId>(eventId);
   const { event, loading: eventLoading } = useEventDocument(eventIdBranded);
@@ -68,12 +71,16 @@ export default function StudioPage({
           return;
         }
 
-        // Check brand access
-        const hasEventAccess = hasBrandAccess(membership, eventData.brandId);
+        // Sandbox events are accessible to all org members regardless of brand
+        // assignment — the system brand is hidden, so the normal brand ACL would
+        // otherwise silently block anyone without BRANDS_CREATE (i.e. Members).
+        if (!eventData.isSandbox) {
+          const hasEventAccess = hasBrandAccess(membership, eventData.brandId);
 
-        if (!hasEventAccess) {
-          router.push("/dashboard");
-          return;
+          if (!hasEventAccess) {
+            router.push("/dashboard");
+            return;
+          }
         }
 
         setHasAccess(true);
@@ -100,6 +107,29 @@ export default function StudioPage({
     return null; // Will redirect via useEffect
   }
 
+  const handleSandboxReset = async () => {
+    if (!event?.isSandbox) return;
+    setResetLoading(true);
+    try {
+      const idToken = await user?.getIdToken();
+      if (!idToken) return;
+      await fetch("/api/sandbox/reset", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          organizationId: event.organizationId.toString(),
+        }),
+      });
+    } catch (error) {
+      console.error("Sandbox reset failed:", error);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const renderView = () => {
     switch (currentView) {
       case "event-control":
@@ -108,6 +138,8 @@ export default function StudioPage({
         return <SceneControlView event={event} />;
       case "messages":
         return <MessageModerationView event={event} />;
+      case "sandbox-join":
+        return <SandboxJoinPanel event={event} />;
       case "polls":
         return (
           <div className="flex items-center justify-center h-full">
@@ -135,6 +167,14 @@ export default function StudioPage({
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
+      {/* Sandbox banner — only visible for sandbox/test events */}
+      {event.isSandbox && (
+        <SandboxBanner
+          onReset={handleSandboxReset}
+          resetLoading={resetLoading}
+        />
+      )}
+
       {/* Top Context Bar */}
       <StudioTopBar event={event} />
 
@@ -144,6 +184,7 @@ export default function StudioPage({
           currentView={currentView}
           onViewChange={setCurrentView}
           eventStatus={event.status}
+          isSandbox={event.isSandbox ?? false}
         />
 
         {/* Main Canvas */}

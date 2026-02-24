@@ -106,8 +106,9 @@ async function verifyEventSceneAccess(
     };
   }
 
-  // Verify user has access to the event's brand
-  if (!hasBrandAccess(actorMember, brandId)) {
+  // Sandbox events use a hidden system brand — skip brand access check.
+  // Any org member is permitted to manage scenes for their org's sandbox event.
+  if (!eventData.isSandbox && !hasBrandAccess(actorMember, brandId)) {
     return {
       error: NextResponse.json(
         { error: "You do not have access to this brand" },
