@@ -81,7 +81,7 @@ export default function ScenesPage() {
 
       // Load scenes from API
       const token = await auth.currentUser?.getIdToken();
-      const response = await fetch("/api/scenes", {
+      const response = await fetch(`/api/scenes?organizationId=${fromBranded(orgId)}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
