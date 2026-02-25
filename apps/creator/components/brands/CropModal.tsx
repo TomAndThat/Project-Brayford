@@ -5,8 +5,10 @@ import Cropper from "react-easy-crop";
 import type { Area, Point } from "react-easy-crop";
 
 export interface CropModalProps {
-  /** The image file to crop */
-  imageFile: File;
+  /** Pre-created object URL for the image (owned and revoked by the parent) */
+  imageUrl: string;
+  /** MIME type of the source image (e.g. "image/png") */
+  mimeType: string;
   /** Called with the cropped Blob when user confirms */
   onCropComplete: (croppedBlob: Blob) => void;
   /** Called when user cancels */
@@ -17,9 +19,15 @@ export interface CropModalProps {
  * Crop modal that enforces a 1:1 aspect ratio for profile images.
  * Uses react-easy-crop for zoom/pan controls.
  * Produces a cropped Blob ready for upload.
+ *
+ * The parent component is responsible for creating and revoking the blob URL
+ * passed via `imageUrl`. This avoids a race condition where revoking on
+ * unmount could conflict with react-easy-crop's internal <img> element,
+ * causing ERR_FILE_NOT_FOUND for the blob URL.
  */
 export default function CropModal({
-  imageFile,
+  imageUrl,
+  mimeType,
   onCropComplete,
   onCancel,
 }: CropModalProps) {
@@ -27,9 +35,6 @@ export default function CropModal({
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Create object URL for the image
-  const imageUrl = URL.createObjectURL(imageFile);
 
   const handleCropChange = useCallback((location: Point) => {
     setCrop(location);
@@ -55,21 +60,19 @@ export default function CropModal({
       const croppedBlob = await cropImage(
         imageUrl,
         croppedAreaPixels,
-        imageFile.type,
+        mimeType,
       );
       onCropComplete(croppedBlob);
     } catch (error) {
       console.error("Failed to crop image:", error);
     } finally {
       setIsProcessing(false);
-      URL.revokeObjectURL(imageUrl);
     }
-  }, [croppedAreaPixels, imageUrl, imageFile.type, onCropComplete]);
+  }, [croppedAreaPixels, imageUrl, mimeType, onCropComplete]);
 
   const handleCancel = useCallback(() => {
-    URL.revokeObjectURL(imageUrl);
     onCancel();
-  }, [imageUrl, onCancel]);
+  }, [onCancel]);
 
   return (
     <>

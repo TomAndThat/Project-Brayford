@@ -118,6 +118,7 @@ export type BrandStyling = z.infer<typeof BrandStylingSchema>;
  * @property styling - Optional styling configuration (colors, fonts, etc.)
  * @property createdAt - When the brand was created
  * @property isActive - Whether brand is active (false = archived, hidden from UI)
+ * @property isSystem - System-managed brand (e.g. sandbox). Hidden from normal UI. Server-only.
  */
 export const BrandSchema = z.object({
   organizationId: z.string().describe('Reference to owning organization'),
@@ -125,6 +126,7 @@ export const BrandSchema = z.object({
   styling: BrandStylingSchema.describe('Brand styling configuration'),
   createdAt: z.date().describe('Brand creation timestamp'),
   isActive: z.boolean().default(true).describe('Whether brand is active'),
+  isSystem: z.boolean().default(false).describe('System-managed brand — hidden from normal UI (e.g. sandbox brand)'),
 });
 
 export type Brand = z.infer<typeof BrandSchema>;
@@ -143,6 +145,7 @@ export interface BrandDocument extends Brand {
 export const CreateBrandSchema = BrandSchema.omit({
   createdAt: true,
   isActive: true,
+  isSystem: true, // Server-only — cannot be set by clients
   styling: true,
 });
 export type CreateBrandData = z.infer<typeof CreateBrandSchema>;
@@ -153,6 +156,7 @@ export type CreateBrandData = z.infer<typeof CreateBrandSchema>;
 export const UpdateBrandSchema = BrandSchema.partial().omit({
   organizationId: true, // Cannot change ownership
   createdAt: true,
+  isSystem: true, // Server-only — cannot be changed by clients
 });
 export type UpdateBrandData = z.infer<typeof UpdateBrandSchema>;
 

@@ -12,9 +12,12 @@
  * 3. Uploads variants to `images/{orgId}/{imageId}/variants/{name}.webp`
  * 4. Writes stable Firebase download URLs and `uploadStatus: 'processed'`
  *    back to the Firestore image document.
+ * 5. Deletes the original file from Storage (only served assets are the
+ *    generated variants, so the original is no longer needed).
  *
  * If processing fails, `uploadStatus` is set to `'failed'` so operators
- * can surface and retry affected images.
+ * can surface and retry affected images. The original file is preserved
+ * on failure to allow manual retry.
  *
  * Files already inside a `variants/` subdirectory are skipped to prevent
  * infinite trigger loops.
@@ -29,6 +32,60 @@ import {randomUUID} from "crypto";
 import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
+
+/**
+ * Brand styling image fields that pair an imageId with a URL.
+ * When an image is processed, any brand whose styling references the
+ * imageId has its corresponding URL field updated to the display variant.
+ */
+const BRAND_IMAGE_SLOT_MAP = [
+  {idField: "styling.profileImageId", urlField: "styling.profileImageUrl"},
+  {idField: "styling.logoImageId", urlField: "styling.logoImageUrl"},
+  {idField: "styling.bannerImageId", urlField: "styling.bannerImageUrl"},
+  {idField: "styling.headerBackgroundImageId", urlField: "styling.headerBackgroundImageUrl"},
+] as const;
+
+/**
+ * After variant generation, update any brand documents whose styling
+ * references this image ID so their URL fields point to the display
+ * variant instead of the (now-deleted) original file.
+ */
+async function propagateVariantUrlToBrands(
+  db: FirebaseFirestore.Firestore,
+  orgId: string,
+  imageId: string,
+  displayUrl: string,
+): Promise<void> {
+  for (const {idField, urlField} of BRAND_IMAGE_SLOT_MAP) {
+    const snapshot = await db
+      .collection("brands")
+      .where("organizationId", "==", orgId)
+      .where(idField, "==", imageId)
+      .get();
+
+    for (const doc of snapshot.docs) {
+      try {
+        await doc.ref.update({
+          [urlField]: displayUrl,
+          updatedAt: FieldValue.serverTimestamp(),
+          updatedBy: "system",
+        });
+        logger.info("Propagated variant URL to brand", {
+          brandId: doc.id,
+          imageId,
+          field: urlField,
+        });
+      } catch (err) {
+        logger.warn("Failed to propagate variant URL to brand", {
+          brandId: doc.id,
+          imageId,
+          field: urlField,
+          error: String(err),
+        });
+      }
+    }
+  }
+}
 
 /**
  * Matches original upload paths: images/{orgId}/{imageId}/{filename}
@@ -111,10 +168,21 @@ export const onImageUploaded = onObjectFinalized(
 
       await db.collection("images").doc(imageId).update({
         uploadStatus: "processed",
+        url: variantUrls.display,
         variants: variantUrls,
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: "system",
       });
+
+      // Propagate the display variant URL to any brands that reference
+      // this image via an imageId field, replacing the (now-deleted)
+      // original URL with the processed variant.
+      await propagateVariantUrlToBrands(db, orgId!, imageId!, variantUrls.display!);
+
+      // Delete the original file — variants are the only served assets and
+      // the original is no longer needed once processing succeeds.
+      await bucket.file(filePath).delete();
+      logger.info("Original file deleted", {imageId, filePath});
 
       logger.info("Image processing complete", {imageId});
     } catch (error) {

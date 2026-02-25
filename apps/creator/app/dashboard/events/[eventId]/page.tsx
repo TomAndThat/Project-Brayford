@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/components/shared/Toast";
 import {
   getUserOrganizations,
   getEvent,
@@ -30,6 +31,7 @@ import QRCodeManagement from "@/components/events/QRCodeManagement";
 export default function EventSettingsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
 
@@ -88,7 +90,7 @@ export default function EventSettingsPage() {
       const org = await getOrganization(orgId);
 
       if (!org) {
-        alert("Organisation not found");
+        showToast("Organisation not found", { variant: "error" });
         router.push("/dashboard");
         return;
       }
@@ -99,7 +101,7 @@ export default function EventSettingsPage() {
       const eventData = await getEvent(toBranded<EventId>(eventId));
 
       if (!eventData) {
-        alert("Event not found");
+        showToast("Event not found", { variant: "error" });
         router.push("/dashboard/events");
         return;
       }
@@ -146,7 +148,7 @@ export default function EventSettingsPage() {
       setChildEvents(children);
     } catch (error) {
       console.error("Error loading event data:", error);
-      alert("Failed to load event");
+      showToast("Failed to load event", { variant: "error" });
       router.push("/dashboard/events");
     } finally {
       setLoading(false);
@@ -313,10 +315,11 @@ export default function EventSettingsPage() {
       router.push("/dashboard/events");
     } catch (error) {
       console.error("Error archiving event:", error);
-      alert(
+      showToast(
         error instanceof Error
           ? error.message
           : "Failed to archive event. Please try again.",
+        { variant: "error" },
       );
     } finally {
       setIsArchiving(false);

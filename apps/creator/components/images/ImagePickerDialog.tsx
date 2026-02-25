@@ -217,7 +217,7 @@ export default function ImagePickerDialog({
                       }`}
                     >
                       <img
-                        src={image.url}
+                        src={image.variants?.thumbnail ?? image.url}
                         alt={image.name}
                         className="w-full h-full object-cover"
                       />
@@ -230,7 +230,7 @@ export default function ImagePickerDialog({
               {selectedImage && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-md flex items-center gap-3">
                   <img
-                    src={selectedImage.url}
+                    src={selectedImage.variants?.thumbnail ?? selectedImage.url}
                     alt={selectedImage.name}
                     className="w-10 h-10 rounded object-cover"
                   />

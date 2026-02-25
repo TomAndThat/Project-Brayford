@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **QR Code Management**: Fix missing Firestore composite indexes for QR code queries, which prevented QR codes from loading in the event management view and sandbox join panel
+
 ### Added
+
+- **Sandbox Test Event**: Every organisation now has a permanent sandbox event for training, practice, and technical rehearsals — free from any billing implications
+  - A prominent "Open Test Event" card on the dashboard opens the sandbox in one click; no event creation wizard required
+  - The sandbox event is always live — there is no start/end cycle; it is available whenever the team needs it
+  - Audience capacity is hard-capped at 100 participants, aligned with the free tier
+  - A clear amber "Test Event" banner is shown in both the Studio console and the audience view so participants know this is not a live show
+  - A dedicated "Join Link" panel in the sandbox studio shows the audience join URL and QR code — no need to navigate to the events manager
+  - Creators can perform a **soft reset** from the studio banner to clear all audience sessions, messages, and interaction data while preserving scene and module configuration — ready for the next practice run
+  - Inactive audience participants are automatically evicted after 15 minutes of inactivity (60-second heartbeat, scheduled Cloud Function eviction every 5 minutes)
+  - Sandbox events are excluded from all normal event listings and brand listings; system infrastructure is invisible to users
+  - The `isSandbox` flag is set server-only — it cannot be spoofed by client-side requests. Future billing/metering logic should skip records where `isSandbox === true`
 
 - **Admin Portal — Authentication**: Staff can now sign in to the Project Brayford Admin Portal using their Google Workspace account
   - Google OAuth via Firebase Auth (popup flow) — no other sign-in methods are available or needed
@@ -334,7 +349,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       - `validateBackgroundColor()`: Checks contrast ratio and brightness
       - `getPerceivedBrightness()`: HSP colour model for accurate perception
       - `meetsContrastStandard()`: WCAG AA compliance checking
-      - `isToobrightForTheatre()`: Theatre-specific brightness threshold
+      - `isTooBrightForTheatre()`: Theatre-specific brightness threshold
     - Comprehensive test coverage for styling schema and colour utilities
   - **API Integration**
     - Brand update endpoint automatically validates styling data

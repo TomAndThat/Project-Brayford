@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { auth } from "@brayford/firebase-utils";
 import {
   validateImageFile,
   extractImageDimensions,
-  buildImageStoragePath,
   uploadImageFile,
 } from "@brayford/firebase-utils";
 import {
@@ -55,6 +54,26 @@ export default function ImageUploadModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlsRef = useRef<Map<File, string>>(new Map());
+
+  // Revoke all object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      for (const url of objectUrlsRef.current.values()) {
+        URL.revokeObjectURL(url);
+      }
+      objectUrlsRef.current.clear();
+    };
+  }, []);
+
+  /** Get or create a stable object URL for a file (avoids re-creating on every render). */
+  const getObjectUrl = useCallback((file: File): string => {
+    const existing = objectUrlsRef.current.get(file);
+    if (existing) return existing;
+    const url = URL.createObjectURL(file);
+    objectUrlsRef.current.set(file, url);
+    return url;
+  }, []);
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
@@ -327,7 +346,7 @@ export default function ImageUploadModal({
                       {/* Thumbnail preview */}
                       <div className="w-16 h-16 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
                         <img
-                          src={URL.createObjectURL(upload.file)}
+                          src={getObjectUrl(upload.file)}
                           alt={upload.name}
                           className="w-full h-full object-cover"
                         />

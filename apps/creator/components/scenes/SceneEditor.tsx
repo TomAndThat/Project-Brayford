@@ -45,6 +45,7 @@ import type { ModuleInstance, ModuleType } from "@brayford/core";
 import { v4 as uuidv4 } from "uuid";
 import type { JSONContent } from "@tiptap/react";
 import RichTextEditor from "../shared/RichTextEditor";
+import { useToast } from "@/components/shared/Toast";
 import ImagePickerDialog, {
   type ImagePickerSelection,
 } from "../images/ImagePickerDialog";
@@ -335,6 +336,7 @@ export default function SceneEditor({
   onCancel,
 }: SceneEditorProps) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
   const [modules, setModules] = useState<ModuleInstance[]>(initialModules);
@@ -635,7 +637,7 @@ export default function SceneEditor({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      alert("Please enter a scene name");
+      showToast("Please enter a scene name", { variant: "warning" });
       return;
     }
 
@@ -654,7 +656,7 @@ export default function SceneEditor({
       ]);
     } catch (error) {
       console.error("Error saving scene:", error);
-      alert("Failed to save scene");
+      showToast("Failed to save scene", { variant: "error" });
     } finally {
       setIsSaving(false);
     }

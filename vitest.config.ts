@@ -4,6 +4,9 @@ import path from 'path';
 export default defineConfig({
   resolve: {
     alias: {
+      // Note: This alias only resolves for creator app tests.
+      // Admin and audience tests using @/ will resolve incorrectly.
+      // TODO: Per-package vitest configs or dynamic alias resolution.
       '@': path.resolve(__dirname, './apps/creator'),
     },
   },

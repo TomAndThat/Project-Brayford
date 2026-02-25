@@ -13,7 +13,7 @@ import type { UserId } from '../types/branded';
 /**
  * Authentication provider identifier
  * Currently only Google OAuth is supported (Phase 1)
- * Email/password and other providers deferred to post-MVP
+ * Email/password and other providers deferred to a future phase
  */
 export const AuthProviderSchema = z.enum(['google.com']);
 export type AuthProvider = z.infer<typeof AuthProviderSchema>;

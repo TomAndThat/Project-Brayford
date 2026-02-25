@@ -54,7 +54,7 @@ test.describe('Sign-in page', () => {
     await expect(signInPage.termsText).toBeVisible();
   });
 
-  test('authenticated user with org is redirected from /signin to /dashboard', async ({
+  test('authenticated user with org is redirected from /signin to /onboarding', async ({
     authenticatedPage: { page },
   }) => {
     await page.goto('/signin');

@@ -28,6 +28,8 @@ export {
   type SubscriptionId,
   type UsageRecordId,
   type InvoiceId,
+  type ImageId,
+  type EmailQueueId,
 } from './types/branded';
 
 // Module types (Interaction Domain)

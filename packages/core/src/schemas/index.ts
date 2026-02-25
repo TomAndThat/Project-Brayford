@@ -81,7 +81,9 @@ export {
   type EventDocument,
   type CreateEventData,
   type UpdateEventData,
+  EventType,
   type EventStatus as EventStatusType,
+  type EventType as EventTypeType,
 } from './event.schema';
 
 // QR Code Schema (Event Management Domain)

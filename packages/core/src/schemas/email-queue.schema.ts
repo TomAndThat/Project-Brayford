@@ -13,14 +13,15 @@
  */
 
 import { z } from 'zod';
-import type { OrganizationId, UserId, EventId, BrandId } from '../types/branded';
+import type { OrganizationId, UserId, EventId, BrandId, EmailQueueId } from '../types/branded';
 
 // ===== Branded Type =====
 
 /**
  * Branded type for email queue IDs
+ * Re-exported from branded.ts for convenience
  */
-export type EmailQueueId = string & { readonly __brand: 'EmailQueueId' };
+export type { EmailQueueId } from '../types/branded';
 
 // ===== Enums =====
 
@@ -218,6 +219,7 @@ export function getRateLimitScope(
       return metadata.userId ? `user:${metadata.userId}` : 'global';
 
     case 'invitation':
+    case 'org-owner-invitation':
     case 'organization-deletion':
     case 'billing-invoice':
       // Per-organization rate limiting
@@ -229,8 +231,12 @@ export function getRateLimitScope(
       // Global rate limiting for bulk emails
       return 'global';
 
-    default:
+    default: {
+      // Exhaustive check — TypeScript will error here if a new EmailType is added
+      // without a corresponding case
+      const _exhaustive: never = type;
       return 'global';
+    }
   }
 }
 
@@ -240,6 +246,7 @@ export function getRateLimitScope(
 export function getDefaultDeliveryMode(type: EmailType): DeliveryMode {
   switch (type) {
     case 'invitation':
+    case 'org-owner-invitation':
     case 'password-reset':
     case 'verification':
     case 'organization-deletion':
@@ -251,8 +258,12 @@ export function getDefaultDeliveryMode(type: EmailType): DeliveryMode {
     case 'marketing':
       return 'batch';
 
-    default:
+    default: {
+      // Exhaustive check — TypeScript will error here if a new EmailType is added
+      // without a corresponding case
+      const _exhaustive: never = type;
       return 'immediate';
+    }
   }
 }
 

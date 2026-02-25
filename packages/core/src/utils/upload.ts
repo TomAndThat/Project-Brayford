@@ -1,31 +1,34 @@
 /**
- * Upload validation constants for Project Brayford
+ * Upload validation utilities for Project Brayford
  *
- * Shared constants for client-side and server-side image upload validation.
+ * Client-side and server-side image upload validation.
+ * Size and MIME type constraints are imported from `image.schema.ts`
+ * (single source of truth for image constraints).
  */
 
-/** Maximum file size in bytes (5 MB) */
-export const MAX_UPLOAD_FILE_SIZE = 5 * 1024 * 1024;
+import {
+  ACCEPTED_IMAGE_TYPES,
+  MAX_IMAGE_SIZE_BYTES,
+} from '../schemas/image.schema';
 
 /** Human-readable max file size label */
-export const MAX_UPLOAD_FILE_SIZE_LABEL = '5 MB';
+export const MAX_UPLOAD_FILE_SIZE_LABEL = '10 MB';
 
 /** Maximum image dimension in pixels (1024px — 2× retina for 500px container) */
 export const MAX_IMAGE_DIMENSION = 1024;
 
-/** Allowed MIME types for image uploads */
-export const ALLOWED_IMAGE_MIME_TYPES = [
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/svg+xml',
-] as const;
+/**
+ * Re-export canonical constants under upload-specific aliases for
+ * consumers that import from this module.
+ */
+export const MAX_UPLOAD_FILE_SIZE = MAX_IMAGE_SIZE_BYTES;
+export const ALLOWED_IMAGE_MIME_TYPES = ACCEPTED_IMAGE_TYPES;
 
 /** Allowed MIME types as a Set for fast lookup */
-export const ALLOWED_IMAGE_MIME_TYPES_SET = new Set<string>(ALLOWED_IMAGE_MIME_TYPES);
+export const ALLOWED_IMAGE_MIME_TYPES_SET = new Set<string>(ACCEPTED_IMAGE_TYPES);
 
 /** Human-readable allowed formats */
-export const ALLOWED_IMAGE_FORMATS_LABEL = 'PNG, JPEG, WebP, SVG';
+export const ALLOWED_IMAGE_FORMATS_LABEL = 'PNG, JPEG, WebP, GIF';
 
 /** Allowed header types for brand styling */
 export const HEADER_TYPES = ['none', 'profile', 'logo', 'banner'] as const;
@@ -41,7 +44,7 @@ export function validateUploadFile(file: { type: string; size: number }): string
     return `Unsupported file type. Allowed formats: ${ALLOWED_IMAGE_FORMATS_LABEL}`;
   }
 
-  if (file.size > MAX_UPLOAD_FILE_SIZE) {
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
     return `File is too large. Maximum size is ${MAX_UPLOAD_FILE_SIZE_LABEL}`;
   }
 

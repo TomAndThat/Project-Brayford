@@ -71,7 +71,8 @@ service cloud.firestore {
 
     // ===== Organizations Collection =====
     // Only organisation members can read their own org document.
-    // All writes go through server-side API routes (Firebase Admin SDK).
+    // Client writes: superAdmins only (for provisioning).
+    // All other writes go through server-side API routes (Firebase Admin SDK).
     match /organizations/{organizationId} {
       allow read: if isOrgMember(organizationId) || isSuperAdmin();
       allow write: if isSuperAdmin();
@@ -85,7 +86,8 @@ service cloud.firestore {
     //   (b) fellow org members (for team listings; client queries MUST include
     //       .where('organizationId', '==', orgId) so Firestore can verify
     //       the constraint against claims).
-    // All writes go through server-side API routes (Firebase Admin SDK).
+    // Client writes: superAdmins only (for provisioning).
+    // All other writes go through server-side API routes (Firebase Admin SDK).
     match /organizationMembers/{memberId} {
       allow read: if isSignedIn() && (
         request.auth.uid == resource.data.userId
@@ -110,7 +112,11 @@ service cloud.firestore {
     // Readable by:
     //   (a) the invitee (matching email, case-insensitive), OR
     //   (b) an org member with the users:invite permission (abbreviated 'ui').
-    // All writes go through server-side API routes (Firebase Admin SDK).
+    // Create/Update: Org members with 'ui' permission, or superAdmins.
+    //   Creator app uses API routes (Admin SDK) for all invitation ops, but
+    //   admin app provisioning uses client SDK writes with superAdmin rules.
+    //   Rules kept open as defence-in-depth.
+    // Delete: superAdmin only (creator app cancels by setting status instead).
     match /invitations/{invitationId} {
       allow read: if isSignedIn() && (
         request.auth.token.email.lower() == resource.data.email.lower()
@@ -126,12 +132,13 @@ service cloud.firestore {
 
     // ===== Events Collection =====
     // Get (single doc): Org members OR anyone if event is active
-    // List (queries): Anyone (for child event discovery, filtered client-side)
+    // List (queries): Org members only (audience child-event discovery goes
+    //                 through a server-side API route using the Admin SDK)
     // All writes go through server-side API routes (Firebase Admin SDK).
     match /events/{eventId} {
       allow get: if isOrgMember(resource.data.organizationId)
                  || resource.data.isActive == true;
-      allow list: if true; // Public queries for audience to discover child events
+      allow list: if isOrgMember(resource.data.organizationId);
       allow write: if false;
 
       // ===== Event Live State (Subcollection) =====
@@ -231,12 +238,13 @@ service cloud.firestore {
     // ===== Messages Collection =====
     // Audience-submitted messages for event moderation (Interaction Domain).
     //
-    // Read: Org members with events:view ('ev') or events:manage_modules ('emo').
+    // Read: Org members with events:view ('ev') or events:moderate ('emo').
     //       Messages are read by the creator console moderation board.
-    // Create: Server-side only. Audience submissions go through the audience
-    //         app API route which uses the Admin SDK.
-    // Update: Org members with 'emo' permission — covers soft-delete, restore,
-    //         and inline content edits from the moderation board.
+    // Create: Server-side only (allow create: if false). Audience submissions
+    //         go through the audience app API route (Admin SDK).
+    // Update: Client-side via creator app. Org members with 'emo' permission
+    //         can soft-delete, restore, and inline-edit from the moderation board.
+    //         AI spelling fix also goes through a server-side API route.
     // Delete: Server-side only (hard-deletes are an admin concern).
     match /messages/{messageId} {
       allow read: if hasOrgPermission(resource.data.organizationId, 'ev')
@@ -248,10 +256,12 @@ service cloud.firestore {
 
     // ===== Message Columns Collection =====
     // Kanban-style moderation board columns for an event (Interaction Domain).
+    // All column operations happen client-side via the creator app.
     //
     // Read: Org members with 'ev' or 'emo' permission.
     // Create: Org members with 'emo' — new custom columns from the board.
     //         Uses request.resource.data (document doesn't exist yet).
+    //         Inbox column initialisation also goes through an API route.
     // Update: Org members with 'emo' — rename, reorder columns.
     // Delete: Org members with 'emo' — remove empty custom columns.
     //

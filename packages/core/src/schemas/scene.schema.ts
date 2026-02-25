@@ -27,7 +27,7 @@ import { MAX_MODULES_PER_SCENE } from '../constants/scene';
  * Validates against the canonical list of module types
  */
 export const ModuleTypeSchema = z.enum(
-  MODULE_TYPES as [string, ...string[]]
+  [...MODULE_TYPES] as [string, ...string[]]
 );
 
 /**

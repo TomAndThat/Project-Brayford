@@ -31,7 +31,8 @@ export abstract class BasePage {
    * Assert the current URL matches the expected path.
    */
   async expectPath(path: string): Promise<void> {
-    await expect(this.page).toHaveURL(new RegExp(`${path}$`));
+    const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await expect(this.page).toHaveURL(new RegExp(`${escaped}$`));
   }
 
   /**

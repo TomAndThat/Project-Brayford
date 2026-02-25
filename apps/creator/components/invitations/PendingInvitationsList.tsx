@@ -9,6 +9,7 @@ import {
   getRoleDisplayName,
 } from "@brayford/core";
 import { auth } from "@brayford/firebase-utils";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 
 interface PendingInvitationsListProps {
   invitations: InvitationDocument[];
@@ -27,6 +28,8 @@ export default function PendingInvitationsList({
   onRefresh,
 }: PendingInvitationsListProps) {
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [cancellingInvitation, setCancellingInvitation] =
+    useState<InvitationDocument | null>(null);
 
   if (invitations.length === 0) {
     return null;
@@ -57,10 +60,7 @@ export default function PendingInvitationsList({
   };
 
   const handleCancel = async (invitation: InvitationDocument) => {
-    const confirmed = window.confirm(
-      `Cancel the invitation to ${invitation.email}? They will no longer be able to join using the existing link.`,
-    );
-    if (!confirmed) return;
+    setCancellingInvitation(null);
 
     setActionInProgress(fromBranded(invitation.id));
     try {
@@ -193,7 +193,7 @@ export default function PendingInvitationsList({
                     {isLoading ? "…" : "Resend"}
                   </button>
                   <button
-                    onClick={() => handleCancel(invitation)}
+                    onClick={() => setCancellingInvitation(invitation)}
                     disabled={isLoading}
                     className="text-red-600 hover:text-red-900 disabled:opacity-50"
                   >
@@ -205,6 +205,22 @@ export default function PendingInvitationsList({
           </tr>
         );
       })}
+
+      <ConfirmDialog
+        isOpen={cancellingInvitation !== null}
+        title="Cancel Invitation?"
+        message={
+          cancellingInvitation
+            ? `Cancel the invitation to ${cancellingInvitation.email}? They will no longer be able to join using the existing link.`
+            : ""
+        }
+        confirmLabel="Cancel Invitation"
+        variant="danger"
+        onConfirm={() => {
+          if (cancellingInvitation) handleCancel(cancellingInvitation);
+        }}
+        onCancel={() => setCancellingInvitation(null)}
+      />
     </>
   );
 }

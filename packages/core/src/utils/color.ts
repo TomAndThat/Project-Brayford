@@ -88,7 +88,7 @@ export function getPerceivedBrightness(hex: string): number {
  * @param hex - Hex color string
  * @returns True if color is above brightness threshold
  */
-export function isToobrightForTheatre(hex: string): boolean {
+export function isTooBrightForTheatre(hex: string): boolean {
   return getPerceivedBrightness(hex) > 100;
 }
 
@@ -106,7 +106,7 @@ export interface ColorValidation {
   };
   brightness: {
     value: number;
-    toobrightForTheatre: boolean;
+    tooBrightForTheatre: boolean;
   };
 }
 
@@ -118,7 +118,7 @@ export function validateBackgroundColor(
   const contrastRatio = getContrastRatio(backgroundColor, textColor);
   const meetsStandard = contrastRatio >= 4.5;
   const brightness = getPerceivedBrightness(backgroundColor);
-  const tooBright = isToobrightForTheatre(backgroundColor);
+  const tooBright = isTooBrightForTheatre(backgroundColor);
 
   if (!meetsStandard) {
     warnings.push(
@@ -141,7 +141,7 @@ export function validateBackgroundColor(
     },
     brightness: {
       value: brightness,
-      toobrightForTheatre: tooBright,
+      tooBrightForTheatre: tooBright,
     },
   };
 }

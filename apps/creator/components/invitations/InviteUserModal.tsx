@@ -8,6 +8,7 @@ import {
   type BrandDocument,
   type BrandId,
   type InvitationRole,
+  type InvitationDocument,
   canInviteRole,
 } from "@brayford/core";
 import {
@@ -17,6 +18,7 @@ import {
 } from "@brayford/firebase-utils";
 import { isValidEmail, normalizeEmail } from "@brayford/core";
 import OwnerInvitationConfirmDialog from "./OwnerInvitationConfirmDialog";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 
 interface InviteUserModalProps {
   isOpen: boolean;
@@ -56,6 +58,10 @@ export default function InviteUserModal({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showOwnerConfirm, setShowOwnerConfirm] = useState(false);
+  const [resendInvitation, setResendInvitation] = useState<{
+    invitation: InvitationDocument;
+    email: string;
+  } | null>(null);
 
   // Check if current member can invite owners
   const canInviteOwner = canInviteRole(currentMember, "owner");
@@ -131,31 +137,11 @@ export default function InviteUserModal({
         organizationId,
       );
       if (existingInvitation) {
-        // Offer to resend
-        const shouldResend = window.confirm(
-          `A pending invitation already exists for ${normalizedEmail}. Would you like to resend it?`,
-        );
-        if (shouldResend) {
-          const idToken = await auth.currentUser?.getIdToken();
-          if (!idToken) throw new Error("Not authenticated");
-          const resendRes = await fetch(
-            `/api/invitations/${fromBranded(existingInvitation.id)}/resend`,
-            {
-              method: "POST",
-              headers: { Authorization: `Bearer ${idToken}` },
-            },
-          );
-          if (!resendRes.ok) {
-            const data = await resendRes.json();
-            throw new Error(data.error || "Failed to resend invitation");
-          }
-          setSuccessMessage(`Invitation resent to ${normalizedEmail}`);
-          setTimeout(() => {
-            resetForm();
-            onSuccess();
-            onClose();
-          }, 1500);
-        }
+        // Store the invitation and show resend confirmation dialog
+        setResendInvitation({
+          invitation: existingInvitation,
+          email: normalizedEmail,
+        });
         return;
       }
 
@@ -225,6 +211,7 @@ export default function InviteUserModal({
     setError(null);
     setSuccessMessage(null);
     setShowOwnerConfirm(false);
+    setResendInvitation(null);
   };
 
   const handleClose = () => {
@@ -536,6 +523,53 @@ export default function InviteUserModal({
         email={email}
         onConfirm={handleOwnerConfirm}
         onCancel={handleOwnerCancel}
+      />
+
+      {/* Resend Existing Invitation Dialog */}
+      <ConfirmDialog
+        isOpen={resendInvitation !== null}
+        title="Resend Invitation?"
+        message={
+          resendInvitation
+            ? `A pending invitation already exists for ${resendInvitation.email}. Would you like to resend it?`
+            : ""
+        }
+        confirmLabel="Resend"
+        variant="info"
+        onConfirm={async () => {
+          if (!resendInvitation) return;
+          const { invitation, email: invEmail } = resendInvitation;
+          setResendInvitation(null);
+          try {
+            const idToken = await auth.currentUser?.getIdToken();
+            if (!idToken) throw new Error("Not authenticated");
+            const resendRes = await fetch(
+              `/api/invitations/${fromBranded(invitation.id)}/resend`,
+              {
+                method: "POST",
+                headers: { Authorization: `Bearer ${idToken}` },
+              },
+            );
+            if (!resendRes.ok) {
+              const data = await resendRes.json();
+              throw new Error(data.error || "Failed to resend invitation");
+            }
+            setSuccessMessage(`Invitation resent to ${invEmail}`);
+            setTimeout(() => {
+              resetForm();
+              onSuccess();
+              onClose();
+            }, 1500);
+          } catch (err) {
+            console.error("Failed to resend invitation:", err);
+            setError(
+              err instanceof Error
+                ? err.message
+                : "Failed to resend invitation",
+            );
+          }
+        }}
+        onCancel={() => setResendInvitation(null)}
       />
     </div>
   );

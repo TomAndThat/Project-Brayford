@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/components/shared/Toast";
 import { getUserOrganizations } from "@brayford/firebase-utils";
 import { type OrganizationType, toBranded, type UserId } from "@brayford/core";
 
@@ -16,6 +17,7 @@ interface OnboardingFormData {
 export default function OnboardingPage() {
   const { user, loading: authLoading, signOut: handleSignOut } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkingExisting, setCheckingExisting] = useState(true);
   const [selectedType, setSelectedType] = useState<
@@ -122,7 +124,9 @@ export default function OnboardingPage() {
       console.error("Onboarding error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
-      alert(`Failed to create organisation: ${errorMessage}`);
+      showToast(`Failed to create organisation: ${errorMessage}`, {
+        variant: "error",
+      });
       setIsSubmitting(false);
     }
   };

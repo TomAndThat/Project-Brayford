@@ -92,12 +92,12 @@ Set up Playwright for end-to-end testing across the monorepo, starting with the 
 
 All four apps use explicit dev ports to ensure deterministic URLs across local development and E2E tests:
 
-| App | Port | URL |
-|---|---|---|
-| **creator** | 3000 | `http://localhost:3000` |
+| App          | Port | URL                     |
+| ------------ | ---- | ----------------------- |
+| **creator**  | 3000 | `http://localhost:3000` |
 | **audience** | 3001 | `http://localhost:3001` |
-| **stage** | 3002 | `http://localhost:3002` |
-| **admin** | 3003 | `http://localhost:3003` |
+| **stage**    | 3002 | `http://localhost:3002` |
+| **admin**    | 3003 | `http://localhost:3003` |
 
 This is configured via `--port` flags in each app's `package.json` dev script. Without explicit ports, `pnpm dev` (which runs all apps in parallel) would assign ports non-deterministically.
 
@@ -251,7 +251,7 @@ export default defineConfig({
 NEXT_PUBLIC_FIREBASE_API_KEY=test-api-key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=localhost
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-brayford
-NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true
+NEXT_PUBLIC_FIREBASE_USE_EMULATORS=false
 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
 FIRESTORE_EMULATOR_HOST=localhost:8080
 ```
@@ -439,7 +439,7 @@ data-testid="{component}-{element}"
 
 **Implementation plan:**
 
-1. Make `validateConfig()` skip non-essential keys when `NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true` (only `apiKey`, `authDomain`, and `projectId` are required for emulator mode)
+1. Make `validateConfig()` skip non-essential keys when `NEXT_PUBLIC_FIREBASE_USE_EMULATORS=false` (only `apiKey`, `authDomain`, and `projectId` are required for emulator mode)
 2. Add emulator connection after auth/firestore initialisation:
 
 ```typescript
@@ -492,17 +492,17 @@ if (process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === "true") {
 
 ## Resolved Questions
 
-| # | Question | Answer |
-|---|---|---|
-| 1 | Firebase emulator config in `firebase.json`? | **Not present** — needs adding (auth:9099, firestore:8080, ui:4000) |
-| 2 | Existing CI workflow? | **Yes** — `.github/workflows/test.yml` (not `ci.yml`). Has `test` and `build` jobs. E2E job will be added after `test`. |
-| 3 | Creator app port? | **Now fixed at 3000** via `--port` flag. All four apps have explicit ports (3000–3003). |
-| 4 | Test user auth approach? | **Both** — Auth Emulator REST API to create users, `signInWithCustomToken()` to authenticate in the browser context. |
-| 5 | `validateConfig()` vs emulators? | **Relax validation** when `NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true` — skip non-essential keys rather than requiring dummy values. |
-| 6 | Invitation flow tests? | **Placeholder specs with `test.skip`** until the invitation system is implemented. Structure in place, no false failures. |
-| 7 | Node matrix for E2E in CI? | **20.x only** — browser compatibility matters more than Node version for E2E. Unit tests already cover the Node matrix. |
-| 8 | `data-testid` additions? | **Part of this work** — prerequisite for tests, not a separate task. |
-| 9 | Emulator startup in CI? | **Poll ports** instead of `sleep 5` — more reliable on cold CI runners. |
+| #   | Question                                     | Answer                                                                                                                             |
+| --- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Firebase emulator config in `firebase.json`? | **Not present** — needs adding (auth:9099, firestore:8080, ui:4000)                                                                |
+| 2   | Existing CI workflow?                        | **Yes** — `.github/workflows/test.yml` (not `ci.yml`). Has `test` and `build` jobs. E2E job will be added after `test`.            |
+| 3   | Creator app port?                            | **Now fixed at 3000** via `--port` flag. All four apps have explicit ports (3000–3003).                                            |
+| 4   | Test user auth approach?                     | **Both** — Auth Emulator REST API to create users, `signInWithCustomToken()` to authenticate in the browser context.               |
+| 5   | `validateConfig()` vs emulators?             | **Relax validation** when `NEXT_PUBLIC_FIREBASE_USE_EMULATORS=false` — skip non-essential keys rather than requiring dummy values. |
+| 6   | Invitation flow tests?                       | **Placeholder specs with `test.skip`** until the invitation system is implemented. Structure in place, no false failures.          |
+| 7   | Node matrix for E2E in CI?                   | **20.x only** — browser compatibility matters more than Node version for E2E. Unit tests already cover the Node matrix.            |
+| 8   | `data-testid` additions?                     | **Part of this work** — prerequisite for tests, not a separate task.                                                               |
+| 9   | Emulator startup in CI?                      | **Poll ports** instead of `sleep 5` — more reliable on cold CI runners.                                                            |
 
 ---
 

@@ -37,6 +37,7 @@ interface ImageDetail {
   sizeBytes: number;
   dimensions: { width: number; height: number };
   uploadStatus: string;
+  variants?: { thumbnail: string; display: string };
   usageCount: number;
   usedBy: { brands: string[]; scenes: string[] };
   createdAt: string;
@@ -84,29 +85,6 @@ export default function ImageDetailPage({
     params.then(({ imageId: id }) => setImageId(id));
   }, [params]);
 
-  const loadImage = useCallback(async () => {
-    if (!imageId) return;
-
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const response = await fetch(`/api/images/${imageId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // If 404, the image might not have a direct GET endpoint yet.
-      // Use list endpoint and find by ID
-      if (!response.ok) {
-        // Try fetching from the list
-        return null;
-      }
-
-      const data = await response.json();
-      return data.image as ImageDetail;
-    } catch {
-      return null;
-    }
-  }, [imageId]);
-
   const loadUserData = useCallback(async () => {
     if (!user || !imageId) return;
 
@@ -129,18 +107,15 @@ export default function ImageDetailPage({
       }
       setOrganization(org);
 
-      // Fetch image data via API list endpoint
+      // Fetch image data directly via GET endpoint
       const token = await auth.currentUser?.getIdToken();
-      const response = await fetch(
-        `/api/images?organizationId=${org.id as string}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const response = await fetch(`/api/images/${imageId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (response.ok) {
         const data = await response.json();
-        const imageData = (data.images as ImageDetail[]).find(
-          (img) => img.id === imageId,
-        );
+        const imageData = data.image as ImageDetail;
         if (imageData) {
           setImage(imageData);
           setEditName(imageData.name);
@@ -390,7 +365,7 @@ export default function ImageDetailPage({
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="aspect-auto max-h-[500px] bg-gray-100 flex items-center justify-center">
                 <img
-                  src={image.url}
+                  src={image.variants?.display ?? image.url}
                   alt={image.name}
                   className="max-w-full max-h-[500px] object-contain"
                 />

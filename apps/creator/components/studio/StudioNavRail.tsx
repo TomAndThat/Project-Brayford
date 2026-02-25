@@ -8,12 +8,15 @@ export type StudioView =
   | "scenes"
   | "messages"
   | "polls"
-  | "settings";
+  | "settings"
+  | "sandbox-join";
 
 interface StudioNavRailProps {
   currentView: StudioView;
   onViewChange: (view: StudioView) => void;
   eventStatus: EventStatus;
+  /** When true, shows the sandbox join link nav item */
+  isSandbox?: boolean;
 }
 
 interface NavItem {
@@ -26,6 +29,7 @@ export default function StudioNavRail({
   currentView,
   onViewChange,
   eventStatus,
+  isSandbox = false,
 }: StudioNavRailProps) {
   const router = useRouter();
 
@@ -145,6 +149,32 @@ export default function StudioNavRail({
     },
   ];
 
+  // Conditionally append the sandbox join nav item for sandbox events
+  const allNavItems: NavItem[] = isSandbox
+    ? [
+        ...navItems,
+        {
+          id: "sandbox-join" as StudioView,
+          label: "Join Link",
+          icon: (
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 3.5a.5.5 0 11-1 0 .5.5 0 011 0zm-6 0a.5.5 0 11-1 0 .5.5 0 011 0zm-6 0a.5.5 0 11-1 0 .5.5 0 011 0z"
+              />
+            </svg>
+          ),
+        },
+      ]
+    : navItems;
+
   return (
     <div className="w-20 bg-gray-950 border-r border-gray-800 flex flex-col items-center py-6 gap-2">
       {/* Dashboard */}
@@ -173,7 +203,7 @@ export default function StudioNavRail({
       <div className="w-12 h-px bg-gray-800 my-2" />
 
       {/* View Navigation */}
-      {navItems.map((item) => {
+      {allNavItems.map((item) => {
         const isActive = currentView === item.id;
         const showPip = item.id === "event-control";
         return (

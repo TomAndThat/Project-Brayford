@@ -59,6 +59,7 @@ export type BillingMethodSchemaType = z.infer<typeof BillingMethodSchema>;
  * @property settings - Flexible object for org-wide preferences
  * @property deletionRequestId - Reference to active deletion request (null if none)
  * @property softDeletedAt - When org was confirmed for deletion (null if active)
+ * @property testEventId - ID of the org's sandbox event, if one has been created. Server-only.
  */
 export const OrganizationSchema = z.object({
   name: z.string().min(1).max(100).describe('Organization name'),
@@ -76,6 +77,7 @@ export const OrganizationSchema = z.object({
   settings: z.record(z.unknown()).optional().describe('Organization-wide settings'),
   deletionRequestId: z.string().nullable().optional().describe('Active deletion request ID'),
   softDeletedAt: z.date().nullable().optional().describe('When confirmed for deletion'),
+  testEventId: z.string().nullable().optional().describe('ID of the sandbox event for this org (server-only)'),
 });
 
 export type Organization = z.infer<typeof OrganizationSchema>;
@@ -104,6 +106,7 @@ export const UpdateOrganizationSchema = OrganizationSchema.partial().omit({
   billingTier: true,        // Cannot change billing tier after creation
   billingMethod: true,       // Cannot change billing method without superAdmin action
   primaryEmailDomain: true,  // Cannot change primary domain after creation
+  testEventId: true,         // Server-only — set by sandbox API route, never by clients
 });
 export type UpdateOrganizationData = z.infer<typeof UpdateOrganizationSchema>;
 

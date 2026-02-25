@@ -20,7 +20,6 @@ import {
   getDocs,
   serverTimestamp,
   type DocumentReference,
-  type Query,
 } from 'firebase/firestore';
 import { db } from '../config';
 import { createConverter, convertFromFirestore } from './converters';
@@ -222,8 +221,9 @@ async function createOrganizationMember(
 /**
  * Invite user to organization (Flow B: invitation)
  * 
- * Creates a pending organizationMember document.
- * User must accept invitation to activate membership.
+ * Creates an organizationMember document with immediate join.
+ * This currently performs an immediate join rather than a pending
+ * invitation flow (pending state to be added in a future phase).
  * 
  * @param data - Invitation data
  * @param inviterUserId - ID of user sending invitation

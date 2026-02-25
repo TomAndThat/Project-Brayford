@@ -24,48 +24,61 @@ const IMAGE_URL_FIELDS = [
 ] as const;
 
 /**
- * Extract the storage path from a Firebase download URL.
+ * Extract the image folder prefix from a Firebase download URL.
  *
  * Firebase download URLs look like:
  * https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encodedPath}?alt=media&token=...
+ *
+ * The encoded path will be something like:
+ *   images/{orgId}/{imageId}/variants/display.webp
+ *
+ * We extract `images/{orgId}/{imageId}/` so we can delete the entire folder,
+ * cleaning up all variants and any orphaned files.
  */
-function extractPathFromDownloadUrl(url: string): string | null {
+function extractImageFolderPrefix(url: string): string | null {
   try {
     const match = url.match(/\/o\/(.+?)(\?|$)/);
     if (!match) return null;
-    return decodeURIComponent(match[1]!);
+    const fullPath = decodeURIComponent(match[1]!);
+
+    // Match images/{orgId}/{imageId}/ at the start of the path
+    const folderMatch = fullPath.match(/^(images\/[^/]+\/[^/]+\/)/);
+    if (!folderMatch) return null;
+
+    return folderMatch[1]!;
   } catch {
     return null;
   }
 }
 
 /**
- * Delete a file from Storage by its download URL.
+ * Delete all files under an image folder prefix from Storage.
+ * This removes the original (if still present) and all variants.
  * Silently ignores "not found" errors.
  */
-async function deleteFileByUrl(url: string): Promise<void> {
-  const path = extractPathFromDownloadUrl(url);
-  if (!path) {
-    logger.warn("Could not extract storage path from URL", {url});
+async function deleteImageFolder(url: string): Promise<void> {
+  const prefix = extractImageFolderPrefix(url);
+  if (!prefix) {
+    logger.warn("Could not extract image folder prefix from URL", {url});
     return;
   }
 
   try {
     const bucket = getStorage().bucket();
-    await bucket.file(path).delete();
-    logger.info("Deleted orphaned brand image", {path});
+    await bucket.deleteFiles({prefix});
+    logger.info("Deleted orphaned brand image folder", {prefix});
   } catch (error: unknown) {
-    // Ignore "not found" — file already deleted
+    // Ignore "not found" — files already deleted
     if (
       error &&
       typeof error === "object" &&
       "code" in error &&
       (error as {code: number}).code === 404
     ) {
-      logger.info("Brand image already deleted", {path});
+      logger.info("Brand image folder already deleted", {prefix});
       return;
     }
-    logger.error("Failed to delete brand image", {path, error});
+    logger.error("Failed to delete brand image folder", {prefix, error});
   }
 }
 
@@ -114,7 +127,7 @@ export const onBrandStylingChange = onDocumentUpdated(
       count: urlsToDelete.length,
     });
 
-    // Delete in parallel
-    await Promise.allSettled(urlsToDelete.map(deleteFileByUrl));
+    // Delete in parallel — each call removes the entire image folder
+    await Promise.allSettled(urlsToDelete.map(deleteImageFolder));
   }
 );

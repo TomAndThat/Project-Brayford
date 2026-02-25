@@ -500,11 +500,11 @@ describe('Invitations collection', () => {
       await assertFails(setDoc(doc(ctx.firestore(), 'invitations', invitationId), invitationDoc));
     });
 
-    it('denies updates from org owners', async () => {
+    it('allows org owners to update invitations (wildcard includes ui)', async () => {
       await seedDoc(`invitations/${invitationId}`, invitationDoc);
       const auth = orgMemberToken('owner-user', 'owner@test.com', orgId, ['*']);
       const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
-      await assertFails(
+      await assertSucceeds(
         updateDoc(doc(ctx.firestore(), 'invitations', invitationId), { status: 'accepted' }),
       );
     });
@@ -680,10 +680,10 @@ describe('Messages collection', () => {
       );
     });
 
-    it('denies client-side updates — all moderation goes via API route', async () => {
+    it('allows org members with emo permission to update messages (client-side moderation)', async () => {
       const auth = orgMemberToken('mod-1', 'mod@test.com', orgId, ['emo']);
       const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
-      await assertFails(
+      await assertSucceeds(
         updateDoc(doc(ctx.firestore(), 'messages', messageId), { isDeleted: true }),
       );
     });
@@ -767,18 +767,18 @@ describe('Message columns collection', () => {
   });
 
   describe('column write', () => {
-    it('denies client-side creates — all column management via API route', async () => {
+    it('allows org owners to create columns (wildcard includes emo)', async () => {
       const auth = orgMemberToken('owner-1', 'owner@test.com', orgId, ['*']);
       const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
-      await assertFails(
+      await assertSucceeds(
         setDoc(doc(ctx.firestore(), 'messageColumns', 'new-col'), columnDoc),
       );
     });
 
-    it('denies client-side updates', async () => {
+    it('allows org owners to update columns (wildcard includes emo)', async () => {
       const auth = orgMemberToken('owner-1', 'owner@test.com', orgId, ['*']);
       const ctx = testEnv.authenticatedContext(auth.uid, auth.token);
-      await assertFails(
+      await assertSucceeds(
         updateDoc(doc(ctx.firestore(), 'messageColumns', columnId), { name: 'On Air' }),
       );
     });

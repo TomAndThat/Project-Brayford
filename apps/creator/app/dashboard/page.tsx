@@ -11,6 +11,7 @@ import {
 } from "@brayford/firebase-utils";
 import {
   toBranded,
+  fromBranded,
   type UserId,
   type OrganizationId,
   type OrganizationDocument,
@@ -48,6 +49,8 @@ export default function DashboardPage() {
   );
   const [currentMember, setCurrentMember] =
     useState<OrganizationMemberDocument | null>(null);
+  const [sandboxLoading, setSandboxLoading] = useState(false);
+  const [sandboxError, setSandboxError] = useState<string | null>(null);
 
   const loadOrgData = useCallback(
     async (orgId: OrganizationId) => {
@@ -183,6 +186,33 @@ export default function DashboardPage() {
     router.push("/signin");
   };
 
+  const handleOpenSandbox = async () => {
+    if (!organization || !user) return;
+    setSandboxLoading(true);
+    setSandboxError(null);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/sandbox/open", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ organizationId: organization.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setSandboxError(data.error ?? "Failed to open test event");
+        return;
+      }
+      router.push(`/studio/${data.eventId}`);
+    } catch {
+      setSandboxError("Failed to open test event. Please try again.");
+    } finally {
+      setSandboxLoading(false);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -228,6 +258,74 @@ export default function DashboardPage() {
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Test Event — always visible to all org members */}
+            <div className="col-span-1 md:col-span-2 lg:col-span-4">
+              <button
+                onClick={handleOpenSandbox}
+                disabled={sandboxLoading}
+                data-testid="sandbox-card"
+                className="w-full bg-amber-50 border-2 border-amber-300 rounded-lg shadow-sm p-6 text-left hover:shadow-md hover:bg-amber-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-200 text-amber-800">
+                        Test Mode
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-amber-900">
+                      Open Test Event
+                    </h3>
+                    <p className="text-sm text-amber-700 mt-1">
+                      A private sandbox for training and practice. Not billable.
+                      Up to 100 audience members.
+                    </p>
+                    {sandboxError && (
+                      <p className="text-sm text-red-600 mt-2">
+                        {sandboxError}
+                      </p>
+                    )}
+                  </div>
+                  <div className="ml-4 shrink-0">
+                    {sandboxLoading ? (
+                      <svg
+                        className="w-8 h-8 text-amber-500 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8H4z"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-8 h-8 text-amber-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+              </button>
+            </div>
             {currentMember && hasPermission(currentMember, USERS_VIEW) && (
               <button
                 onClick={() => router.push("/dashboard/users")}
@@ -472,8 +570,4 @@ export default function DashboardPage() {
       </div>
     </DashboardLayoutWrapper>
   );
-}
-
-function fromBranded<T extends { toString(): string }>(branded: T): string {
-  return branded.toString();
 }

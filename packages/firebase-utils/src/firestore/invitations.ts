@@ -18,6 +18,7 @@ import {
   getDocs,
   serverTimestamp,
   type DocumentReference,
+  type WriteBatch,
 } from 'firebase/firestore';
 import { db } from '../config';
 import { createConverter, convertFromFirestore } from './converters';
@@ -250,10 +251,15 @@ export async function pendingInvitationExists(
  * Status is set to 'pending'.
  * 
  * @param data - Invitation creation data
+ * @param options - Optional configuration
+ * @param options.batch - If provided, the write is added to this WriteBatch
+ *   instead of being committed immediately. The caller is responsible for
+ *   committing the batch. Useful for atomic multi-document provisioning.
  * @returns The created invitation document (with generated ID, token, etc.)
  * 
  * @example
  * ```ts
+ * // Standalone usage (commits immediately)
  * const invitation = await createInvitation({
  *   email: 'newuser@example.com',
  *   organizationId: fromBranded(orgId),
@@ -266,10 +272,16 @@ export async function pendingInvitationExists(
  *   expiresAt: calculateInvitationExpiry(),
  *   metadata: { inviterName: 'Alice', inviterEmail: 'alice@org.com' },
  * });
+ *
+ * // Batch usage (caller commits)
+ * const batch = writeBatch(db);
+ * const invitation = await createInvitation(data, { batch });
+ * await batch.commit();
  * ```
  */
 export async function createInvitation(
-  data: CreateInvitationData
+  data: CreateInvitationData,
+  options?: { batch?: WriteBatch },
 ): Promise<InvitationDocument> {
   const invRef = doc(collection(db, 'invitations'));
   const invitationId = toBranded<InvitationId>(invRef.id);
@@ -282,7 +294,11 @@ export async function createInvitation(
     acceptedAt: null,
   };
 
-  await setDoc(invRef, invitationData);
+  if (options?.batch) {
+    options.batch.set(invRef, invitationData);
+  } else {
+    await setDoc(invRef, invitationData);
+  }
 
   // Return the document shape (invitedAt will be a server timestamp,
   // but we approximate with the current time for immediate use)

@@ -1,12 +1,21 @@
 /**
+ * GET    /api/images/[imageId] — Fetch a single image
  * PATCH  /api/images/[imageId] — Update image metadata
  * DELETE /api/images/[imageId] — Delete image
  *
- * PATCH: Requires images:update permission. Updates name, description, tags.
+ * GET:    Requires images:view permission. Returns the image document.
+ * PATCH:  Requires images:update permission. Updates name, description, tags.
  * DELETE: Requires images:delete permission. Performs live Firestore queries to
  *         find active references before allowing deletion.
  *
  * Authorization: Bearer <Firebase ID Token>
+ *
+ * GET Response:
+ * 200: { image: object }
+ * 401: { error: string }
+ * 403: { error: string }
+ * 404: { error: string }
+ * 500: { error: string }
  *
  * PATCH Response:
  * 200: { image: object }
@@ -32,6 +41,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { authenticateRequest } from '@/lib/api-auth';
 import {
   hasPermission,
+  IMAGES_VIEW,
   IMAGES_UPDATE,
   IMAGES_DELETE,
   BRANDS_UPDATE,
@@ -115,6 +125,43 @@ async function verifyImagePermission(
   }
 
   return { error: null, imageRef, imageData, uid };
+}
+
+/**
+ * GET /api/images/[imageId]
+ *
+ * Fetch a single image by ID. Requires images:view permission.
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: RouteParams,
+): Promise<NextResponse> {
+  try {
+    const { imageId } = await params;
+
+    const result = await verifyImagePermission(request, imageId, IMAGES_VIEW);
+    if (result.error) return result.error;
+
+    const { imageData } = result;
+
+    return NextResponse.json(
+      {
+        image: {
+          id: imageId,
+          ...imageData,
+          createdAt: imageData.createdAt?.toDate?.()?.toISOString() || imageData.createdAt,
+          updatedAt: imageData.updatedAt?.toDate?.()?.toISOString() || imageData.updatedAt,
+        },
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error('Error fetching image:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch image' },
+      { status: 500 },
+    );
+  }
 }
 
 /**

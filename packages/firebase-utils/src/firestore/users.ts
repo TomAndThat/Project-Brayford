@@ -15,7 +15,7 @@ import {
   type DocumentReference,
 } from 'firebase/firestore';
 import { db } from '../config';
-import { createConverter, convertFromFirestore } from './converters';
+import { createConverter } from './converters';
 import {
   validateUserData,
   validateUpdateUserData,

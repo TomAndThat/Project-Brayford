@@ -7,7 +7,7 @@
  * Query params:
  *   organizationId (required) — Organization to list images for
  *   tag (optional) — Filter by tag
- *   uploadStatus (optional, default: 'ready') — Filter by upload status
+ *   uploadStatus (optional, default: 'processed') — Filter by upload status
  *
  * Response:
  * 200: { images: object[] }
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get('organizationId');
     const tag = searchParams.get('tag');
-    const uploadStatus = (searchParams.get('uploadStatus') || 'ready') as ImageUploadStatus;
+    const uploadStatus = (searchParams.get('uploadStatus') || 'processed') as ImageUploadStatus;
 
     if (!organizationId) {
       return NextResponse.json(

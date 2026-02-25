@@ -8,8 +8,9 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { JSONContent } from "@tiptap/react";
+import PromptDialog from "@/components/shared/PromptDialog";
 
 interface RichTextEditorProps {
   content: JSONContent | string;
@@ -118,38 +119,53 @@ export default function RichTextEditor({
     }
   }, [editor, editable]);
 
+  const [linkPrompt, setLinkPrompt] = useState<{
+    isOpen: boolean;
+    defaultValue: string;
+  }>({ isOpen: false, defaultValue: "" });
+  const [colorPrompt, setColorPrompt] = useState(false);
+
   const setLink = useCallback(() => {
     if (!editor) return;
-
-    const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("URL", previousUrl);
-
-    // Cancelled
-    if (url === null) {
-      return;
-    }
-
-    // Empty string - remove link
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-
-    // Update link
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    const previousUrl = editor.getAttributes("link").href || "";
+    setLinkPrompt({ isOpen: true, defaultValue: previousUrl });
   }, [editor]);
+
+  const handleLinkSubmit = useCallback(
+    (url: string) => {
+      setLinkPrompt({ isOpen: false, defaultValue: "" });
+      if (!editor) return;
+
+      // Empty string — remove link
+      if (url === "") {
+        editor.chain().focus().extendMarkRange("link").unsetLink().run();
+        return;
+      }
+
+      // Update link
+      editor
+        .chain()
+        .focus()
+        .extendMarkRange("link")
+        .setLink({ href: url })
+        .run();
+    },
+    [editor],
+  );
 
   const setColor = useCallback(() => {
     if (!editor) return;
-
-    const color = window.prompt(
-      "Enter colour (hex code or colour name)",
-      "#000000",
-    );
-    if (color) {
-      editor.chain().focus().setColor(color).run();
-    }
+    setColorPrompt(true);
   }, [editor]);
+
+  const handleColorSubmit = useCallback(
+    (color: string) => {
+      setColorPrompt(false);
+      if (!editor || !color) return;
+      editor.chain().focus().setColor(color).run();
+    },
+    [editor],
+  );
 
   if (!editor) {
     return null;
@@ -479,6 +495,30 @@ export default function RichTextEditor({
       <div className="bg-white min-h-[200px]">
         <EditorContent editor={editor} />
       </div>
+
+      {/* Link URL Prompt */}
+      <PromptDialog
+        isOpen={linkPrompt.isOpen}
+        title="Insert Link"
+        label="URL"
+        placeholder="https://example.com"
+        defaultValue={linkPrompt.defaultValue}
+        submitLabel="Apply"
+        onSubmit={handleLinkSubmit}
+        onCancel={() => setLinkPrompt({ isOpen: false, defaultValue: "" })}
+      />
+
+      {/* Text Colour Prompt */}
+      <PromptDialog
+        isOpen={colorPrompt}
+        title="Text Colour"
+        label="Enter colour (hex code or colour name)"
+        placeholder="#000000"
+        defaultValue="#000000"
+        submitLabel="Apply"
+        onSubmit={handleColorSubmit}
+        onCancel={() => setColorPrompt(false)}
+      />
     </div>
   );
 }

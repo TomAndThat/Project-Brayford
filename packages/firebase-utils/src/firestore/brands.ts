@@ -205,7 +205,8 @@ export async function permanentlyDeleteBrand(brandId: BrandId): Promise<void> {
 
 /**
  * Get all brands for an organization
- * Optionally filter to only active brands
+ * Optionally filter to only active brands. System brands (isSystem=true) are
+ * always excluded — they are internal scaffolding (e.g. the sandbox brand).
  * 
  * @param organizationId - Organization ID
  * @param activeOnly - If true, only return brands where isActive = true
@@ -235,15 +236,17 @@ export async function getOrganizationBrands(
   
   const querySnap = await getDocs(brandsQuery);
   
-  return querySnap.docs.map((doc) => {
-    const data = convertFromFirestore(doc.data(), validateBrandData, ['createdAt']);
-    
-    return {
-      id: toBranded<BrandId>(doc.id),
-      ...data,
-      organizationId: toBranded<OrganizationId>(data.organizationId),
-    };
-  });
+  return querySnap.docs
+    .map((doc) => {
+      const data = convertFromFirestore(doc.data(), validateBrandData, ['createdAt']);
+      return {
+        id: toBranded<BrandId>(doc.id),
+        ...data,
+        organizationId: toBranded<OrganizationId>(data.organizationId),
+      };
+    })
+    // Exclude system brands from all normal listings
+    .filter((brand) => !brand.isSystem);
 }
 
 /**

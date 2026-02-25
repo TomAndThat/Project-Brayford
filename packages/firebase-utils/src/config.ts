@@ -19,8 +19,8 @@
  * - Firestore emulator: localhost:8080
  * - Storage emulator: localhost:9199
  *
- * These flags are intentionally independent so that, for example, the admin app
- * can use production Auth while still pointing Firestore at the local emulator.
+ * Day-to-day development uses production Firebase (all flags false/omitted).
+ * Only enable emulators for E2E testing or isolated Cloud Functions work.
  */
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
@@ -63,6 +63,15 @@ const EMULATOR_REQUIRED_KEYS: (keyof typeof firebaseConfig)[] = [
  * In emulator mode, only core keys are required.
  * In production mode, all keys are required.
  */
+const ENV_VAR_NAMES: Record<keyof typeof firebaseConfig, string> = {
+  apiKey: 'NEXT_PUBLIC_FIREBASE_API_KEY',
+  authDomain: 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
+  projectId: 'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+  storageBucket: 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+  messagingSenderId: 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+  appId: 'NEXT_PUBLIC_FIREBASE_APP_ID',
+};
+
 function validateConfig(): void {
   const requiredKeys = isFirestoreEmulatorMode
     ? EMULATOR_REQUIRED_KEYS
@@ -73,7 +82,7 @@ function validateConfig(): void {
   if (missingKeys.length > 0) {
     throw new Error(
       `Missing Firebase configuration. Please set the following environment variables:\n${missingKeys
-        .map((key) => `NEXT_PUBLIC_FIREBASE_${key.toUpperCase()}`)
+        .map((key) => ENV_VAR_NAMES[key])
         .join('\n')}`
     );
   }
@@ -126,7 +135,7 @@ export { firebaseConfig };
 /**
  * Emulator connections for local development and E2E testing.
  *
- * NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true  → Firestore (8080) + Storage (9199)
+ * NEXT_PUBLIC_FIREBASE_USE_EMULATORS=false  → Firestore (8080) + Storage (9199)
  * NEXT_PUBLIC_FIREBASE_AUTH_USE_EMULATOR=true → Auth (9099)
  *
  * The two flags are independent. The admin app, for example, omits the Auth

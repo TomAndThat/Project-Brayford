@@ -7,6 +7,8 @@ import {
   type ModuleInstance,
   type InteractiveStyles,
   type MessagingModuleConfig,
+  type TextModuleConfig,
+  type ImageModuleConfig,
   DEFAULT_INPUT_BACKGROUND,
   DEFAULT_INPUT_TEXT,
   DEFAULT_BUTTON_BACKGROUND,
@@ -137,10 +139,10 @@ function ModuleRenderer({
 }) {
   switch (module.moduleType) {
     case "text":
-      return <TextModule config={module.config as any} />;
+      return <TextModule config={module.config as TextModuleConfig} />;
 
     case "image":
-      return <ImageModule config={module.config as any} />;
+      return <ImageModule config={module.config as ImageModuleConfig} />;
 
     case "messaging": {
       const cfg = module.config as MessagingModuleConfig;

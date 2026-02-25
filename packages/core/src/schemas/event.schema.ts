@@ -55,6 +55,7 @@ export type EventType = z.infer<typeof EventType>;
  * @property maxAttendees - Optional maximum capacity for the event
  * @property createdAt - When the event was created
  * @property isActive - Whether event is active (false = archived, hidden from UI)
+ * @property isSandbox - Sandbox/test event — not billable, always live, max 100 audience. Server-only.
  */
 const BaseEventSchema = z.object({
   brandId: z.string().describe('Reference to parent brand'),
@@ -72,6 +73,7 @@ const BaseEventSchema = z.object({
   maxAttendees: z.number().int().positive().optional().describe('Maximum capacity for the event'),
   createdAt: z.date().describe('Event creation timestamp'),
   isActive: z.boolean().default(true).describe('Whether event is active'),
+  isSandbox: z.boolean().default(false).describe('Sandbox/test event — not billable, always live, max 100 audience'),
   sceneHistory: z.array(z.object({
     sceneId: z.string().describe('Scene that was activated'),
     switchedAt: z.date().describe('When the switch happened'),
@@ -111,6 +113,7 @@ export const CreateEventSchema = BaseEventSchema.omit({
   createdAt: true,
   isActive: true,
   status: true,
+  isSandbox: true, // Server-only — cannot be set by clients
 }).refine(
   (data) => {
     // Groups cannot have a parent
@@ -134,6 +137,7 @@ export const UpdateEventSchema = BaseEventSchema.partial().omit({
   organizationId: true, // Cannot change organization
   eventType: true, // Cannot change event type after creation
   createdAt: true,
+  isSandbox: true, // Server-only — cannot be changed by clients
 });
 export type UpdateEventData = z.infer<typeof UpdateEventSchema>;
 

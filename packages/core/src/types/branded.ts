@@ -65,6 +65,11 @@ export type ParticipantId = Brand<string, 'ParticipantId'>;
 export type EmailCaptureId = Brand<string, 'EmailCaptureId'>;
 
 /**
+ * Communications Domain
+ */
+export type EmailQueueId = Brand<string, 'EmailQueueId'>;
+
+/**
  * Billing Domain
  */
 export type SubscriptionId = Brand<string, 'SubscriptionId'>;

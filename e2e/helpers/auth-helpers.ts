@@ -68,7 +68,7 @@ export async function signInAsTestUser(
     if (!helpers) {
       throw new Error(
         '__FIREBASE_TEST__ not found on window. ' +
-          'Is NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true set?',
+          'Is NEXT_PUBLIC_FIREBASE_USE_EMULATORS=false set?',
       );
     }
 
@@ -77,7 +77,10 @@ export async function signInAsTestUser(
 
   // Wait for the auth state observer in useAuth() to fire and
   // trigger a React re-render / navigation
-  await page.waitForTimeout(1000);
+  await page.waitForURL('**/{dashboard,onboarding}', { timeout: 10_000 }).catch(() => {
+    // Fall back — page may already be at the expected URL
+  });
+  await page.waitForLoadState('networkidle');
 }
 
 /**

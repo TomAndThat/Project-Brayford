@@ -75,7 +75,35 @@ export async function POST(
 
     const imageData = imageSnap.data()!;
 
-    // 4. Verify caller is a member of the same org
+    // 4. Check upload status
+    //
+    // The onImageUploaded Cloud Function may have already processed the file
+    // before this confirm request arrives (it fires on Storage upload and can
+    // beat the client). In that case the status will be 'processed' or 'ready'
+    // — both are valid success states, so we return the current document
+    // without overwriting the Cloud Function's work.
+    if (imageData.uploadStatus === 'processed' || imageData.uploadStatus === 'ready') {
+      return NextResponse.json(
+        {
+          image: {
+            id: imageId,
+            ...imageData,
+            createdAt: imageData.createdAt?.toDate?.()?.toISOString() || imageData.createdAt,
+            updatedAt: imageData.updatedAt?.toDate?.()?.toISOString() || imageData.updatedAt,
+          },
+        },
+        { status: 200 },
+      );
+    }
+
+    if (imageData.uploadStatus !== 'pending') {
+      return NextResponse.json(
+        { error: `Image upload has an unexpected status: ${imageData.uploadStatus}` },
+        { status: 409 },
+      );
+    }
+
+    // 5. Verify caller is a member of the same org
     const memberQuery = await adminDb
       .collection('organizationMembers')
       .where('organizationId', '==', imageData.organizationId)
@@ -90,24 +118,38 @@ export async function POST(
       );
     }
 
-    // 5. Verify file exists in Storage
+    // 6. Verify file exists in Storage (best-effort check)
+    //
+    // The onImageUploaded Cloud Function may have already processed the file
+    // by this point — it downloads the original, generates WebP variants, and
+    // deletes the original. So the original file may legitimately no longer
+    // exist. We only warn rather than reject, because the client obtained a
+    // valid download URL via getDownloadURL() which proves the upload itself
+    // succeeded.
     try {
       const bucket = getStorage().bucket();
       const file = bucket.file(imageData.storagePath);
       const [exists] = await file.exists();
       if (!exists) {
-        return NextResponse.json(
-          { error: 'File not found in storage. Upload may have failed.' },
-          { status: 400 },
+        // Check if variants already exist (Cloud Function may have processed it)
+        const variantPath = imageData.storagePath.replace(
+          /\/[^/]+$/,
+          '/variants/display.webp',
         );
+        const [variantExists] = await bucket.file(variantPath).exists();
+        if (!variantExists) {
+          console.warn(
+            'Neither original nor variant found in Storage — the upload may have failed or is still processing.',
+            { imageId, storagePath: imageData.storagePath },
+          );
+        }
       }
     } catch (storageError) {
       console.error('Storage verification failed:', storageError);
-      // Don't block confirmation if storage check fails in emulator mode
-      // The file URL was provided by the client after a successful upload
+      // Don't block confirmation — the client provided a valid download URL
     }
 
-    // 6. Update Firestore document
+    // 7. Update Firestore document
     await imageRef.update({
       uploadStatus: 'ready',
       url: body.url,
@@ -115,7 +157,7 @@ export async function POST(
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // 7. Return updated image
+    // 8. Return updated image
     const updatedSnap = await imageRef.get();
     const updatedData = updatedSnap.data()!;
 

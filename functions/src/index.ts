@@ -9,12 +9,11 @@
 
 import {setGlobalOptions} from "firebase-functions";
 import {onSchedule} from "firebase-functions/v2/scheduler";
-import {onRequest} from "firebase-functions/v2/https";
 import {onDocumentWritten, onDocumentCreated} from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import {initializeApp} from "firebase-admin/app";
-import type {OrganizationId, EmailQueueDocument, EmailQueueId} from "@brayford/core";
+import type {EmailQueueDocument, EmailQueueId} from "@brayford/core";
 import {updateUserClaims} from "./claims.js";
 import {
   sendEmail,
@@ -104,11 +103,6 @@ export const onMembershipChange = onDocumentWritten(
 );
 
 // ===== Scheduled Functions =====
-
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
 
 /**
  * Scheduled function: Clean up soft-deleted organisations
@@ -353,6 +347,7 @@ export const processTransactionalEmail = onDocumentCreated(
     memory: "256MiB",
     timeoutSeconds: 60,
     retry: true, // Automatic retries on failure
+    secrets: ["POSTMARK_API_KEY"],
   },
   async (event) => {
     const emailId = event.params.emailId as EmailQueueId;
@@ -598,37 +593,6 @@ async function runBatchEmailProcessing(): Promise<{
   return { processed: pendingQuery.size, sent, failed, rateLimited };
 }
 
-/**
- * HTTP trigger for manually running batch email processing.
- * Useful for testing in emulator (scheduled functions don't auto-run).
- * 
- * Usage: curl http://localhost:5001/PROJECT_ID/europe-west2/triggerBatchEmailProcessing
- */
-export const triggerBatchEmailProcessing = onRequest(
-  {
-    region: "europe-west2",
-    memory: "512MiB",
-    timeoutSeconds: 540,
-  },
-  async (req, res) => {
-    logger.info("Manual batch email processing triggered");
-
-    try {
-      const result = await runBatchEmailProcessing();
-      res.status(200).json({
-        success: true,
-        ...result,
-      });
-    } catch (error) {
-      logger.error("Batch processing failed", { error });
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
-);
-
 export const processBulkEmailBatch = onSchedule(
   {
     schedule: "every 1 minutes",
@@ -636,103 +600,17 @@ export const processBulkEmailBatch = onSchedule(
     region: "europe-west2",
     memory: "512MiB",
     timeoutSeconds: 540, // 9 minutes max
+    secrets: ["POSTMARK_API_KEY"],
   },
   async () => {
     await runBatchEmailProcessing();
   }
 );
 
-// ===== Invitation Email Trigger =====
-
-/**
- * Send invitation email when invitation is created
- *
- * Triggered when a new invitation document is created.
- * Queues an immediate email to the invitee.
- */
-export const onInvitationCreated = onDocumentCreated(
-  {
-    document: "invitations/{invitationId}",
-    memory: "256MiB",
-  },
-  async (event) => {
-    const invitationId = event.params.invitationId;
-    const invData = event.data?.data();
-
-    if (!invData) {
-      logger.error("No invitation data", { invitationId });
-      return;
-    }
-
-    if (invData.status !== 'pending') {
-      logger.debug("Skipping non-pending invitation", {
-        invitationId,
-        status: invData.status,
-      });
-      return;
-    }
-
-    logger.info("Processing invitation email", {
-      invitationId,
-      email: invData.email,
-      organizationId: invData.organizationId,
-    });
-
-    try {
-      // Get inviter details for email
-      const inviterDoc = await db.collection("users").doc(invData.invitedBy).get();
-      const inviterData = inviterDoc.data();
-      const inviterName = inviterData?.displayName || inviterData?.email || "A team member";
-
-      // Format expiry date
-      const expiresAt = invData.expiresAt.toDate();
-      const formattedExpiry = expiresAt.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      });
-
-      // Construct invitation URL
-      const baseUrl = process.env.CREATOR_APP_URL || "http://localhost:3000";
-      const invitationLink = `${baseUrl}/join?token=${invData.token}`;
-
-      // Queue email
-      await db.collection("emailQueue").add({
-        type: "invitation",
-        deliveryMode: "immediate",
-        status: "pending",
-        to: invData.email,
-        templateAlias: "organization-invitation",
-        templateData: {
-          organizationName: invData.organizationName,
-          inviterName,
-          invitationLink,
-          role: invData.role,
-          expiresAt: formattedExpiry,
-        },
-        metadata: {
-          userId: invData.invitedBy,
-          organizationId: invData.organizationId,
-          invitationId,
-        },
-        rateLimitScope: `organization:${invData.organizationId}`,
-        createdAt: FieldValue.serverTimestamp(),
-        attempts: 0,
-      });
-
-      logger.info("Invitation email queued", {
-        invitationId,
-        to: invData.email,
-      });
-    } catch (error) {
-      logger.error("Failed to queue invitation email", {
-        invitationId,
-        error,
-      });
-      // Don't throw - we don't want the invitation creation to fail
-    }
-  }
-);
+// Note: Invitation emails are queued directly by the calling app (e.g. admin
+// provisioning writes to emailQueue as part of its atomic batch). There is no
+// Cloud Function trigger on the invitations collection for email — each call
+// site owns its own email template and data.
 
 // ===== Storage Cleanup =====
 
@@ -748,3 +626,110 @@ export { onBrandImageReferencesChange, onSceneImageReferencesChange };
 
 // Storage trigger: resize and convert uploaded images to WebP variants
 export { onImageUploaded };
+
+// ===== Sandbox Session Eviction =====
+
+/**
+ * Scheduled function: Evict inactive sandbox audience sessions
+ *
+ * Runs every 5 minutes. Marks sandbox audience sessions as inactive
+ * when the participant's lastSeenAt is older than 15 minutes.
+ *
+ * This is sandbox-only. For real events, audience presence will be tracked
+ * via Firebase Realtime Database's native onDisconnect API (not yet built),
+ * which avoids Firestore write costs at scale and handles disconnects natively.
+ *
+ * The heartbeat is sent from the audience app every 60 seconds
+ * (apps/audience/app/api/audience/heartbeat/route.ts). A participant who
+ * closes the browser, loses signal, or is idle will stop sending heartbeats
+ * and will be evicted after ~15 minutes.
+ */
+export const evictSandboxSessions = onSchedule(
+  {
+    schedule: "every 5 minutes",
+    timeZone: "UTC",
+    maxInstances: 1,
+  },
+  async () => {
+    const INACTIVITY_THRESHOLD_MINUTES = 15;
+    const now = new Date();
+    const cutoff = new Date(
+      now.getTime() - INACTIVITY_THRESHOLD_MINUTES * 60 * 1000,
+    );
+
+    logger.info("Starting sandbox session eviction", {
+      cutoffTime: cutoff.toISOString(),
+      inactivityThresholdMinutes: INACTIVITY_THRESHOLD_MINUTES,
+    });
+
+    // Query sessions that haven't been seen since the cutoff
+    const staleSessionsQuery = await db
+      .collection("audienceSessions")
+      .where("isActive", "==", true)
+      .where("lastSeenAt", "<=", Timestamp.fromDate(cutoff))
+      .get();
+
+    if (staleSessionsQuery.empty) {
+      logger.info("No stale sessions found");
+      return;
+    }
+
+    logger.info(`Found ${staleSessionsQuery.size} stale sessions to evaluate`);
+
+    // Cache event lookups to avoid redundant Firestore reads when multiple
+    // sessions belong to the same event
+    const eventCache = new Map<string, boolean>(); // eventId -> isSandbox
+
+    let evictedCount = 0;
+    let skippedCount = 0;
+
+    const BATCH_SIZE = 500;
+    let batch = db.batch();
+    let batchCount = 0;
+    const commitBatch = async () => {
+      if (batchCount > 0) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
+      }
+    };
+
+    for (const sessionDoc of staleSessionsQuery.docs) {
+      const session = sessionDoc.data();
+      const eventId = session.eventId as string;
+
+      // Check event sandbox status (with cache)
+      let isSandbox = eventCache.get(eventId);
+      if (isSandbox === undefined) {
+        const eventDoc = await db.collection("events").doc(eventId).get();
+        isSandbox = eventDoc.exists ? (eventDoc.data()?.isSandbox === true) : false;
+        eventCache.set(eventId, isSandbox);
+      }
+
+      if (!isSandbox) {
+        // Do not evict sessions for real events under any circumstances
+        skippedCount++;
+        continue;
+      }
+
+      batch.update(sessionDoc.ref, {
+        isActive: false,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      batchCount++;
+      evictedCount++;
+
+      if (batchCount >= BATCH_SIZE) {
+        await commitBatch();
+      }
+    }
+
+    await commitBatch();
+
+    logger.info("Sandbox session eviction complete", {
+      evictedCount,
+      skippedCount,
+    });
+  },
+);
+

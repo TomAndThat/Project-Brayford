@@ -45,8 +45,8 @@ const eventConverter = createConverter(validateEventData, ['createdAt', 'schedul
  * Helper function to convert all Firestore Timestamps in event data to Dates
  * Handles both top-level and nested fields (like sceneHistory)
  */
-function convertEventTimestamps(rawData: any): any {
-  const converted = {
+function convertEventTimestamps(rawData: Record<string, unknown>): Record<string, unknown> {
+  const converted: Record<string, unknown> = {
     ...rawData,
     createdAt: rawData.createdAt instanceof Timestamp ? rawData.createdAt.toDate() : rawData.createdAt,
     scheduledDate: rawData.scheduledDate instanceof Timestamp ? rawData.scheduledDate.toDate() : rawData.scheduledDate,
@@ -55,7 +55,7 @@ function convertEventTimestamps(rawData: any): any {
   
   // Convert nested sceneHistory timestamps
   if (converted.sceneHistory && Array.isArray(converted.sceneHistory)) {
-    converted.sceneHistory = converted.sceneHistory.map((entry: any) => ({
+    converted.sceneHistory = converted.sceneHistory.map((entry: Record<string, unknown>) => ({
       ...entry,
       switchedAt: entry.switchedAt instanceof Timestamp ? entry.switchedAt.toDate() : entry.switchedAt,
     }));
@@ -189,7 +189,7 @@ export async function getBrandEvents(
   activeOnly = true
 ): Promise<EventDocument[]> {
   const eventsRef = collection(db, 'events');
-  let q = query(
+  const q = query(
     eventsRef,
     where('brandId', '==', fromBranded(brandId)),
     orderBy('scheduledDate', 'desc')
@@ -203,6 +203,8 @@ export async function getBrandEvents(
     
     // Filter by isActive if needed
     if (activeOnly && !data.isActive) continue;
+    // Exclude sandbox events from normal listings
+    if (data.isSandbox) continue;
     
     events.push({
       id: toBranded<EventId>(docSnap.id),
@@ -233,7 +235,7 @@ export async function getOrganizationEvents(
   activeOnly = true
 ): Promise<EventDocument[]> {
   const eventsRef = collection(db, 'events');
-  let q = query(
+  const q = query(
     eventsRef,
     where('organizationId', '==', fromBranded(organizationId)),
     orderBy('scheduledDate', 'desc')
@@ -247,6 +249,8 @@ export async function getOrganizationEvents(
     
     // Filter by isActive if needed
     if (activeOnly && !data.isActive) continue;
+    // Exclude sandbox events from normal listings
+    if (data.isSandbox) continue;
     
     events.push({
       id: toBranded<EventId>(docSnap.id),
@@ -276,7 +280,7 @@ export async function getChildEvents(
   activeOnly = true
 ): Promise<EventDocument[]> {
   const eventsRef = collection(db, 'events');
-  let q = query(
+  const q = query(
     eventsRef,
     where('parentEventId', '==', fromBranded(parentEventId)),
     where('eventType', '==', 'event'),

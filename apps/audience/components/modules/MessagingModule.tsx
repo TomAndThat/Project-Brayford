@@ -7,6 +7,7 @@ import {
   MAX_MESSAGE_CONTENT_LENGTH,
   MAX_DISPLAY_NAME_LENGTH,
 } from "@brayford/core";
+import { withJitter } from "@brayford/firebase-utils";
 
 interface MessagingModuleProps {
   config: MessagingModuleConfig;
@@ -67,16 +68,20 @@ export default function MessagingModule({
     try {
       const audienceUUID = getOrCreateUUID();
 
-      const response = await fetch("/api/audience/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId,
-          audienceUUID,
-          content: content.trim(),
-          displayName: displayName.trim() || undefined,
-        }),
-      });
+      const response = await withJitter(
+        () =>
+          fetch("/api/audience/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              eventId,
+              audienceUUID,
+              content: content.trim(),
+              displayName: displayName.trim() || undefined,
+            }),
+          }),
+        { windowMs: 2000 },
+      );
 
       if (response.status === 429) {
         const data = await response.json().catch(() => ({}));

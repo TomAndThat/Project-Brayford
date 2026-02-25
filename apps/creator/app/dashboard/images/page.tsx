@@ -330,9 +330,9 @@ export default function ImagesPage() {
                 >
                   {/* Thumbnail */}
                   <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                    {image.url ? (
+                    {(image.variants?.thumbnail ?? image.url) ? (
                       <img
-                        src={image.url}
+                        src={image.variants?.thumbnail ?? image.url}
                         alt={image.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       />

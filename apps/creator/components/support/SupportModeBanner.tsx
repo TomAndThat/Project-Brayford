@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 interface SupportModeBannerProps {
   organizationName?: string;
 }
@@ -27,8 +25,6 @@ interface SupportModeBannerProps {
 export default function SupportModeBanner({
   organizationName,
 }: SupportModeBannerProps) {
-  const router = useRouter();
-
   const handleExitSupportMode = () => {
     // Clear any org context from localStorage
     if (typeof window !== "undefined") {

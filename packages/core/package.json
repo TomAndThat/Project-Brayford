@@ -6,9 +6,18 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./schemas": "./dist/schemas/index.js",
-    "./test-helpers": "./dist/__tests__/helpers/test-factories.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas/index.d.ts",
+      "default": "./dist/schemas/index.js"
+    },
+    "./test-helpers": {
+      "types": "./dist/__tests__/helpers/test-factories.d.ts",
+      "default": "./dist/__tests__/helpers/test-factories.js"
+    }
   },
   "scripts": {
     "build": "tsc",
@@ -25,5 +34,8 @@
   "devDependencies": {
     "@types/node": "^20.11.5",
     "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "firebase": "^10.7.2"
   }
 }

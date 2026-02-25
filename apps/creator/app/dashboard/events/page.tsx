@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/components/shared/Toast";
 import {
   getUserOrganizations,
   getOrganization,
@@ -35,6 +36,7 @@ type EventFilter =
 export default function EventsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<OrganizationDocument | null>(
     null,
@@ -101,7 +103,9 @@ export default function EventsPage() {
   useEffect(() => {
     if (!loading && currentMember && organization) {
       if (!hasPermission(currentMember, EVENTS_VIEW)) {
-        alert("You don't have permission to view events.");
+        showToast("You don't have permission to view events.", {
+          variant: "error",
+        });
         router.push("/dashboard");
       }
     }

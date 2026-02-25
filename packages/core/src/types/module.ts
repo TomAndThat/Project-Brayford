@@ -9,6 +9,8 @@
  * instance embedded within scene documents.
  */
 
+import type { ImageId } from './branded';
+
 /**
  * All available module types.
  * 
@@ -21,7 +23,7 @@ export type ModuleType = 'text' | 'image' | 'messaging';
  * Array of all valid module type values.
  * Kept in sync with the ModuleType union above for runtime validation.
  */
-export const MODULE_TYPES: ModuleType[] = ['text', 'image', 'messaging'] as const;
+export const MODULE_TYPES = ['text', 'image', 'messaging'] as const satisfies readonly ModuleType[];
 
 // ===== Module Config Interfaces =====
 
@@ -35,7 +37,7 @@ export const MODULE_TYPES: ModuleType[] = ['text', 'image', 'messaging'] as cons
 export interface TextModuleConfig {
   readonly moduleType: 'text';
   /** The rich text content to display (JSON structure) */
-  content: Record<string, unknown> | unknown;
+  content: Record<string, unknown>;
 }
 
 /**
@@ -51,7 +53,7 @@ export interface TextModuleConfig {
 export interface ImageModuleConfig {
   readonly moduleType: 'image';
   /** ID of the image document in the organisation's image library */
-  imageId: string;
+  imageId: ImageId;
   /** Pre-resolved display-variant URL (1000px WebP) */
   url: string;
   /** Accessibility label — shown if image fails to load */

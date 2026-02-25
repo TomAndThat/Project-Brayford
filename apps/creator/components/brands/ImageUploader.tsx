@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useRef, useState, type DragEvent, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useRef,
+  useState,
+  type DragEvent,
+  type ChangeEvent,
+} from "react";
 import { validateImageFile } from "@brayford/firebase-utils";
 
 /** Accepted MIME types for image uploads (matches image library schema) */
@@ -23,6 +29,8 @@ export interface ImageUploaderProps {
   disabled?: boolean;
   /** Whether an upload is in progress */
   uploading?: boolean;
+  /** Whether the image is being processed (variant generation) */
+  processing?: boolean;
   /** Upload progress (0–100) */
   progress?: number;
   /** External error message */
@@ -45,6 +53,7 @@ export default function ImageUploader({
   onChooseFromLibrary,
   disabled = false,
   uploading = false,
+  processing = false,
   progress,
   error,
 }: ImageUploaderProps) {
@@ -121,7 +130,7 @@ export default function ImageUploader({
   }, [disabled, uploading]);
 
   // Show existing image with remove option
-  if (currentImageUrl && !uploading) {
+  if (currentImageUrl) {
     return (
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -135,19 +144,57 @@ export default function ImageUploader({
           <img
             src={currentImageUrl}
             alt={label}
-            className="max-w-full max-h-48 rounded-lg border border-gray-200 object-contain"
+            className={`max-w-full max-h-48 rounded-lg border border-gray-200 object-contain${
+              processing || uploading ? " opacity-60" : ""
+            }`}
           />
+
+          {/* Uploading indicator overlay — shown while the image is being
+              uploaded in the background. The user already sees the image
+              (local blob preview) so this is a subtle, non-blocking overlay. */}
+          {uploading && !processing && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/50 rounded-lg">
+              <div className="flex flex-col items-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                <p className="mt-1.5 text-xs font-medium text-gray-600">
+                  Uploading…
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Processing indicator overlay */}
+          {processing && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-lg">
+              <div className="flex flex-col items-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                <p className="mt-1.5 text-xs font-medium text-gray-600">
+                  Optimising…
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="mt-3 flex flex-wrap gap-2">
             {/* Replace (upload new) */}
             <button
               type="button"
               onClick={handleClick}
-              disabled={disabled}
+              disabled={disabled || uploading}
               className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <svg
+                className="w-3.5 h-3.5 mr-1.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
               </svg>
               Replace
             </button>
@@ -157,11 +204,21 @@ export default function ImageUploader({
               <button
                 type="button"
                 onClick={onChooseFromLibrary}
-                disabled={disabled}
+                disabled={disabled || uploading}
                 className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-blue-700 bg-white border border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                <svg
+                  className="w-3.5 h-3.5 mr-1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                  />
                 </svg>
                 Choose from Library
               </button>
@@ -172,11 +229,21 @@ export default function ImageUploader({
               <button
                 type="button"
                 onClick={onRemove}
-                disabled={disabled}
+                disabled={disabled || uploading}
                 className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-red-700 bg-white border border-red-300 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <svg
+                  className="w-3.5 h-3.5 mr-1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
                 </svg>
                 Remove
               </button>
@@ -206,9 +273,7 @@ export default function ImageUploader({
       <label className="block text-sm font-medium text-gray-700 mb-2">
         {label}
       </label>
-      {helperText && (
-        <p className="text-xs text-gray-500 mb-3">{helperText}</p>
-      )}
+      {helperText && <p className="text-xs text-gray-500 mb-3">{helperText}</p>}
 
       <div
         role="button"
@@ -228,11 +293,12 @@ export default function ImageUploader({
           w-full py-8 px-4
           border-2 border-dashed rounded-lg
           transition-colors cursor-pointer
-          ${disabled || uploading
-            ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
-            : isDragOver
-              ? "border-blue-500 bg-blue-50"
-              : "border-gray-300 bg-white hover:border-blue-400 hover:bg-gray-50"
+          ${
+            disabled || uploading
+              ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+              : isDragOver
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-300 bg-white hover:border-blue-400 hover:bg-gray-50"
           }
         `}
       >
@@ -265,7 +331,9 @@ export default function ImageUploader({
               />
             </svg>
             <p className="text-sm font-medium text-gray-700 mb-1">
-              {isDragOver ? "Drop image here" : "Drag and drop an image, or click to browse"}
+              {isDragOver
+                ? "Drop image here"
+                : "Drag and drop an image, or click to browse"}
             </p>
             <p className="text-xs text-gray-500">
               JPEG, PNG, WebP or GIF · Max 10 MB

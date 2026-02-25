@@ -223,10 +223,13 @@ export async function getOrganizationImages(
   let imagesQuery = query(
     collection(db, 'images'),
     where('organizationId', '==', fromBranded(organizationId)),
-    where('isActive', '==', activeOnly),
     where('uploadStatus', '==', uploadStatus),
     orderBy('createdAt', 'desc'),
   );
+
+  if (activeOnly) {
+    imagesQuery = query(imagesQuery, where('isActive', '==', true));
+  }
 
   const querySnap = await getDocs(imagesQuery);
 

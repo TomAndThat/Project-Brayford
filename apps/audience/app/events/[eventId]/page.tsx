@@ -21,6 +21,8 @@ import WaitingScreen from "@/components/WaitingScreen";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import FullScreenMessage from "@/components/FullScreenMessage";
 
+const HEARTBEAT_INTERVAL_MS = 60_000; // 60 seconds
+
 export default function EventPage() {
   const params = useParams<{ eventId: string }>();
   const eventId = toBranded<EventId>(params.eventId);
@@ -33,6 +35,25 @@ export default function EventPage() {
 
   // Subscribe to live state for real-time scene updates
   const { liveState } = useEventLiveState(eventId);
+
+  // Sandbox heartbeat — keeps the audience session alive for inactive-user eviction.
+  // Only active for sandbox (isSandbox: true) events. For real events, presence
+  // tracking will use Firebase Realtime Database's native onDisconnect API.
+  useEffect(() => {
+    if (!event?.isSandbox) return;
+
+    // Send an immediate heartbeat on mount, then every 60 seconds
+    const sendHeartbeat = () => {
+      fetch("/api/audience/heartbeat", { method: "POST" }).catch((err) =>
+        console.error("Heartbeat failed:", err),
+      );
+    };
+
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [event?.isSandbox]);
 
   // Load brand styling whenever the event goes (or is already) live.
   // Runs whenever event.brandId changes (i.e. once on first live transition).
@@ -250,6 +271,25 @@ export default function EventPage() {
       className="min-h-screen w-full"
       style={{ backgroundColor, color: textColor }}
     >
+      {/* Sandbox banner — clearly signals to test participants that this is not a live show */}
+      {event.isSandbox && (
+        <div className="flex items-center justify-center gap-2 bg-amber-400 px-4 py-2 text-center text-xs font-semibold text-amber-950">
+          <svg
+            className="w-3.5 h-3.5 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+            />
+          </svg>
+          Test Event — This is a practice session, not a live show
+        </div>
+      )}
       {/* Container */}
       <div className="w-full max-w-[500px] mx-auto">
         {/* Brand Header */}

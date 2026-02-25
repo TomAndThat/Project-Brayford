@@ -125,7 +125,7 @@ export async function signInWithGoogle(): Promise<UserCredential> {
   } catch (error) {
     // Re-throw with more context
     console.error('Google sign-in failed:', error);
-    throw new Error('Failed to sign in with Google. Please try again.');
+    throw new Error('Failed to sign in with Google. Please try again.', { cause: error });
   }
 }
 
@@ -147,7 +147,7 @@ export async function signOut(): Promise<void> {
     await firebaseSignOut(auth);
   } catch (error) {
     console.error('Sign-out failed:', error);
-    throw new Error('Failed to sign out. Please try again.');
+    throw new Error('Failed to sign out. Please try again.', { cause: error });
   }
 }
 
@@ -257,6 +257,7 @@ export function getCurrentUserId(): UserId | null {
 export function waitForAuth(timeoutMs: number = 5000): Promise<FirebaseUser | null> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
+      unsubscribe();
       reject(new Error('Auth initialization timeout'));
     }, timeoutMs);
 

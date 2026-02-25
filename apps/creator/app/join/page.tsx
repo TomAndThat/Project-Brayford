@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { auth } from "@brayford/firebase-utils";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import {
   fromBranded,
   type InvitationDocument,
@@ -52,6 +53,7 @@ function JoinPageContent() {
   );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showDeclineDialog, setShowDeclineDialog] = useState(false);
 
   // Step 1: Validate token and load invitation
   const loadInvitation = useCallback(async () => {
@@ -234,10 +236,7 @@ function JoinPageContent() {
   const handleDecline = async () => {
     if (!primaryInvitation) return;
 
-    const confirmed = window.confirm(
-      "Are you sure you want to decline this invitation?",
-    );
-    if (!confirmed) return;
+    setShowDeclineDialog(false);
 
     try {
       const currentUser = auth.currentUser;
@@ -582,7 +581,7 @@ function JoinPageContent() {
         {/* Actions */}
         <div className="flex gap-3">
           <button
-            onClick={handleDecline}
+            onClick={() => setShowDeclineDialog(true)}
             className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Decline
@@ -598,6 +597,16 @@ function JoinPageContent() {
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showDeclineDialog}
+        title="Decline Invitation?"
+        message="Are you sure you want to decline this invitation? Contact the inviter if you change your mind later."
+        confirmLabel="Decline"
+        variant="danger"
+        onConfirm={handleDecline}
+        onCancel={() => setShowDeclineDialog(false)}
+      />
     </PageShell>
   );
 }

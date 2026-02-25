@@ -13,12 +13,40 @@ import {
 import {
   getEvent,
   getQRCode,
-  getChildEvents,
   useEventDocument,
+  withJitter,
 } from "@brayford/firebase-utils";
 import { getOrCreateUUID } from "@/lib/uuid";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import FullScreenMessage from "@/components/FullScreenMessage";
+
+/** Lightweight shape returned by the child-events API route. */
+interface ChildEventSummary {
+  id: string;
+  name: string;
+  venue: string | null;
+  scheduledDate: string | null;
+  scheduledStartTime: string | null;
+  status: string;
+}
+
+/**
+ * Fetch active child events for an event group via the server-side API route.
+ * Uses the Admin SDK on the server, avoiding the need for a public Firestore
+ * `list` rule on the events collection.
+ */
+async function fetchChildEvents(
+  parentEventId: string,
+): Promise<ChildEventSummary[]> {
+  const response = await fetch(
+    `/api/audience/child-events?parentEventId=${encodeURIComponent(parentEventId)}`,
+  );
+  if (!response.ok) {
+    throw new Error("Failed to fetch child events");
+  }
+  const data = await response.json();
+  return data.events as ChildEventSummary[];
+}
 
 type JoinErrorType =
   | "not-found"
@@ -34,7 +62,7 @@ export default function JoinEventPage() {
   const [joiningMessage, setJoiningMessage] = useState<string | null>(null);
   const [event, setEvent] = useState<EventDocument | null>(null);
   const [qrCode, setQRCode] = useState<QRCodeDocument | null>(null);
-  const [childEvents, setChildEvents] = useState<EventDocument[]>([]);
+  const [childEvents, setChildEvents] = useState<ChildEventSummary[]>([]);
   const [errorType, setErrorType] = useState<JoinErrorType | null>(null);
 
   // Real-time event subscription — used to detect when the host takes the
@@ -97,7 +125,7 @@ export default function JoinEventPage() {
         setQRCode(qrCodeData);
 
         if (eventData.eventType === "group") {
-          const children = await getChildEvents(eventData.id, true);
+          const children = await fetchChildEvents(fromBranded(eventData.id));
           setChildEvents(children);
         } else {
           await handleEventEntry(eventData);
@@ -137,7 +165,7 @@ export default function JoinEventPage() {
         }
 
         if (liveEvent.eventType === "group") {
-          const children = await getChildEvents(liveEvent.id, true);
+          const children = await fetchChildEvents(fromBranded(liveEvent.id));
           setEvent(liveEvent);
           setQRCode(qrCodeData);
           setChildEvents(children);
@@ -163,17 +191,21 @@ export default function JoinEventPage() {
     try {
       const audienceUUID = getOrCreateUUID();
 
-      const response = await fetch("/api/audience/join", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          eventId: params.eventId,
-          qrCodeId: params.qrCodeId,
-          audienceUUID,
-        }),
-      });
+      const response = await withJitter(
+        () =>
+          fetch("/api/audience/join", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              eventId: params.eventId,
+              qrCodeId: params.qrCodeId,
+              audienceUUID,
+            }),
+          }),
+        { windowMs: 2000 },
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -343,10 +375,8 @@ export default function JoinEventPage() {
             <div className="space-y-4">
               {childEvents.map((childEvent) => (
                 <button
-                  key={fromBranded(childEvent.id)}
-                  onClick={() =>
-                    handleSelectChildEvent(fromBranded(childEvent.id))
-                  }
+                  key={childEvent.id}
+                  onClick={() => handleSelectChildEvent(childEvent.id)}
                   className="w-full rounded-lg border border-zinc-200 bg-white p-6 text-left transition-all hover:border-blue-500 hover:shadow-md"
                 >
                   <h3 className="mb-2 text-xl font-semibold text-zinc-900">
@@ -357,14 +387,20 @@ export default function JoinEventPage() {
                       📍 {childEvent.venue}
                     </p>
                   )}
-                  <p className="text-sm text-zinc-500">
-                    {childEvent.scheduledDate.toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}{" "}
-                    at {childEvent.scheduledStartTime}
-                  </p>
+                  {childEvent.scheduledDate && (
+                    <p className="text-sm text-zinc-500">
+                      {new Date(childEvent.scheduledDate).toLocaleDateString(
+                        "en-GB",
+                        {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        },
+                      )}{" "}
+                      {childEvent.scheduledStartTime &&
+                        `at ${childEvent.scheduledStartTime}`}
+                    </p>
+                  )}
                 </button>
               ))}
             </div>

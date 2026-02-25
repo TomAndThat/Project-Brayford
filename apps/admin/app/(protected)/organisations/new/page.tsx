@@ -79,7 +79,6 @@ export default function NewOrganisationPage() {
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors },
   } = useForm<FormValues>({

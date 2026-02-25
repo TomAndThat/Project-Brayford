@@ -14,6 +14,8 @@
 
 - _Code 5_: Please commit all uncommitted changes to the codebase with a comprehensive commit message that follows our Conventional Commits format. Ensure that all uncommitted changes within the repository are included in the commit and that the message accurately reflects the changes made, so far as it possible.
 
+- _Code 6_: Please proceed with the most appropriate fix or implementation for the issue or feature described, following the agreed-upon approach and adhering to our coding standards and best practices. Ensure that all code is production-ready quality, even in early stages, and that any user-facing messages are presented in proper components with appropriate styling and UX patterns. Do not take shortcuts in development - this isn't an mvp, it's a production-ready codebase from day one.
+
 ## Ways of Working
 
 **Collaboration principles for this project:**
@@ -101,7 +103,7 @@ Real-time "second screen" interaction platform for live events (podcasts, creato
 
 ### Domain Model (see [docs/DOMAIN_MODEL.md](../docs/DOMAIN_MODEL.md))
 
-- 7-domain architecture: Identity, Organization, Event Management, Interaction, Audience, Billing, Analytics
+- 8-domain architecture: Identity, Organization, Event Management, Interaction, Audience, Asset Management, Billing, Analytics
 - Hierarchy: **Organization** (paying customer) → **Brands** (public-facing) → **Events** (live shows) → **Modules** (Q&A, polls) → **Interactions** (votes, questions)
 - Multi-tenancy: Events belong to Brands, Brands belong to Organizations, Users are Organization members
 

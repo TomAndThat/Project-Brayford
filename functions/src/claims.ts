@@ -33,7 +33,6 @@
 
 import {getAuth} from "firebase-admin/auth";
 import {getFirestore, FieldValue} from "firebase-admin/firestore";
-import {getPermissionsForRole} from "@brayford/core";
 import type {OrganizationRole} from "@brayford/core";
 import * as logger from "firebase-functions/logger";
 

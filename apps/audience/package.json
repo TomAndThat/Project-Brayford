@@ -17,6 +17,8 @@
     "@tiptap/extension-underline": "^3.19.0",
     "@tiptap/react": "^3.19.0",
     "@tiptap/starter-kit": "^3.19.0",
+    "@brayford/core": "workspace:*",
+    "@brayford/firebase-utils": "workspace:*",
     "firebase-admin": "^13.6.1",
     "next": "16.1.6",
     "react": "19.2.3",

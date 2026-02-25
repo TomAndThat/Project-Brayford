@@ -4,10 +4,12 @@
  * Defines the type system for capability-based permissions.
  */
 
+import type { Brand } from '../types/branded';
+
 /**
  * Branded type for permissions to prevent string typos
  */
-export type Permission = string & { readonly __brand: 'Permission' };
+export type Permission = Brand<string, 'Permission'>;
 
 /**
  * Wildcard permission - grants all capabilities

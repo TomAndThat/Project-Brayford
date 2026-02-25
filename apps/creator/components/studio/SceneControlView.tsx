@@ -287,14 +287,8 @@ export default function SceneControlView({ event }: SceneControlViewProps) {
       moduleId: string,
       config: Record<string, unknown>,
     ) => {
-      // TODO: Implement module config updates via API
-      // 1. PATCH /api/scenes/[sceneId] with updated module config
-      // 2. If scene is active, call markContentUpdated on the live state
-      console.warn("Module config update not yet implemented:", {
-        sceneId,
-        moduleId,
-        config,
-      });
+      // Module config updates not yet implemented — see ROADMAP.md
+      return;
     },
     [],
   );

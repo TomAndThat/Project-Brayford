@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/components/shared/Toast";
 import {
   getUserOrganizations,
   getOrganization,
@@ -25,6 +26,7 @@ import SceneEditor from "@/components/scenes/SceneEditor";
 export default function EditScenePage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
   const params = useParams<{ sceneId: string }>();
   const sceneId = params.sceneId;
 
@@ -76,7 +78,7 @@ export default function EditScenePage() {
       });
 
       if (!response.ok) {
-        alert("Failed to load scene");
+        showToast("Failed to load scene", { variant: "error" });
         router.push("/dashboard/scenes");
         return;
       }

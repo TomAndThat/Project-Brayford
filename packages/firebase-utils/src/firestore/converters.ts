@@ -9,6 +9,7 @@
 
 import {
   type DocumentData,
+  type FirestoreDataConverter,
   type QueryDocumentSnapshot,
   type SnapshotOptions,
   Timestamp,
@@ -65,7 +66,7 @@ function dateToTimestamp(value: unknown): Timestamp {
 export function createConverter<T>(
   validator: (data: unknown) => T,
   timestampFields: string[] = []
-) {
+): FirestoreDataConverter<T> {
   return {
     toFirestore(data: T): DocumentData {
       const firestoreData = { ...data } as Record<string, unknown>;

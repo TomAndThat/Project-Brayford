@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/components/shared/Toast";
 import {
   getUserOrganizations,
   getOrganization,
@@ -31,6 +32,7 @@ type BrandFilter = "active" | "archived" | "all";
 export default function BrandsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<OrganizationDocument | null>(
     null,
@@ -93,7 +95,9 @@ export default function BrandsPage() {
   useEffect(() => {
     if (!loading && currentMember && organization) {
       if (!hasPermission(currentMember, BRANDS_VIEW)) {
-        alert("You don't have permission to view brands.");
+        showToast("You don't have permission to view brands.", {
+          variant: "error",
+        });
         router.push("/dashboard");
       }
     }
