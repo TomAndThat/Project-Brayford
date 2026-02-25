@@ -6,7 +6,7 @@
   "scripts": {
     "build:packages": "pnpm --filter @brayford/core build",
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
-    "build": "pnpm --parallel --filter \"./apps/*\" build",
+    "build": "pnpm run build:packages && pnpm --parallel --filter \"./apps/*\" build",
     "email:test": "node --env-file=functions/.env functions/scripts/test-email.mjs",
     "functions:build": "pnpm build:packages && cd functions && npm run build",
     "functions:deploy": "pnpm build:packages && firebase deploy --only functions",
@@ -18,12 +18,14 @@
     "test:e2e": "playwright test --config=e2e/playwright.config.ts",
     "test:e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui",
     "test:e2e:headed": "playwright test --config=e2e/playwright.config.ts --headed",
-    "test:e2e:debug": "playwright test --config=e2e/playwright.config.ts --debug"
+    "test:e2e:debug": "playwright test --config=e2e/playwright.config.ts --debug",
+    "lint": "pnpm --parallel --filter \"./apps/*\" lint && pnpm --parallel --filter \"./packages/*\" lint",
+    "type-check": "pnpm --parallel --filter \"./apps/*\" type-check && pnpm --parallel --filter \"./packages/*\" type-check"
   },
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@10.30.2",
   "engines": {
     "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "pnpm": ">=9.0.0"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",
