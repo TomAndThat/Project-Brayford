@@ -140,7 +140,9 @@ export default function ScenesPage() {
       filtered = filtered.filter(
         (s) =>
           (s.brandId === null && s.eventId === null) || // Org-wide
-          (s.brandId !== null && fromBranded(s.brandId) === brandId && s.eventId === null), // Brand-specific
+          (s.brandId !== null &&
+            fromBranded(s.brandId) === brandId &&
+            s.eventId === null), // Brand-specific
       );
     } else if (scopeFilter.startsWith("event:")) {
       const eventId = scopeFilter.slice(6);
@@ -152,12 +154,16 @@ export default function ScenesPage() {
         filtered = filtered.filter(
           (s) =>
             (s.brandId === null && s.eventId === null) || // Org-wide
-            (s.brandId !== null && fromBranded(s.brandId) === eventBrandId && s.eventId === null) || // Brand-specific
+            (s.brandId !== null &&
+              fromBranded(s.brandId) === eventBrandId &&
+              s.eventId === null) || // Brand-specific
             (s.eventId !== null && fromBranded(s.eventId) === eventId), // Event-specific
         );
       } else {
         // If event not found, just show event-specific scenes
-        filtered = filtered.filter((s) => s.eventId !== null && fromBranded(s.eventId) === eventId);
+        filtered = filtered.filter(
+          (s) => s.eventId !== null && fromBranded(s.eventId) === eventId,
+        );
       }
     }
 

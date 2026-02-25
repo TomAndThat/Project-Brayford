@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import type { OrganizationMemberWithUser } from "@brayford/firebase-utils";
-import type { BrandDocument, OrganizationMemberDocument, OrganizationRole } from "@brayford/core";
+import type {
+  BrandDocument,
+  OrganizationMemberDocument,
+  OrganizationRole,
+} from "@brayford/core";
 import {
   hasPermission,
   BRANDS_CREATE,

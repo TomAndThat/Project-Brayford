@@ -219,6 +219,15 @@ export {
   type UpdateSceneData,
 } from './scene.schema';
 
+// Module Config Schemas (Interaction Domain)
+export {
+  TextModuleConfigSchema,
+  ImageModuleConfigSchema,
+  MessagingModuleConfigSchema,
+  ModuleConfigSchema,
+  parseModuleConfig,
+} from './module-config.schema';
+
 // Event Live State Schema (Interaction Domain)
 export {
   EventLiveStateSchema,

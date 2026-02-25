@@ -6,13 +6,11 @@ import {
   type SceneDocument,
   type ModuleInstance,
   type InteractiveStyles,
-  type MessagingModuleConfig,
-  type TextModuleConfig,
-  type ImageModuleConfig,
   DEFAULT_INPUT_BACKGROUND,
   DEFAULT_INPUT_TEXT,
   DEFAULT_BUTTON_BACKGROUND,
   DEFAULT_BUTTON_TEXT,
+  parseModuleConfig,
 } from "@brayford/core";
 import { getScene } from "@brayford/firebase-utils";
 import TextModule from "./modules/TextModule";
@@ -137,31 +135,36 @@ function ModuleRenderer({
   eventId: string;
   brandStyles: InteractiveStyles;
 }) {
-  switch (module.moduleType) {
+  const config = parseModuleConfig(module.moduleType, module.config);
+  if (!config) {
+    // Invalid config — skip silently (warning already logged by parseModuleConfig)
+    return null;
+  }
+
+  switch (config.moduleType) {
     case "text":
-      return <TextModule config={module.config as TextModuleConfig} />;
+      return <TextModule config={config} />;
 
     case "image":
-      return <ImageModule config={module.config as ImageModuleConfig} />;
+      return <ImageModule config={config} />;
 
     case "messaging": {
-      const cfg = module.config as MessagingModuleConfig;
       // Resolve: module override → brand style → default (already in brandStyles)
       const resolvedStyles: InteractiveStyles = {
         inputBackgroundColor:
-          cfg.styleOverrides?.inputBackgroundColor ||
+          config.styleOverrides?.inputBackgroundColor ||
           brandStyles.inputBackgroundColor,
         inputTextColor:
-          cfg.styleOverrides?.inputTextColor || brandStyles.inputTextColor,
+          config.styleOverrides?.inputTextColor || brandStyles.inputTextColor,
         buttonBackgroundColor:
-          cfg.styleOverrides?.buttonBackgroundColor ||
+          config.styleOverrides?.buttonBackgroundColor ||
           brandStyles.buttonBackgroundColor,
         buttonTextColor:
-          cfg.styleOverrides?.buttonTextColor || brandStyles.buttonTextColor,
+          config.styleOverrides?.buttonTextColor || brandStyles.buttonTextColor,
       };
       return (
         <MessagingModule
-          config={cfg}
+          config={config}
           eventId={eventId}
           styles={resolvedStyles}
         />
