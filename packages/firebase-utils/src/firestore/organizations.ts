@@ -43,6 +43,7 @@ import {
   type OrganizationMemberId,
   type UserId,
   type BrandId,
+  getPermissionsForRole,
 } from '@brayford/core';
 
 // ===== Converters =====
@@ -126,7 +127,9 @@ export async function createOrganization(
       organizationId: fromBranded(organizationId),
       userId: fromBranded(userId),
       role: 'owner',
+      permissions: getPermissionsForRole('owner') as string[],
       brandAccess: [], // Empty = access to all brands
+      autoGrantNewBrands: true,
     },
     null // No invitation for self-created org
   );

@@ -494,7 +494,7 @@ export default function SceneEditor({
       const content = (module.config as { content?: JSONContent }).content;
       setTextContent(content || { type: "doc", content: [] });
     } else if (module.moduleType === "messaging") {
-      const cfg = module.config as MessagingModuleConfig;
+      const cfg = module.config as unknown as MessagingModuleConfig;
       setMessagingPrompt(cfg.prompt ?? "");
       setMessagingInputBg(
         cfg.styleOverrides?.inputBackgroundColor ?? DEFAULT_INPUT_BACKGROUND,

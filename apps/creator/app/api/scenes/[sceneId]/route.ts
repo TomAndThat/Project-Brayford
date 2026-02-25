@@ -32,6 +32,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { authenticateRequest } from "@/lib/api-auth";
 import {
   hasPermission,
+  hasBrandAccess,
   EVENTS_MANAGE_MODULES,
   validateUpdateSceneData,
 } from "@brayford/core";

@@ -106,7 +106,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .orderBy("createdAt", "asc")
       .get();
 
-    const allScenes = scenesSnapshot.docs.map((doc) => ({
+    const allScenes: Record<string, unknown>[] = scenesSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
       // Convert Firestore timestamps to ISO strings

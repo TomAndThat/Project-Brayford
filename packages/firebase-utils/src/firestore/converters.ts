@@ -147,7 +147,7 @@ export function convertToFirestore<T extends Record<string, unknown>>(
   data: T,
   timestampFields: string[] = []
 ): DocumentData {
-  const firestoreData = { ...data };
+  const firestoreData: Record<string, unknown> = { ...data };
   
   // Convert Date fields to Timestamps
   for (const field of timestampFields) {

@@ -153,7 +153,7 @@ if (isFirestoreEmulatorMode) {
 }
 
 if (isAuthEmulatorMode && typeof window !== 'undefined') {
-  (window as Record<string, unknown>).__FIREBASE_TEST__ = {
+  (window as unknown as Record<string, unknown>).__FIREBASE_TEST__ = {
     signIn: (token: string) => signInWithCustomToken(auth, token),
   };
 }

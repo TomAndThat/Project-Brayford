@@ -24,7 +24,6 @@ import { createConverter, convertFromFirestore } from './converters';
 import {
   validateBrandData,
   validateUpdateBrandData,
-  type Brand,
   type BrandDocument,
   type CreateBrandData,
   type UpdateBrandData,
@@ -42,7 +41,7 @@ const brandConverter = createConverter(validateBrandData, ['createdAt']);
 /**
  * Get reference to a brand document
  */
-export function getBrandRef(brandId: BrandId): DocumentReference<Brand> {
+export function getBrandRef(brandId: BrandId) {
   return doc(db, 'brands', fromBranded(brandId)).withConverter(brandConverter);
 }
 

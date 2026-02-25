@@ -121,13 +121,13 @@ export async function PATCH(
     }
 
     const memberData = memberQuery.docs[0]!.data();
-    const actorMember: OrganizationMember = {
+    const actorMember = {
       organizationId: memberData.organizationId as string,
       userId: memberData.userId as string,
       role: memberData.role as OrganizationMember["role"],
       permissions: (memberData.permissions as string[]) ?? [],
       brandAccess: (memberData.brandAccess as string[]) ?? [],
-    };
+    } as OrganizationMember;
 
     if (!hasPermission(actorMember, EVENTS_MODERATE)) {
       return NextResponse.json(

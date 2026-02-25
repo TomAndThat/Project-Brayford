@@ -89,7 +89,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const imagesSnap = await imagesQuery.get();
 
-    let images = imagesSnap.docs.map((doc) => ({
+    let images: Record<string, unknown>[] = imagesSnap.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt,

@@ -140,7 +140,7 @@ export default function ScenesPage() {
       filtered = filtered.filter(
         (s) =>
           (s.brandId === null && s.eventId === null) || // Org-wide
-          (fromBranded(s.brandId) === brandId && s.eventId === null), // Brand-specific
+          (s.brandId !== null && fromBranded(s.brandId) === brandId && s.eventId === null), // Brand-specific
       );
     } else if (scopeFilter.startsWith("event:")) {
       const eventId = scopeFilter.slice(6);
@@ -152,12 +152,12 @@ export default function ScenesPage() {
         filtered = filtered.filter(
           (s) =>
             (s.brandId === null && s.eventId === null) || // Org-wide
-            (fromBranded(s.brandId) === eventBrandId && s.eventId === null) || // Brand-specific
-            fromBranded(s.eventId) === eventId, // Event-specific
+            (s.brandId !== null && fromBranded(s.brandId) === eventBrandId && s.eventId === null) || // Brand-specific
+            (s.eventId !== null && fromBranded(s.eventId) === eventId), // Event-specific
         );
       } else {
         // If event not found, just show event-specific scenes
-        filtered = filtered.filter((s) => fromBranded(s.eventId) === eventId);
+        filtered = filtered.filter((s) => s.eventId !== null && fromBranded(s.eventId) === eventId);
       }
     }
 
@@ -169,12 +169,12 @@ export default function ScenesPage() {
         const sceneDesc = (s.description || "").toLowerCase();
 
         // Find brand and event names
-        const brand = brands.find(
-          (b) => fromBranded(b.id) === fromBranded(s.brandId),
-        );
-        const event = events.find(
-          (e) => fromBranded(e.id) === fromBranded(s.eventId),
-        );
+        const brand = s.brandId
+          ? brands.find((b) => fromBranded(b.id) === fromBranded(s.brandId!))
+          : undefined;
+        const event = s.eventId
+          ? events.find((e) => fromBranded(e.id) === fromBranded(s.eventId!))
+          : undefined;
 
         const brandName = brand?.name.toLowerCase() || "";
         const eventName = event?.name.toLowerCase() || "";
@@ -194,13 +194,13 @@ export default function ScenesPage() {
   const getScopeLabel = (scene: SceneDocument) => {
     if (scene.eventId !== null) {
       const event = events.find(
-        (e) => fromBranded(e.id) === fromBranded(scene.eventId),
+        (e) => fromBranded(e.id) === fromBranded(scene.eventId!),
       );
       return event ? `Event: ${event.name}` : "Event";
     }
     if (scene.brandId !== null) {
       const brand = brands.find(
-        (b) => fromBranded(b.id) === fromBranded(scene.brandId),
+        (b) => fromBranded(b.id) === fromBranded(scene.brandId!),
       );
       return brand ? `Brand: ${brand.name}` : "Brand";
     }

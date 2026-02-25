@@ -53,6 +53,7 @@ function firebaseUserToCreateData(firebaseUser: FirebaseUser): CreateUserData {
     displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
     photoURL: firebaseUser.photoURL,
     authProvider: 'google.com',
+    claimsVersion: 0,
   };
 
   // Validate with schema before returning

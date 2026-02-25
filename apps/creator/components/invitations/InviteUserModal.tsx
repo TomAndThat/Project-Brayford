@@ -14,7 +14,7 @@ import {
 import {
   auth,
   pendingInvitationExists,
-  getOrganizationMembers,
+  getOrganizationMembersWithUsers,
 } from "@brayford/firebase-utils";
 import { isValidEmail, normalizeEmail } from "@brayford/core";
 import OwnerInvitationConfirmDialog from "./OwnerInvitationConfirmDialog";
@@ -117,7 +117,7 @@ export default function InviteUserModal({
       }
 
       // Check if user is already a member
-      const members = await getOrganizationMembers(organizationId);
+      const members = await getOrganizationMembersWithUsers(organizationId);
       const existingMember = members.find(
         (m) =>
           m.user &&
@@ -170,13 +170,8 @@ export default function InviteUserModal({
           autoGrantNewBrands:
             role === "admin" || role === "owner" ? true : autoGrantNewBrands,
           metadata: {
-            inviterName: currentMember.user
-              ? (currentMember.user as { displayName?: string }).displayName ||
-                undefined
-              : undefined,
-            inviterEmail: currentMember.user
-              ? (currentMember.user as { email?: string }).email || undefined
-              : undefined,
+            inviterName: auth.currentUser?.displayName || undefined,
+            inviterEmail: auth.currentUser?.email || undefined,
           },
         }),
       });
