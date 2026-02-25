@@ -250,7 +250,6 @@ function SortableModuleItem({
                   ? "Messaging"
                   : "Image"}
             </span>
-            <span className="text-xs text-gray-500">Order: {module.order}</span>
           </div>
           {module.moduleType === "text" ? (
             <p className="text-sm text-gray-900 truncate">
