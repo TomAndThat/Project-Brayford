@@ -99,6 +99,12 @@ importers:
 
   apps/audience:
     dependencies:
+      '@brayford/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@brayford/firebase-utils':
+        specifier: workspace:*
+        version: link:../../packages/firebase-utils
       '@tiptap/extension-color':
         specifier: ^3.19.0
         version: 3.19.0(@tiptap/extension-text-style@3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0)))
@@ -315,6 +321,9 @@ importers:
 
   packages/core:
     dependencies:
+      firebase:
+        specifier: ^10.7.2
+        version: 10.14.1
       zod:
         specifier: ^3.22.4
         version: 3.25.76
@@ -334,9 +343,6 @@ importers:
       firebase:
         specifier: ^10.7.2
         version: 10.14.1
-      zod:
-        specifier: ^3.22.4
-        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^20.11.5
